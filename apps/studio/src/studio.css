@@ -1,0 +1,36 @@
+/* SPDX-License-Identifier: EPL-2.0 */
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: var(--ms-bg, Canvas);
+  color: var(--ms-text, CanvasText);
+}
+
+.studio {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 16px 32px;
+}
+
+.studio-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 8px;
+}
+
+.studio-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.studio-picker select {
+  font: inherit;
+  padding: 4px 8px;
+}

@@ -281,6 +281,13 @@ export class DataRecorder implements SimulationObserver {
     return found.counts;
   }
 
+  /** Describes a declared distribution: its bin count and value range. */
+  distributionInfo(name: string): DistributionHandle {
+    const found = this.#distributions.get(name);
+    if (!found) throw new Error(`No distribution named "${name}"`);
+    return found.handle;
+  }
+
   /** One plain object per retained sample: `{ tick, [seriesId]: value }`. */
   toRows(): Record<string, number>[] {
     const rows: Record<string, number>[] = [];

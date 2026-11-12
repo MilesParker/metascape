@@ -1,1 +1,368 @@
 /* SPDX-License-Identifier: EPL-2.0 */
+@import 'uplot/dist/uPlot.min.css';
+
+:root {
+  --ms-bg: #f6f7f9;
+  --ms-surface: #ffffff;
+  --ms-text: #1d2128;
+  --ms-text-muted: #5b6573;
+  --ms-border: #d9dde3;
+  --ms-accent: #2f6fd0;
+  --ms-accent-text: #ffffff;
+  --ms-danger: #b3261e;
+  --ms-focus: #1a5fd0;
+  --ms-radius: 6px;
+  --ms-gap: 12px;
+  --ms-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ms-bg: #14171c;
+    --ms-surface: #1d2128;
+    --ms-text: #e6e9ee;
+    --ms-text-muted: #9aa4b2;
+    --ms-border: #343b46;
+    --ms-accent: #5b9bf0;
+    --ms-accent-text: #0b1220;
+    --ms-danger: #ff8a80;
+    --ms-focus: #8ab8ff;
+  }
+}
+
+.ms-runner,
+.ms-views,
+.ms-panel,
+.ms-controls {
+  font-family: var(--ms-font);
+  font-size: 14px;
+  color: var(--ms-text);
+  box-sizing: border-box;
+}
+
+.ms-runner *,
+.ms-views *,
+.ms-panel *,
+.ms-controls * {
+  box-sizing: border-box;
+}
+
+.ms-runner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-gap);
+  padding: var(--ms-gap);
+  background: var(--ms-bg);
+  min-width: 0;
+}
+
+.ms-runner-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ms-runner-body {
+  display: grid;
+  gap: var(--ms-gap);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .ms-runner-body {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+
+.ms-runner-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-gap);
+  min-width: 0;
+}
+
+.ms-views {
+  display: grid;
+  gap: var(--ms-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  min-width: 0;
+}
+
+.ms-panel {
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  padding: 8px 10px 10px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-text-muted);
+}
+
+.ms-canvas-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.ms-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  cursor: default;
+}
+
+.ms-chart {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.ms-svg-label,
+.ms-svg-value,
+.ms-svg-tick {
+  fill: var(--ms-text);
+  font-size: 11px;
+  font-family: var(--ms-font);
+}
+
+.ms-svg-tick {
+  fill: var(--ms-text-muted);
+  font-size: 10px;
+}
+
+.ms-svg-axis {
+  stroke: var(--ms-border);
+  stroke-width: 1;
+}
+
+.ms-timeseries .u-legend {
+  font-size: 12px;
+  color: var(--ms-text);
+  text-align: left;
+}
+
+.ms-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+  padding: 8px 10px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+}
+
+.ms-controls-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.ms-button {
+  font: inherit;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  cursor: pointer;
+}
+
+.ms-button:hover:not(:disabled) {
+  border-color: var(--ms-accent);
+}
+
+.ms-button-primary {
+  background: var(--ms-accent);
+  border-color: var(--ms-accent);
+  color: var(--ms-accent-text);
+}
+
+.ms-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ms-field label {
+  font-size: 12px;
+  color: var(--ms-text-muted);
+}
+
+.ms-field input[type='text'],
+.ms-field input[type='number'],
+.ms-field select {
+  font: inherit;
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  background: var(--ms-bg);
+  color: var(--ms-text);
+  min-width: 0;
+  width: 100%;
+}
+
+.ms-field input[aria-invalid='true'] {
+  border-color: var(--ms-danger);
+}
+
+.ms-field-boolean {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.ms-field-boolean label {
+  order: 2;
+  font-size: 14px;
+  color: var(--ms-text);
+}
+
+.ms-field-boolean .ms-hint {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.ms-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-speed {
+  min-width: 180px;
+}
+
+.ms-speed input[type='range'] {
+  width: 100%;
+}
+
+.ms-speed output {
+  font-size: 12px;
+  color: var(--ms-text-muted);
+}
+
+.ms-seed {
+  width: 140px;
+}
+
+.ms-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ms-hint,
+.ms-muted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ms-text-muted);
+}
+
+.ms-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ms-danger);
+  flex-basis: 100%;
+}
+
+.ms-readout {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.ms-readout > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-readout dt {
+  font-size: 11px;
+  color: var(--ms-text-muted);
+}
+
+.ms-readout dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.ms-inspector {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+.ms-inspector th,
+.ms-inspector td {
+  text-align: left;
+  padding: 2px 6px 2px 0;
+  border-bottom: 1px solid var(--ms-border);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ms-inspector th {
+  font-weight: 500;
+  color: var(--ms-text-muted);
+  width: 40%;
+}
+
+.ms-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ms-runner :focus-visible,
+.ms-views :focus-visible,
+.ms-controls :focus-visible,
+.ms-form :focus-visible,
+.ms-panel :focus-visible {
+  outline: 2px solid var(--ms-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .ms-runner {
+    padding: 8px;
+  }
+
+  .ms-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-seed {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-button {
+    transition: none;
+  }
+}

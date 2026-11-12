@@ -1,50 +1,43 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Random } from '@metascape/engine';
-import { useEffect, useRef, useState } from 'react';
+import { models } from '@metascape/models';
+import { ModelRunner } from '@metascape/react';
+import { useState } from 'react';
 
-const SIZE = 480;
-const WALKERS = 200;
-const STEPS = 400;
-
-/** Draws seeded random walks: the same seed always paints the same picture. */
-function drawWalks(context: CanvasRenderingContext2D, seed: string): void {
-  const random = new Random(seed);
-  context.clearRect(0, 0, SIZE, SIZE);
-  for (let walker = 0; walker < WALKERS; walker++) {
-    let x = SIZE / 2;
-    let y = SIZE / 2;
-    context.strokeStyle = `hsl(${random.int(0, 360)} 70% 50% / 0.35)`;
-    context.beginPath();
-    context.moveTo(x, y);
-    for (let step = 0; step < STEPS; step++) {
-      x += random.int(-3, 4);
-      y += random.int(-3, 4);
-      context.lineTo(x, y);
-    }
-    context.stroke();
-  }
+/** The model named in the page address (`#life`), or the first one. */
+function initialIndex(): number {
+  const wanted = decodeURIComponent(window.location.hash.slice(1)).toLowerCase();
+  const index = models.findIndex((model) => slug(model.name) === wanted);
+  return index >= 0 ? index : 0;
 }
 
-export function App() {
-  const [seed, setSeed] = useState('metascape');
-  const canvas = useRef<HTMLCanvasElement>(null);
+const slug = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-  useEffect(() => {
-    const context = canvas.current?.getContext('2d');
-    if (context) drawWalks(context, seed);
-  }, [seed]);
+export function App() {
+  const [index, setIndex] = useState(initialIndex);
+  const model = models[index]!;
+
+  const choose = (next: number): void => {
+    setIndex(next);
+    window.history.replaceState(null, '', `#${slug(models[next]!.name)}`);
+  };
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', margin: '2rem auto', width: SIZE }}>
-      <h1>Metascape Studio</h1>
-      <p>
-        Scaffold check: {WALKERS} random walks drawn from the engine&apos;s seeded generator. The
-        same seed always gives the same picture.
-      </p>
-      <label>
-        Seed <input value={seed} onChange={(event) => setSeed(event.target.value)} />
-      </label>
-      <canvas ref={canvas} width={SIZE} height={SIZE} style={{ display: 'block', marginTop: 16 }} />
-    </main>
+    <div className="studio">
+      <header className="studio-header">
+        <h1 className="studio-title">Metascape Studio</h1>
+        <label className="studio-picker">
+          Model{' '}
+          <select value={index} onChange={(event) => choose(Number(event.target.value))}>
+            {models.map((entry, i) => (
+              <option key={entry.name} value={i}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </header>
+      {/* The key gives each model a fresh runner and form state. */}
+      <ModelRunner key={model.name} model={model} />
+    </div>
   );
 }
