@@ -41,7 +41,7 @@ describe('life', () => {
 
   it('only refers to existing series and distributions in its views', () => {
     const sim = make();
-    for (const view of life.views!(sim)) {
+    for (const view of sim.views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {
         for (const id of view.series) expect(() => sim.data.get(id)).not.toThrow();
       }

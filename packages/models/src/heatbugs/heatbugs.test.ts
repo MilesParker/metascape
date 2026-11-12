@@ -24,7 +24,7 @@ describe('heatbugs', () => {
 
   it('only refers to existing series and distributions in its views', () => {
     const sim = make();
-    const views = heatbugs.views!(sim);
+    const views = sim.views;
     expect(views.length).toBeGreaterThan(0);
     for (const view of views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {

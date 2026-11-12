@@ -27,7 +27,7 @@ describe('wolf sheep predation', () => {
   it('only references recorded series and distributions in its views', () => {
     const sim = make();
     const known = new Set(sim.data.series.map((s) => s.id));
-    const views: ViewSpec[] = wolfSheep.views!(sim);
+    const views: readonly ViewSpec[] = sim.views;
     expect(views.length).toBeGreaterThan(0);
     for (const view of views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {

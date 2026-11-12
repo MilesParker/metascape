@@ -209,10 +209,8 @@ export const boids = defineModel({
       }
       return counted === 0 ? 0 : total / counted;
     });
-  },
-  views(sim) {
-    const scape = sim.scape('boids') as unknown as ContinuousScape<Boid>;
-    return [
+
+    sim.addView(
       continuousView<Boid>({
         title: 'Flock',
         scape,
@@ -220,6 +218,8 @@ export const boids = defineModel({
         color: (boid) => headingColor((boid.heading + Math.PI) / (2 * Math.PI)),
         radius: () => 1,
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Polarization',
         series: ['polarization'],
@@ -227,12 +227,14 @@ export const boids = defineModel({
         yMax: 1,
         colors: { polarization: colors.blue },
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Nearest-neighbor distance',
         series: ['nearestDistance'],
         yMin: 0,
         colors: { nearestDistance: colors.orange },
       }),
-    ];
+    );
   },
 });

@@ -147,7 +147,7 @@ export const schelling = defineModel({
   build(sim) {
     const p = sim.parameters;
     const free = new FreeCells();
-    sim.addScape(
+    const town = sim.addScape(
       new GridScape<SchellingCell>({
         name: 'town',
         width: p.width,
@@ -182,13 +182,10 @@ export const schelling = defineModel({
       if (sim.data.latest('unhappy') === 0) sim.stop('Nobody is unhappy');
     };
     sim.observe({ initialized: finishIfSettled, stepped: finishIfSettled });
-  },
 
-  views(sim) {
-    const town = sim.scape('town') as GridScape<SchellingCell>;
     const groupColors = [colors.blue, colors.orange] as const;
     const empty = rgb(236, 236, 238);
-    return [
+    sim.addView(
       gridView<SchellingCell>({
         title: 'Town',
         grid: town,
@@ -198,11 +195,13 @@ export const schelling = defineModel({
         },
         background: empty,
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Unhappiness and segregation',
         series: ['unhappy', 'like.mean'],
         colors: { unhappy: colors.red, 'like.mean': colors.teal },
       }),
-    ];
+    );
   },
 });

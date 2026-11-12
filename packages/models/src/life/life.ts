@@ -120,17 +120,16 @@ export const life = defineModel({
     });
 
     sim.data.count(cells, 'live', (cell) => cell.on);
-  },
 
-  views(sim) {
-    const cells = sim.scape('cells') as GridScape<LifeCell>;
-    return [
+    sim.addView(
       gridView<LifeCell>({
         title: 'Cells',
         grid: cells,
         cellColor: (cell) => (cell.on ? colors.green : rgb(24, 28, 34)),
       }),
+    );
+    sim.addView(
       timeSeriesView({ title: 'Live cells', series: ['live'], colors: { live: colors.green } }),
-    ];
+    );
   },
 });

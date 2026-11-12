@@ -202,15 +202,13 @@ export const wolfSheep = defineModel({
         if (sheep.size === 0 && wolves.size === 0) s.stop('all animals are gone');
       },
     });
-  },
-  views(sim) {
-    const grid = sim.scape('grass') as unknown as GridScape<Patch>;
+
     const grown = colors.green;
     const bare = colors.brown;
-    return [
+    sim.addView(
       gridView<Patch, Animal>({
         title: 'Meadow',
-        grid,
+        grid: grass,
         cellColor: (patch) => (patch.grown ? grown : bare),
         // Where a cell holds both kinds, only the wolf is drawn.
         occupantColor: (animal) => {
@@ -220,12 +218,14 @@ export const wolfSheep = defineModel({
           return colors.white;
         },
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Populations',
         series: ['sheep', 'wolves', 'grass'],
         colors: { sheep: colors.blue, wolves: colors.red, grass: colors.green },
         yMin: 0,
       }),
-    ];
+    );
   },
 });

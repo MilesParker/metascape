@@ -128,7 +128,7 @@ export const prisonersDilemma = defineModel({
   parameters,
   build(sim) {
     const p = sim.parameters;
-    sim.addScape(
+    const grid = sim.addScape(
       new GridScape({
         name: 'grid',
         width: p.size,
@@ -207,14 +207,12 @@ export const prisonersDilemma = defineModel({
         if (players.size === 0) s.stop('extinct');
       },
     });
-  },
-  views(sim) {
-    const grid = sim.scape('grid') as unknown as GridScape;
+
     const sides = {
       cooperators: colors.blue,
       defectors: colors.red,
     };
-    return [
+    sim.addView(
       gridView<Cell, Player>({
         title: 'Torus',
         grid,
@@ -222,17 +220,21 @@ export const prisonersDilemma = defineModel({
         occupantColor: (player) => (player.cooperator ? colors.blue : colors.red),
         occupantShape: 'square',
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Population by strategy',
         series: ['cooperators', 'defectors'],
         colors: sides,
         yMin: 0,
       }),
+    );
+    sim.addView(
       barsView({
         title: 'Cooperators and defectors',
         series: ['cooperators', 'defectors'],
         colors: sides,
       }),
-    ];
+    );
   },
 });

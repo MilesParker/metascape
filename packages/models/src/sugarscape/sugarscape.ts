@@ -277,12 +277,9 @@ export const sugarscape = defineModel({
       scratch.subarray(0, members.length).sort();
       return gini(scratch, members.length);
     });
-  },
 
-  views(sim) {
-    const land = sim.scape('land') as GridScape<SugarCell>;
     const sugarColor = gradient(rgb(40, 36, 24), colors.yellow, rgb(255, 240, 150));
-    return [
+    sim.addView(
       gridView<SugarCell, Walker>({
         title: 'Sugarscape',
         grid: land,
@@ -290,17 +287,25 @@ export const sugarscape = defineModel({
         occupantColor: () => colors.red,
         occupantShape: 'circle',
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Population',
         series: ['population'],
         colors: { population: colors.red },
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Mean vision and metabolism',
         series: ['vision.mean', 'metabolism.mean'],
         colors: { 'vision.mean': colors.blue, 'metabolism.mean': colors.orange },
       }),
+    );
+    sim.addView(
       histogramView({ title: 'Wealth distribution', distribution: 'wealthDistribution' }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Gini coefficient',
         series: ['gini'],
@@ -308,6 +313,6 @@ export const sugarscape = defineModel({
         yMax: 1,
         colors: { gini: colors.purple },
       }),
-    ];
+    );
   },
 });

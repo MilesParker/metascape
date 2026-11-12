@@ -210,13 +210,10 @@ export const heatbugs = defineModel({
       statistics: ['mean', 'max'],
     });
     sim.data.measure(world, 'heat', (cell) => cell.heat, { statistics: ['sum'] });
-  },
 
-  views(sim) {
-    const world = sim.scape('world') as GridScape<HeatCell>;
     const maxHeat = sim.parameters.maxHeat;
     const heatColor = gradient(rgb(8, 8, 16), rgb(150, 30, 20), colors.orange, rgb(255, 245, 200));
-    return [
+    sim.addView(
       gridView<HeatCell, HeatBug>({
         title: 'Heat and bugs',
         grid: world,
@@ -224,11 +221,13 @@ export const heatbugs = defineModel({
         occupantColor: () => colors.green,
         occupantShape: 'circle',
       }),
+    );
+    sim.addView(
       timeSeriesView({
         title: 'Mean unhappiness',
         series: ['unhappiness.mean'],
         colors: { 'unhappiness.mean': colors.orange },
       }),
-    ];
+    );
   },
 });

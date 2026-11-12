@@ -76,34 +76,6 @@ const parameters = {
   }),
 } as const;
 
-/** The population, which builds its small-world network and seeds the infection when created. */
-export class Population extends Scape<Person> {
-  readonly network = new Network<Person>();
-
-  constructor(
-    private readonly setup: {
-      readonly k: number;
-      readonly rewire: number;
-      readonly initialInfected: number;
-    },
-    size: number,
-  ) {
-    super({ name: 'people', size, create: () => new Person() });
-  }
-
-  override populate(): void {
-    super.populate();
-    const people = [...this.members];
-    connectSmallWorld(this.network, people, this.setup.k, this.setup.rewire, this.random);
-    for (const person of people) person.contacts = this.network.neighbors(person);
-    const order = this.random.shuffle([...people]);
-    for (const person of order.slice(0, Math.min(this.setup.initialInfected, order.length))) {
-      person.health = person.nextHealth = Health.Infected;
-      person.everInfected = true;
-    }
-  }
-}
-
 const stateColor = (person: Person): number =>
   person.health === Health.Infected
     ? colors.red
@@ -118,7 +90,20 @@ export const epidemic = defineModel({
   parameters,
   build(sim) {
     const p = sim.parameters;
-    const people = sim.addScape(new Population(p, p.population));
+    const people = sim.addScape(
+      new Scape<Person>({ name: 'people', size: p.population, create: () => new Person() }),
+    );
+    const network = new Network<Person>();
+    sim.setup(() => {
+      const members = [...people.members];
+      connectSmallWorld(network, members, p.k, p.rewire, people.random);
+      for (const person of members) person.contacts = network.neighbors(person);
+      const order = people.random.shuffle([...members]);
+      for (const person of order.slice(0, Math.min(p.initialInfected, order.length))) {
+        person.health = person.nextHealth = Health.Infected;
+        person.everInfected = true;
+      }
+    });
 
     people.addRule({
       name: 'epidemic',
@@ -167,25 +152,25 @@ export const epidemic = defineModel({
         if (s.data.latest('infected') === 0) s.stop('no one is infected');
       },
     });
-  },
-  views(sim) {
-    const people = sim.scape('people') as unknown as Population;
+
     const palette = {
       susceptible: colors.blue,
       infected: colors.red,
       recovered: colors.green,
     };
     const series = ['susceptible', 'infected', 'recovered'];
-    return [
+    sim.addView(
       networkView<Person>({
         title: 'Contact network',
         nodes: people,
-        network: people.network,
+        network,
         color: stateColor,
         layout: 'circle',
       }),
+    );
+    sim.addView(
       timeSeriesView({ title: 'S, I and R over time', series, colors: palette, yMin: 0 }),
-      barsView({ title: 'S, I and R now', series, colors: palette }),
-    ];
+    );
+    sim.addView(barsView({ title: 'S, I and R now', series, colors: palette }));
   },
 });
