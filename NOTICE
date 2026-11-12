@@ -11,7 +11,44 @@ Metascape is a new work that succeeds two earlier projects by the same
 author: Ascape (BSD licensed; https://github.com/MilesParker/ascape) and the
 Eclipse Agent Modeling Platform (EPL 1.0; https://github.com/MilesParker/amp).
 
-Any file ported from Ascape retains the original Ascape copyright notice and
-BSD license terms in its header, and is listed here:
+Ported models
+-------------
 
-  (none yet)
+Metascape includes models ported from Ascape 5.6.1 and from the Eclipse
+Agent Modeling Platform. Every ported file names, in its header, the legacy
+classes or model file it was ported from and keeps the original copyright
+line. Each model also carries its provenance (authors, publication, source
+and copyright), which Metascape Studio shows next to the model, and each
+model family's README lists every legacy class and how it was ported.
+
+packages/models/src/brookings/
+  The Brookings Institution models (Sugarscape, Artificial Anasazi, Civil
+  Violence, Norms, Retirement, Emergence of Classes, Emergence of Firms,
+  Demographic Prisoner's Dilemma, Diffusion, Conway's Life, Busy Beavers,
+  the Coordination Game tutorial and Simple), ported from the edu.brook
+  packages of Ascape, and the Spatial Iterated Prisoner's Dilemma, ported
+  from name.milesparker.spatialipd.
+    Copyright 1998-2007 The Brookings Institution, with revisions by
+    Metascape LLC, and others (spatial IPD: Copyright 2000 Miles T. Parker).
+    BSD license: LICENSES/brookings-models-license.txt
+
+packages/models/src/ascape/
+  The Ascape example models (Bionland, Boids, Traffic), ported from
+  org.ascape.examples.
+packages/engine/src/space/grid/small-world.ts
+  Follows the neighbor rule of org.ascape.model.space.Array2DSmallWorld.
+    Copyright 1998-2007 The Brookings Institution, NuTech Solutions, Inc.,
+    Metascape LLC, and contributors.
+    BSD license: LICENSES/ascape-license.txt
+
+These files are distributed under EPL-2.0 for the port and under the BSD
+license above for the original work (SPDX: EPL-2.0 AND BSD-3-Clause).
+
+packages/models/src/amp/
+  The Eclipse Agent Modeling Platform example models (StupidModel, Wiki
+  Example, Heatbugs, Demographic Prisoner's Dilemma, Epidemic, Markets and
+  SIR), ported from their .metaabm model files. These were made available
+  under the Eclipse Public License and are distributed under EPL-2.0.
+
+The Heatbugs model in Ascape's edu.brooksantafe package was not ported: that
+directory carries a GNU GPL notice.

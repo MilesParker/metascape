@@ -32,6 +32,7 @@ export {
   defineModel,
   Simulation,
   type Model,
+  type Provenance,
   type SimulationObserver,
   type SimulationOptions,
 } from './simulation';

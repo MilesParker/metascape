@@ -12,7 +12,7 @@ export {
   type PaintGridOptions,
 } from './grid-view';
 export { useRunner, useRunnerState, type RunnerSnapshot } from './hooks';
-export { ModelRunner, type ModelRunnerProps } from './model-runner';
+export { ModelRunner, ProvenanceNote, type ModelRunnerProps } from './model-runner';
 export { NetworkView, type NetworkViewProps } from './network-view';
 export { DEFAULT_PALETTE } from './palette';
 export { ParameterForm, type FormValue, type ParameterFormProps } from './parameter-form';

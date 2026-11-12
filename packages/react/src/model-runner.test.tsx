@@ -34,4 +34,20 @@ describe('ModelRunner', () => {
     );
     expect(screen.getByRole('img', { name: /^Latest: Count walkers 9/ })).toBeTruthy();
   });
+
+  it('shows where a model comes from', () => {
+    const credited = {
+      ...demoModel,
+      provenance: {
+        authors: 'A. Modeler',
+        citation: 'Modeler, A. (1999). A model.',
+        portedFrom: 'Ascape 5.6.1, edu.brook.demo.Demo',
+        copyright: 'Copyright 1998-2007 The Brookings Institution.',
+      },
+    };
+    render(<ModelRunner model={credited} options={{ seed: 5 }} />);
+    expect(screen.getByText(/Model by A\. Modeler\./)).toBeTruthy();
+    expect(screen.getByText(/Ported from Ascape 5\.6\.1, edu\.brook\.demo\.Demo\./)).toBeTruthy();
+    expect(screen.getByText(/The Brookings Institution/)).toBeTruthy();
+  });
 });

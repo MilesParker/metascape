@@ -5,6 +5,7 @@ import {
   type Model,
   type ParameterSchema,
   type ParameterValues,
+  type Provenance,
   type RunnerOptions,
   type Simulation,
 } from '@metascape/engine';
@@ -20,6 +21,20 @@ export interface ModelRunnerProps<S extends ParameterSchema = ParameterSchema> {
   readonly model: Model<S>;
   /** Seed, speed and so on for the runner; read once. */
   readonly options?: RunnerOptions<S>;
+}
+
+/** Credits for a model: its authors, publication and any implementation it was ported from. */
+export function ProvenanceNote({ provenance }: { readonly provenance: Provenance }): ReactElement {
+  const { authors, citation, portedFrom, copyright, note } = provenance;
+  return (
+    <p className="ms-provenance ms-muted">
+      {authors && <span>Model by {authors}. </span>}
+      {citation && <cite>{citation} </cite>}
+      {portedFrom && <span>Ported from {portedFrom}. </span>}
+      {copyright && <span>{copyright} </span>}
+      {note && <span>{note}</span>}
+    </p>
+  );
 }
 
 type Values = Readonly<Record<string, FormValue>>;
@@ -61,6 +76,7 @@ export function ModelRunner<S extends ParameterSchema>({
       <header className="ms-runner-header">
         <h2 className="ms-runner-title">{model.name}</h2>
         {model.description && <p className="ms-muted">{model.description}</p>}
+        {model.provenance && <ProvenanceNote provenance={model.provenance} />}
       </header>
       <RunControls runner={runner} />
       <div className="ms-runner-body">

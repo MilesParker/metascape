@@ -7,6 +7,23 @@ import type { Scape } from './scape';
 import type { ViewSpec } from './view/spec';
 
 /**
+ * Where a model comes from. Tools show this next to the model, so that credit
+ * for the science and for any earlier implementation always travels with it.
+ */
+export interface Provenance {
+  /** Who devised the model, such as "Joshua M. Epstein and Robert Axtell". */
+  readonly authors?: string;
+  /** The publication that defines the model. */
+  readonly citation?: string;
+  /** The earlier implementation this one was ported from, such as "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_1". */
+  readonly portedFrom?: string;
+  /** The copyright notice of that earlier implementation. */
+  readonly copyright?: string;
+  /** Anything else a user should know, such as how this version differs from the original. */
+  readonly note?: string;
+}
+
+/**
  * A model: its declared parameters and how to build its world.
  *
  * `build` adds scapes, rules and observers to a fresh simulation. It must not
@@ -15,6 +32,8 @@ import type { ViewSpec } from './view/spec';
 export interface Model<S extends ParameterSchema = ParameterSchema> {
   readonly name: string;
   readonly description?: string;
+  /** Who devised the model and where this implementation comes from. */
+  readonly provenance?: Provenance;
   readonly parameters: S;
   build(sim: Simulation<S>): void;
   /**

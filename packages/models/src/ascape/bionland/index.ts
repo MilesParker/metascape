@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: EPL-2.0
+import { defineFamily } from '../../catalog';
+import { stepQ } from './continuous';
+import { stepR, stepS } from './graph';
+import {
+  dataRunFull,
+  dataRunN,
+  dataRunO,
+  fullModel,
+  stepA,
+  stepB,
+  stepC,
+  stepD,
+  stepE,
+  stepF,
+  stepG,
+  stepH,
+  stepI,
+  stepJ,
+  stepK,
+  stepL,
+  stepM,
+  stepP,
+} from './steps';
+
+export {
+  dataRunFull,
+  dataRunN,
+  dataRunO,
+  fullModel,
+  stepA,
+  stepB,
+  stepC,
+  stepD,
+  stepE,
+  stepF,
+  stepG,
+  stepH,
+  stepI,
+  stepJ,
+  stepK,
+  stepL,
+  stepM,
+  stepP,
+  stepQ,
+  stepR,
+  stepS,
+};
+
+/** The Bionland tutorial: a lattice of coloured "bions" built up one step at a time. */
+export const family = defineFamily({
+  id: 'ascape-bionland',
+  name: 'Bionland',
+  collection: 'Ascape example models',
+  description:
+    'A step-by-step Ascape tutorial: a lattice with randomly placed bions gains movement, three species that chase one another, energy, reproduction, diffusion, statistics and other spaces, up to the full model.',
+  models: [
+    stepA,
+    stepB,
+    stepC,
+    stepD,
+    stepE,
+    stepF,
+    stepG,
+    stepH,
+    stepI,
+    stepJ,
+    stepK,
+    stepL,
+    stepM,
+    stepP,
+    stepQ,
+    stepR,
+    stepS,
+    fullModel,
+    dataRunFull,
+    dataRunN,
+    dataRunO,
+  ],
+});

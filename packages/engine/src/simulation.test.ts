@@ -253,6 +253,25 @@ describe('membership changes during a step', () => {
     sim.step();
     expect([parent!.position, child!.position]).toEqual([102, 101]);
   });
+  it('moves an agent from one scape to another without leaving it in the first', () => {
+    const sim = new Simulation({
+      name: 'two scapes',
+      parameters: {},
+      build(s) {
+        s.addScape(walkers(2));
+        s.addScape(new Scape<Walker>({ name: 'elsewhere' }));
+      },
+    });
+    const home = sim.scape('walkers') as Scape<Walker>;
+    const away = sim.scape('elsewhere') as Scape<Walker>;
+    const mover = home.members[0]!;
+    mover.die();
+    away.add(mover);
+    expect(home.members).not.toContain(mover);
+    expect(home.size).toBe(1);
+    expect(away.members).toEqual([mover]);
+    expect(mover.scape).toBe(away);
+  });
 });
 
 describe('run control and observers', () => {

@@ -9,3 +9,4 @@ export {
   type WithinOptions,
 } from './grid-scape';
 export { Occupant } from './occupant';
+export { wireSmallWorld, type SmallWorldOptions } from './small-world';

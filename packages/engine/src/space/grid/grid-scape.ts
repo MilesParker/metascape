@@ -183,6 +183,17 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
     return cached;
   }
 
+  /**
+   * Replaces the neighbors of a cell, for lattices whose wiring is not a plain
+   * neighborhood (see {@link wireSmallWorld}). Everything that reads
+   * neighbors, including {@link Cell.neighbors}, sees the new list. The list
+   * may be one-way and may include the cell itself.
+   */
+  setNeighbors(cell: C, neighbors: readonly C[]): void {
+    for (const other of neighbors) this.#indexOf(other);
+    this.#neighborCache[this.#indexOf(cell)] = Object.freeze([...neighbors]);
+  }
+
   /** Distance between two cells, the shortest way round on a torus. */
   distance(a: Cell, b: Cell, metric: Metric = this.defaultMetric): number {
     let dx = Math.abs(a.x - b.x);

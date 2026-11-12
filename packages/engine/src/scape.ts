@@ -124,7 +124,10 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
   get members(): readonly A[] {
     if (this.#dead > 0) {
       // A new array, so that a loop over the previous one is not disturbed.
-      this.#members = this.#members.filter((agent) => agent.alive);
+      // An agent removed here may have joined another scape since, so check where it lives.
+      this.#members = this.#members.filter(
+        (agent) => agent.alive && agent.scape === (this as Scape<Agent>),
+      );
       this.#dead = 0;
     }
     return this.#members;

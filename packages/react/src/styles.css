@@ -366,3 +366,12 @@
     transition: none;
   }
 }
+
+.ms-provenance {
+  margin-top: 4px;
+  max-width: 80ch;
+}
+
+.ms-provenance cite {
+  font-style: italic;
+}

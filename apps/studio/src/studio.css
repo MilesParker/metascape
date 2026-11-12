@@ -34,3 +34,20 @@ body {
   font: inherit;
   padding: 4px 8px;
 }
+
+.studio-pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.studio-picker select {
+  max-width: 100%;
+}
+
+.studio-family {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ms-text-muted, GrayText);
+  max-width: 80ch;
+}
