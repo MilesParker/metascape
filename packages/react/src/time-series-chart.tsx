@@ -37,7 +37,7 @@ export function showLatest(u: uPlot): void {
   const count = u.data[0]?.length ?? 0;
   if (count === 0) return;
   const rows = u.root.querySelectorAll('.u-series');
-  for (let i = 1; i < u.series.length; i++) {
+  for (let i = 0; i < u.series.length; i++) {
     const value = u.data[i]?.[count - 1];
     const cell = rows[i]?.querySelector('.u-value');
     if (cell && value != null && Number.isFinite(value)) cell.textContent = formatValue(value);
@@ -102,6 +102,13 @@ export function TimeSeriesChart({ spec, sim, frame }: TimeSeriesChartProps): Rea
           },
         ],
         setData: [showLatest],
+        // uPlot rewrites the legend after its own cursor update, which is the
+        // last thing to touch it, so this is where the latest values stick.
+        setLegend: [
+          (u) => {
+            if (u.cursor.idx == null) showLatest(u);
+          },
+        ],
       },
     };
 

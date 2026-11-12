@@ -52,9 +52,12 @@ describe('TimeSeriesChart', () => {
     const sim = new Simulation(demoModel, { seed: 1 });
     render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
     await flush();
-    const options = created[0]!.options as { hooks: { setCursor: unknown[]; setData: unknown[] } };
+    const options = created[0]!.options as {
+      hooks: { setCursor: unknown[]; setData: unknown[]; setLegend: unknown[] };
+    };
     expect(options.hooks.setCursor).toHaveLength(1);
     expect(options.hooks.setData).toEqual([showLatest]);
+    expect(options.hooks.setLegend).toHaveLength(1);
 
     const root = document.createElement('div');
     root.innerHTML = ['Tick', 'A', 'B']
@@ -71,7 +74,8 @@ describe('TimeSeriesChart', () => {
     };
     showLatest(fake as never);
     const values = [...root.querySelectorAll('.u-value')].map((v) => v.textContent);
-    expect(values).toEqual(['--', '3.142', '--']);
+    // The tick and each finite latest value are shown; a NaN keeps its placeholder.
+    expect(values).toEqual(['2', '3.142', '--']);
   });
 
   it('creates the plot once, updates it on each frame and destroys it on unmount', async () => {
