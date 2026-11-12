@@ -321,3 +321,45 @@ describe('determinism', () => {
     expect(typeof sim.seed).toBe('number');
   });
 });
+
+describe('views', () => {
+  it('collects views declared while building, then those from model.views', () => {
+    const sim = new Simulation({
+      name: 'viewed',
+      parameters: {},
+      build(sim) {
+        sim.addView({ type: 'timeSeries', title: 'declared', series: [] });
+      },
+      views: () => [{ type: 'bars', title: 'from model', series: [] }],
+    });
+    expect(sim.views.map((view) => view.title)).toEqual(['declared', 'from model']);
+    expect(sim.views).toBe(sim.views);
+    expect(() => sim.addView({ type: 'bars', title: 'late', series: [] })).toThrow(
+      /while the model/,
+    );
+  });
+});
+
+describe('setup callbacks', () => {
+  it('run after population and initial rules, before the first data sample', () => {
+    const log: string[] = [];
+    const sim = new Simulation({
+      name: 'setup',
+      parameters: {},
+      build(sim) {
+        const scape = sim.addScape(
+          new Scape<Walker>({ name: 'walkers', size: 2, create: () => new Walker() }),
+        );
+        scape.addInitialRule('mark', (walker) => (walker.position = 1));
+        sim.setup(() => {
+          log.push(`setup sees ${scape.members.map((walker) => walker.position).join(',')}`);
+          for (const walker of scape) walker.position = 5;
+        });
+        sim.data.measure(scape, 'position', (walker) => walker.position);
+      },
+    });
+    expect(log).toEqual(['setup sees 1,1']);
+    expect(sim.data.latest('position.mean')).toBe(5);
+    expect(() => sim.setup(() => {})).toThrow(/while the model/);
+  });
+});

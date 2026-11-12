@@ -18,8 +18,9 @@ export interface Model<S extends ParameterSchema = ParameterSchema> {
   readonly parameters: S;
   build(sim: Simulation<S>): void;
   /**
-   * How a run of this model should be shown: lattices, charts and so on.
-   * Called once per simulation, after it is initialized.
+   * Further views of a run, besides those `build` declares with
+   * `sim.addView`. Called once per simulation, after it is initialized.
+   * Prefer `sim.addView` inside `build`, where the model's scapes are in scope.
    */
   views?(sim: Simulation<S>): ViewSpec[];
 }
@@ -70,6 +71,9 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
 
   readonly #scapes: Scape<Agent>[] = [];
   readonly #observers: SimulationObserver[] = [];
+  readonly #declaredViews: ViewSpec[] = [];
+  readonly #setups: (() => void)[] = [];
+  #views: readonly ViewSpec[] | undefined;
   #tick = 0;
   #nextAgentId = 0;
   #building = true;
@@ -93,6 +97,7 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
     for (const scape of this.#scapes) scape.populate();
     for (const scape of this.#scapes) scape.initializeMembers();
     for (const scape of this.#scapes) scape.runInitialRules();
+    for (const setup of this.#setups) setup();
     this.#notify('initialized');
   }
 
@@ -134,6 +139,36 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
     const found = this.#scapes.find((scape) => scape.name === name);
     if (!found) throw new Error(`No scape named "${name}"`);
     return found;
+  }
+
+  /**
+   * Registers work to do once the initial population exists: after every
+   * scape is populated, its members initialized and initial rules run, but
+   * before the first data sample at tick 0. Use it for set-up that spans
+   * agents, such as wiring a network or seeding an infection. Called by
+   * models while they are built; callbacks run in the order registered.
+   */
+  setup(callback: () => void): this {
+    if (!this.#building) throw new Error('Setup can only be registered while the model is built');
+    this.#setups.push(callback);
+    return this;
+  }
+
+  /**
+   * Declares how this run should be shown: a lattice, a chart and so on.
+   * Called by models while they are built, typically with the helpers
+   * `gridView`, `timeSeriesView` and friends.
+   */
+  addView(view: ViewSpec): this {
+    if (!this.#building) throw new Error('Views can only be added while the model is built');
+    this.#declaredViews.push(view);
+    return this;
+  }
+
+  /** The views of this run: those declared with `addView`, then any from `model.views`. */
+  get views(): readonly ViewSpec[] {
+    this.#views ??= [...this.#declaredViews, ...(this.model.views?.(this) ?? [])];
+    return this.#views;
   }
 
   /** Registers an observer; returns a function that removes it again. */
