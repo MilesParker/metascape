@@ -1,0 +1,17 @@
+Metascape
+Copyright (c) 2026 Miles Parker and contributors.
+
+This program and the accompanying materials are made available under the
+terms of the Eclipse Public License 2.0, which is available in the LICENSE
+file and at https://www.eclipse.org/legal/epl-2.0/
+
+SPDX-License-Identifier: EPL-2.0
+
+Metascape is a new work that succeeds two earlier projects by the same
+author: Ascape (BSD licensed; https://github.com/MilesParker/ascape) and the
+Eclipse Agent Modeling Platform (EPL 1.0; https://github.com/MilesParker/amp).
+
+Any file ported from Ascape retains the original Ascape copyright notice and
+BSD license terms in its header, and is listed here:
+
+  (none yet)
