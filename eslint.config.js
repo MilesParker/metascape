@@ -8,6 +8,21 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['packages/**/*.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Use the seeded Random from the simulation, scape or agent so runs stay deterministic.',
+        },
+      ],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
     files: ['apps/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat.recommended,
   },
