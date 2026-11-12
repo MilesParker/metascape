@@ -35,3 +35,8 @@ export {
   type SimulationObserver,
   type SimulationOptions,
 } from './simulation';
+export * from './data';
+export * from './run';
+export * from './space/continuous';
+export * from './space/grid';
+export * from './space/network';

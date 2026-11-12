@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Agent } from './agent';
+import { DataRecorder } from './data/recorder';
 import { resolveParameters, type ParameterSchema, type ParameterValues } from './parameters';
 import { Random } from './random';
 import type { Scape } from './scape';
@@ -55,6 +56,11 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
   /** The root random stream. Scapes get their own streams forked from it. */
   readonly random: Random;
   readonly stopAt: number | undefined;
+  /**
+   * The run's recorded data. Models declare what to measure on it while they
+   * are built; it samples at tick 0 and after every step.
+   */
+  readonly data: DataRecorder;
 
   readonly #scapes: Scape<Agent>[] = [];
   readonly #observers: SimulationObserver[] = [];
@@ -72,6 +78,8 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
     this.seed = options.seed ?? Math.floor(Math.random() * 0x1_0000_0000);
     this.random = new Random(this.seed);
     this.stopAt = options.stopAt;
+
+    this.data = new DataRecorder(this as unknown as Simulation);
 
     model.build(this);
     this.#building = false;
