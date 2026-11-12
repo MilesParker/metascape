@@ -8,7 +8,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['packages/**/*.ts'],
+    files: ['packages/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-properties': [
         'error',
@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/**/*.{ts,tsx}'],
+    files: ['apps/**/*.{ts,tsx}', 'packages/react/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat.recommended,
   },
 );

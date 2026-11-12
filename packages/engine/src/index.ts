@@ -40,3 +40,4 @@ export * from './run';
 export * from './space/continuous';
 export * from './space/grid';
 export * from './space/network';
+export * from './view';

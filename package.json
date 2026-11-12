@@ -17,7 +17,7 @@
     "build": "npm run build -w @metascape/studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p packages/engine && tsc -p apps/studio",
+    "typecheck": "tsc -p packages/engine && tsc -p packages/models && tsc -p packages/react && tsc -p apps/studio",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

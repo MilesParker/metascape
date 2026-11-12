@@ -4,6 +4,7 @@ import { DataRecorder } from './data/recorder';
 import { resolveParameters, type ParameterSchema, type ParameterValues } from './parameters';
 import { Random } from './random';
 import type { Scape } from './scape';
+import type { ViewSpec } from './view/spec';
 
 /**
  * A model: its declared parameters and how to build its world.
@@ -16,6 +17,11 @@ export interface Model<S extends ParameterSchema = ParameterSchema> {
   readonly description?: string;
   readonly parameters: S;
   build(sim: Simulation<S>): void;
+  /**
+   * How a run of this model should be shown: lattices, charts and so on.
+   * Called once per simulation, after it is initialized.
+   */
+  views?(sim: Simulation<S>): ViewSpec[];
 }
 
 /** Declares a model, inferring its parameter types from the schema. */
