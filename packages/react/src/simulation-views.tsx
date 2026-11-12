@@ -8,6 +8,18 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { ChartCustomizer } from './chart-customizer';
+import {
+  choiceOf,
+  isCustomizable,
+  NO_CUSTOMIZATIONS,
+  shownViews,
+  withAddedChoice,
+  withChange,
+  withNewChart,
+  withoutAdded,
+  type ChartCustomizations,
+} from './chart-customization';
 import { ContinuousView } from './continuous-view';
 import { GridView } from './grid-view';
 import { NetworkView } from './network-view';
@@ -22,6 +34,8 @@ export interface ViewPanelProps {
   readonly frame: number;
   /** Called when the user clicks an agent or cell (a cell's occupant is preferred). */
   readonly onPick?: ((agent: Agent) => void) | undefined;
+  /** Shown beside the title, for example a chart's Customize button. */
+  readonly controls?: ReactNode;
 }
 
 /** Props of {@link SimulationViews}. */
@@ -30,6 +44,14 @@ export interface SimulationViewsProps {
   /** Changes on each frame to trigger redraws. */
   readonly frame: number;
   readonly onPick?: ((agent: Agent) => void) | undefined;
+  /**
+   * The user's chart choices. Give both this and `onCustomizationsChange` to
+   * let the user change which series each chart shows, add charts of any
+   * recorded series and remove those they added. Keep the value across
+   * restarts to keep their choices.
+   */
+  readonly customizations?: ChartCustomizations | undefined;
+  readonly onCustomizationsChange?: ((next: ChartCustomizations) => void) | undefined;
 }
 
 interface BoundaryProps {
@@ -90,9 +112,12 @@ export function ViewPanel(props: ViewPanelProps): ReactElement {
   const titleId = useId();
   return (
     <section className={`ms-panel ms-panel-${props.spec.type}`} aria-labelledby={titleId}>
-      <h3 className="ms-panel-title" id={titleId}>
-        {props.spec.title}
-      </h3>
+      <div className="ms-panel-head">
+        <h3 className="ms-panel-title" id={titleId}>
+          {props.spec.title}
+        </h3>
+        {props.controls}
+      </div>
       <ViewBoundary>
         <ViewBody {...props} />
       </ViewBoundary>
@@ -102,9 +127,16 @@ export function ViewPanel(props: ViewPanelProps): ReactElement {
 
 /**
  * Asks the model for its views once per simulation and shows them in a
- * responsive grid of titled panels.
+ * responsive grid of titled panels. With `customizations`, time-series and bar
+ * charts get a Customize control, and charts can be added and removed.
  */
-export function SimulationViews({ sim, frame, onPick }: SimulationViewsProps): ReactElement {
+export function SimulationViews({
+  sim,
+  frame,
+  onPick,
+  customizations,
+  onCustomizationsChange,
+}: SimulationViewsProps): ReactElement {
   const result = useMemo(() => {
     try {
       return { specs: sim.views, error: undefined };
@@ -112,6 +144,10 @@ export function SimulationViews({ sim, frame, onPick }: SimulationViewsProps): R
       return { specs: [], error: error instanceof Error ? error.message : String(error) };
     }
   }, [sim]);
+  const editable = onCustomizationsChange !== undefined;
+  const current = customizations ?? NO_CUSTOMIZATIONS;
+  const shown = useMemo(() => shownViews(result.specs, current, sim), [result.specs, current, sim]);
+  const update = (next: ChartCustomizations): void => onCustomizationsChange?.(next);
 
   if (result.error !== undefined) {
     return (
@@ -120,14 +156,81 @@ export function SimulationViews({ sim, frame, onPick }: SimulationViewsProps): R
       </p>
     );
   }
-  if (result.specs.length === 0) {
-    return <p className="ms-muted">This model has no views.</p>;
+  const recorded = sim.data.series;
+  const addChart = editable && recorded.length > 0 && (
+    <label className="ms-add-chart">
+      <span className="ms-visually-hidden">Add chart from series</span>
+      <select
+        className="ms-select"
+        value=""
+        onChange={(event) => {
+          if (event.target.value) update(withNewChart(current, event.target.value));
+        }}
+      >
+        <option value="">Add chart…</option>
+        {recorded.map((series) => (
+          <option key={series.id} value={series.id}>
+            {series.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  if (shown.length === 0) {
+    return (
+      <>
+        <p className="ms-muted">This model has no views.</p>
+        {addChart}
+      </>
+    );
   }
   return (
-    <div className="ms-views">
-      {result.specs.map((spec, i) => (
-        <ViewPanel key={`${i}:${spec.title}`} spec={spec} sim={sim} frame={frame} onPick={onPick} />
-      ))}
-    </div>
+    <>
+      <div className="ms-views">
+        {shown.map((view) => {
+          const { spec, position, addedIndex } = view;
+          const key = position !== undefined ? `${position}:${spec.title}` : `added:${addedIndex}`;
+          let controls: ReactNode;
+          if (editable && isCustomizable(spec)) {
+            const original = position !== undefined ? result.specs[position] : undefined;
+            controls = (
+              <ChartCustomizer
+                title={spec.title}
+                recorded={recorded}
+                choice={choiceOf(spec)}
+                onChange={(choice) =>
+                  update(
+                    position !== undefined
+                      ? withChange(current, position, choice)
+                      : withAddedChoice(current, addedIndex ?? 0, choice),
+                  )
+                }
+                onReset={
+                  view.customized && position !== undefined && original
+                    ? () => update(withChange(current, position, undefined))
+                    : undefined
+                }
+                onRemove={
+                  addedIndex !== undefined
+                    ? () => update(withoutAdded(current, addedIndex))
+                    : undefined
+                }
+              />
+            );
+          }
+          return (
+            <ViewPanel
+              key={key}
+              spec={spec}
+              sim={sim}
+              frame={frame}
+              onPick={onPick}
+              controls={controls}
+            />
+          );
+        })}
+      </div>
+      {addChart}
+    </>
   );
 }

@@ -36,6 +36,17 @@ export {
   type SimulationObserver,
   type SimulationOptions,
 } from './simulation';
+export {
+  applyScapeSettings,
+  applySimulationSettings,
+  readScapeSettings,
+  readSimulationSettings,
+  ruleKey,
+  SettingsStore,
+  type RuleSetting,
+  type ScapeSettings,
+  type SimulationSettings,
+} from './settings';
 export * from './data';
 export * from './run';
 export * from './space/continuous';

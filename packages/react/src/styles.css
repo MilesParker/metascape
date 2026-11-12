@@ -375,3 +375,168 @@
 .ms-provenance cite {
   font-style: italic;
 }
+
+.ms-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ms-button-small {
+  padding: 2px 8px;
+  font-size: 12px;
+  min-width: 28px;
+}
+
+.ms-subtitle {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ms-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--ms-border);
+  margin-bottom: 8px;
+}
+
+.ms-tab {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ms-text-muted);
+  cursor: pointer;
+}
+
+.ms-tab[aria-selected='true'] {
+  color: var(--ms-text);
+  border-bottom-color: var(--ms-focus);
+  font-weight: 600;
+}
+
+.ms-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.ms-rule-list {
+  list-style: decimal inside;
+  margin: 0;
+  padding: 0;
+}
+
+.ms-rule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--ms-border);
+}
+
+.ms-rule::marker {
+  color: var(--ms-text-muted);
+}
+
+.ms-rule-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.ms-fieldset {
+  margin: 0;
+  padding: 4px 8px 6px;
+  border: 1px solid var(--ms-border);
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.ms-fieldset legend {
+  font-size: 12px;
+  color: var(--ms-text-muted);
+  padding: 0 4px;
+}
+
+.ms-inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ms-number {
+  width: 72px;
+  font: inherit;
+}
+
+.ms-customizer {
+  /* The button sits beside the title; the picker below takes the full width. */
+  display: contents;
+}
+
+.ms-customizer-panel {
+  flex: 1 0 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--ms-border);
+  border-radius: 4px;
+  background: var(--ms-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.ms-customizer-panel[hidden] {
+  display: none;
+}
+
+.ms-customizer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ms-grid-scroll {
+  overflow-x: auto;
+}
+
+.ms-series-grid {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ms-series-grid th,
+.ms-series-grid td {
+  padding: 2px 5px;
+  text-align: center;
+  border-bottom: 1px solid var(--ms-border);
+}
+
+.ms-series-grid th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+}
+
+.ms-add-chart {
+  display: inline-block;
+  margin-top: 8px;
+}
+
+.ms-select {
+  font: inherit;
+}

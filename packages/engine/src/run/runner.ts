@@ -20,6 +20,13 @@ export interface RunnerOptions<S extends ParameterSchema> {
   readonly frameIntervalMs?: number;
   /** Pause when the simulation reaches exactly this tick while running. */
   readonly pauseAt?: number;
+  /**
+   * Called with every simulation the runner creates, the first one and each
+   * restart's, right after it is built and before anything is shown. Use it to
+   * apply run-time settings (see `SettingsStore.attach`) so they survive
+   * restarts. If it throws, a restart throws and leaves the runner untouched.
+   */
+  readonly onSimulation?: (sim: Simulation) => void;
   readonly scheduler?: Scheduler;
   readonly clock?: Clock;
 }
@@ -78,6 +85,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   pauseAt: number | undefined;
 
   readonly #stopAt: number | undefined;
+  readonly #onSimulation: ((sim: Simulation) => void) | undefined;
   readonly #scheduler: Scheduler;
   readonly #clock: Clock;
   readonly #budgetMs: number;
@@ -103,6 +111,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     this.#seed = options.seed;
     this.#parameters = options.parameters;
     this.#stopAt = options.stopAt;
+    this.#onSimulation = options.onSimulation;
     this.pauseAt = options.pauseAt;
     this.#speed = options.ticksPerSecond ?? DEFAULT_TICKS_PER_SECOND;
     checkSpeed(this.#speed);
@@ -242,11 +251,13 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     seed: number | string | undefined,
     parameters: Partial<ParameterValues<S>> | undefined,
   ): Simulation<S> {
-    return new Simulation(this.model, {
+    const sim = new Simulation(this.model, {
       ...(seed !== undefined && { seed }),
       ...(parameters !== undefined && { parameters }),
       ...(this.#stopAt !== undefined && { stopAt: this.#stopAt }),
     });
+    this.#onSimulation?.(sim as unknown as Simulation);
+    return sim;
   }
 
   #subscribe<T>(list: Entry<T>[], fn: T): () => void {

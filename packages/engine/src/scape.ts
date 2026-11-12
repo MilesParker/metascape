@@ -20,6 +20,12 @@ export interface Rule<A extends Agent = Agent> {
 /** A rule installed on a scape, which can be switched off without removing it. */
 export interface RuleEntry<A extends Agent = Agent> {
   readonly rule: Rule<A>;
+  /**
+   * 0 for the first rule of this name added to the scape, 1 for the second, and
+   * so on. Fixed when the rule is added, so it still identifies the rule after
+   * rules are reordered.
+   */
+  readonly occurrence: number;
   enabled: boolean;
 }
 
@@ -37,6 +43,7 @@ export type Schedule = 'byAgent' | 'byRule';
  * Which members act in a step when {@link ScapeOptions.activations} is set.
  * - `tour`: distinct members, chosen without replacement.
  * - `draw`: independent random draws, so a member may act more than once.
+ *   Without `activations` there are as many draws as there are members.
  */
 export type Sampling = 'tour' | 'draw';
 
@@ -141,7 +148,9 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
   addRule(rule: Rule<A>): this;
   addRule(name: string, execute: (agent: A) => void): this;
   addRule(ruleOrName: Rule<A> | string, execute?: (agent: A) => void): this {
-    this.rules.push({ rule: toRule(ruleOrName, execute), enabled: true });
+    const rule = toRule(ruleOrName, execute);
+    const occurrence = this.rules.filter((entry) => entry.rule.name === rule.name).length;
+    this.rules.push({ rule, occurrence, enabled: true });
     return this;
   }
 
@@ -269,9 +278,10 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
     const all = [...this.members];
     const wanted = everyone ? undefined : this.activations;
 
-    if (wanted !== undefined && this.sampling === 'draw') {
+    // Drawing with replacement defaults to as many draws as there are members.
+    if (!everyone && this.sampling === 'draw') {
       if (all.length === 0) return all;
-      return Array.from({ length: wanted }, () => this.random.pick(all));
+      return Array.from({ length: wanted ?? all.length }, () => this.random.pick(all));
     }
     if (this.order === 'shuffled' || (wanted !== undefined && wanted < all.length)) {
       this.random.shuffle(all);
