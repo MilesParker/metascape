@@ -23,6 +23,11 @@ export let leaveScape: (agent: Agent) => void;
  *
  * An agent belongs to exactly one scape, which sets {@link id}, {@link scape}
  * and {@link alive} when the agent is added.
+ *
+ * Subclasses may override the hooks `initialize` and `removed`, but must not
+ * reuse the names `id`, `alive`, `scape`, `sim`, `random` or `die` for their
+ * own members. In particular, name a model's own life flag something else,
+ * such as `on` or `living`, rather than `alive`.
  */
 export class Agent {
   #id = -1;

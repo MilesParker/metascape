@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Scape } from '../../scape';
 import { Simulation } from '../../simulation';
 import { Cell, diffusion, GridScape, Occupant, type GridScapeOptions } from './index';
@@ -550,6 +550,40 @@ describe('occupancy', () => {
     const loner = walkers.spawn();
     expect(loner.neighboringOccupants()).toEqual([]);
     expect(loner.moveToRandomAvailableNeighbor()).toBe(false);
+  });
+
+  it('draws exactly one random number, matching a pick over the available neighbors', () => {
+    const setup = () => {
+      const w = world({ width: 5, height: 5, neighborhood: 'moore' }, 4, 7);
+      const [mover, ...others] = w.walkers.members as [Walker, Walker, Walker, Walker];
+      mover.moveTo(w.grid.at(2, 2)!);
+      others[0]!.moveTo(w.grid.at(1, 1)!);
+      others[1]!.moveTo(w.grid.at(3, 2)!);
+      others[2]!.moveTo(w.grid.at(2, 3)!);
+      return mover;
+    };
+    const actual = setup();
+    const reference = setup();
+    const spy = vi.spyOn(actual.random, 'int');
+    for (let i = 0; i < 12; i++) {
+      const options = reference.cell!.neighbors.filter((c) => c.isAvailable);
+      reference.moveTo(reference.random.pick(options));
+      spy.mockClear();
+      expect(actual.moveToRandomAvailableNeighbor()).toBe(true);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(0, options.length);
+      expect([actual.cell!.x, actual.cell!.y]).toEqual([reference.cell!.x, reference.cell!.y]);
+    }
+  });
+
+  it('draws nothing when no neighbor is available', () => {
+    const { grid, walkers } = world({ width: 2, height: 1 }, 2);
+    const [a, b] = walkers.members as [Walker, Walker];
+    a.moveTo(grid.at(0, 0)!);
+    b.moveTo(grid.at(1, 0)!);
+    const spy = vi.spyOn(a.random, 'int');
+    expect(a.moveToRandomAvailableNeighbor()).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('subclass removed() works when calling super', () => {

@@ -57,9 +57,19 @@ export class Occupant<C extends Cell = Cell> extends Agent {
   moveToRandomAvailableNeighbor(): boolean {
     const cell = this.#cell;
     if (!cell) return false;
-    const options = cell.neighbors.filter((neighbor) => neighbor.isAvailable);
-    if (options.length === 0) return false;
-    this.moveTo(this.random.pick(options) as C);
+    const neighbors = cell.neighbors;
+    let count = 0;
+    for (const neighbor of neighbors) if (neighbor.isAvailable) count++;
+    if (count === 0) return false;
+    // One draw, as `random.pick` would make, but without building an array.
+    let remaining = this.random.int(0, count);
+    for (const neighbor of neighbors) {
+      if (!neighbor.isAvailable) continue;
+      if (remaining-- === 0) {
+        this.moveTo(neighbor as C);
+        break;
+      }
+    }
     return true;
   }
 }

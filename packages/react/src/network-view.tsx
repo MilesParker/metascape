@@ -2,10 +2,9 @@
 import { toCss, type Agent, type NetworkViewSpec } from '@metascape/engine';
 import { useCallback, type ReactElement } from 'react';
 import { CanvasSurface, type CanvasSize } from './canvas-surface';
+import { FALLBACK_ACCENT, FALLBACK_BACKGROUND, FALLBACK_MUTED, colorOf, themeColor } from './theme';
 
-const DEFAULT_BACKGROUND = 0xeceff3;
-const DEFAULT_COLOR = 0x3b7dd8;
-const LINK_COLOR = 'rgba(120, 128, 140, 0.45)';
+const LINK_ALPHA = 0.6;
 const PICK_SLOP_PIXELS = 6;
 
 /** Props of {@link NetworkView}. */
@@ -37,12 +36,17 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
     (context: CanvasRenderingContext2D, size: CanvasSize) => {
       const members = spec.nodes.members;
       const count = members.length;
+      const defaultColor = themeColor(context.canvas, '--ms-accent', FALLBACK_ACCENT);
       const index = new Map<Agent, number>();
       members.forEach((agent, i) => index.set(agent, i));
-      context.fillStyle = toCss(spec.background ?? DEFAULT_BACKGROUND);
+      context.fillStyle =
+        spec.background === undefined
+          ? themeColor(context.canvas, '--ms-surface', FALLBACK_BACKGROUND)
+          : toCss(spec.background);
       context.fillRect(0, 0, size.width, size.height);
 
-      context.strokeStyle = LINK_COLOR;
+      context.strokeStyle = themeColor(context.canvas, '--ms-text-muted', FALLBACK_MUTED);
+      context.globalAlpha = LINK_ALPHA;
       context.lineWidth = 1;
       context.beginPath();
       members.forEach((agent, i) => {
@@ -56,11 +60,12 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
         }
       });
       context.stroke();
+      context.globalAlpha = 1;
 
       const radius = nodeRadius(count, size.width);
       members.forEach((agent, i) => {
         const at = nodePosition(i, count);
-        context.fillStyle = toCss(spec.color?.(agent) ?? DEFAULT_COLOR);
+        context.fillStyle = colorOf(spec.color?.(agent), defaultColor);
         context.beginPath();
         context.arc(at.x * size.width, at.y * size.height, radius, 0, Math.PI * 2);
         context.fill();

@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactElement } from 'react';
 import type uPlot from 'uplot';
 import { decimate } from './decimate';
 import { seriesColor } from './palette';
+import { formatValue } from './svg-charts';
 
 const HEIGHT_RATIO = 0.5;
 const MIN_HEIGHT = 160;
@@ -29,6 +30,18 @@ function readData(sim: Simulation, ids: readonly string[]): uPlot.AlignedData {
 
 function plotHeight(width: number): number {
   return Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, width * HEIGHT_RATIO)));
+}
+
+/** Writes each series' latest value into the legend, for when nothing is hovered. */
+export function showLatest(u: uPlot): void {
+  const count = u.data[0]?.length ?? 0;
+  if (count === 0) return;
+  const rows = u.root.querySelectorAll('.u-series');
+  for (let i = 1; i < u.series.length; i++) {
+    const value = u.data[i]?.[count - 1];
+    const cell = rows[i]?.querySelector('.u-value');
+    if (cell && value != null && Number.isFinite(value)) cell.textContent = formatValue(value);
+  }
 }
 
 function themeColor(element: HTMLElement, name: string, fallback: string): string {
@@ -80,6 +93,16 @@ export function TimeSeriesChart({ spec, sim, frame }: TimeSeriesChartProps): Rea
         })),
       ],
       legend: { show: true },
+      hooks: {
+        // With no cursor over the plot uPlot shows `--`; show the latest values instead.
+        setCursor: [
+          (u) => {
+            if (u.cursor.idx != null) return;
+            showLatest(u);
+          },
+        ],
+        setData: [showLatest],
+      },
     };
 
     let cancelled = false;

@@ -3,7 +3,7 @@
 import { Simulation, timeSeriesView, type TimeSeriesViewSpec } from '@metascape/engine';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TimeSeriesChart } from './time-series-chart';
+import { showLatest, TimeSeriesChart } from './time-series-chart';
 import { demoModel } from './testing/demo-model';
 
 const created: { options: unknown; data: unknown; setData: unknown[]; destroyed: boolean }[] = [];
@@ -48,6 +48,32 @@ function spec(): TimeSeriesViewSpec {
 }
 
 describe('TimeSeriesChart', () => {
+  it('registers cursor and data hooks that show latest values in the legend', async () => {
+    const sim = new Simulation(demoModel, { seed: 1 });
+    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
+    await flush();
+    const options = created[0]!.options as { hooks: { setCursor: unknown[]; setData: unknown[] } };
+    expect(options.hooks.setCursor).toHaveLength(1);
+    expect(options.hooks.setData).toEqual([showLatest]);
+
+    const root = document.createElement('div');
+    root.innerHTML = ['Tick', 'A', 'B']
+      .map((n) => `<div class="u-series"><span class="u-value">--</span>${n}</div>`)
+      .join('');
+    const fake = {
+      root,
+      series: [{}, {}, {}],
+      data: [
+        [0, 1, 2],
+        [1, 2, 3.14159265],
+        [5, 6, NaN],
+      ],
+    };
+    showLatest(fake as never);
+    const values = [...root.querySelectorAll('.u-value')].map((v) => v.textContent);
+    expect(values).toEqual(['--', '3.142', '--']);
+  });
+
   it('creates the plot once, updates it on each frame and destroys it on unmount', async () => {
     const sim = new Simulation(demoModel, { seed: 1 });
     const s = spec();

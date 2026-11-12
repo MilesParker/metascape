@@ -2,9 +2,8 @@
 import { toCss, type ContinuousViewSpec, type PointAgent } from '@metascape/engine';
 import { useCallback, type ReactElement } from 'react';
 import { CanvasSurface, type CanvasSize } from './canvas-surface';
+import { FALLBACK_ACCENT, FALLBACK_BACKGROUND, colorOf, themeColor } from './theme';
 
-const DEFAULT_BACKGROUND = 0xeceff3;
-const DEFAULT_COLOR = 0x3b7dd8;
 const MIN_RADIUS_PIXELS = 1.5;
 /** How close (in CSS pixels) a click must be to pick an agent, at least. */
 const PICK_SLOP_PIXELS = 6;
@@ -32,11 +31,15 @@ export function ContinuousView({ spec, frame, onPick }: ContinuousViewProps): Re
   const draw = useCallback(
     (context: CanvasRenderingContext2D, size: CanvasSize) => {
       const scale = size.width / scape.width;
-      context.fillStyle = toCss(spec.background ?? DEFAULT_BACKGROUND);
+      const defaultColor = themeColor(context.canvas, '--ms-accent', FALLBACK_ACCENT);
+      context.fillStyle =
+        spec.background === undefined
+          ? themeColor(context.canvas, '--ms-surface', FALLBACK_BACKGROUND)
+          : toCss(spec.background);
       context.fillRect(0, 0, size.width, size.height);
       for (const agent of scape.members) {
         const r = radiusPixels(spec, agent, scale);
-        context.fillStyle = toCss(spec.color?.(agent) ?? DEFAULT_COLOR);
+        context.fillStyle = colorOf(spec.color?.(agent), defaultColor);
         const x = agent.x * scale;
         const y = agent.y * scale;
         const heading = spec.heading?.(agent);

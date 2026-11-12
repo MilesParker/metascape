@@ -2,6 +2,7 @@
 import { models } from '@metascape/models';
 import { ModelRunner } from '@metascape/react';
 import { useState } from 'react';
+import { slug } from './slug';
 
 /** The model named in the page address (`#life`), or the first one. */
 function initialIndex(): number {
@@ -9,8 +10,6 @@ function initialIndex(): number {
   const index = models.findIndex((model) => slug(model.name) === wanted);
   return index >= 0 ? index : 0;
 }
-
-const slug = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 export function App() {
   const [index, setIndex] = useState(initialIndex);

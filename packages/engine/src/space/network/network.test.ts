@@ -282,3 +282,43 @@ describe('generators', () => {
     expect(connectSmallWorld(new Network(), tiny, 1, 1, new Random(1)).edgeCount).toBe(3);
   });
 });
+
+describe('Network.neighbors caching', () => {
+  it('returns the same array until links change, then a fresh one', () => {
+    const { agents } = makeAgents(4);
+    const [a, b, c, d] = agents as [Agent, Agent, Agent, Agent];
+    const net = new Network();
+    net.connect(a, b);
+    const first = net.neighbors(a);
+    expect(net.neighbors(a)).toBe(first);
+    net.connect(a, c);
+    const second = net.neighbors(a);
+    expect(second).not.toBe(first);
+    expect(ids(second)).toEqual(ids([b, c]));
+    expect(net.neighbors(a)).toBe(second);
+    // A link of `c` elsewhere does not disturb `a`'s cache.
+    net.connect(c, d);
+    expect(net.neighbors(a)).toBe(second);
+    net.disconnect(a, b);
+    expect(ids(net.neighbors(a))).toEqual(ids([c]));
+    net.disconnectAll(c);
+    expect(net.neighbors(a)).toEqual([]);
+    net.clear();
+    expect(net.neighbors(c)).toEqual([]);
+  });
+
+  it('drops a dead neighbor from the cached result', () => {
+    const { agents, scape } = makeAgents(3);
+    const [a, b, c] = agents as [Agent, Agent, Agent];
+    const net = new Network();
+    net.connect(a, b);
+    net.connect(a, c);
+    const before = net.neighbors(a);
+    expect(ids(before)).toEqual(ids([b, c]));
+    scape.remove(b);
+    const after = net.neighbors(a);
+    expect(ids(after)).toEqual(ids([c]));
+    expect(net.neighbors(a)).toBe(after);
+    expect(net.neighbors(b)).toEqual([]);
+  });
+});

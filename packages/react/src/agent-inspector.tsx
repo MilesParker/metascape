@@ -20,14 +20,22 @@ function rowsOf(agent: Agent): [string, Primitive][] {
     ['id', agent.id],
     ['alive', agent.alive],
   ];
-  // Grid cells and point agents expose coordinates through getters on the prototype.
+  // Getter-backed values the engine defines are not own fields: `x` and `y` for
+  // grid cells and point agents, `cell` for occupants.
   const shown = new Set(['id', 'alive']);
   const record = agent as unknown as Record<string, unknown>;
   for (const key of ['x', 'y']) {
-    if (typeof record[key] === 'number') {
-      rows.push([key, record[key]]);
+    const value = record[key];
+    if (typeof value === 'number') {
+      rows.push([key, value]);
       shown.add(key);
     }
+  }
+  // Occupants expose the cell they stand on; show its coordinates.
+  const cell = record['cell'] as { x?: unknown; y?: unknown } | undefined;
+  if (cell && typeof cell.x === 'number' && typeof cell.y === 'number') {
+    rows.push(['cell', `(${cell.x}, ${cell.y})`]);
+    shown.add('cell');
   }
   for (const key of Object.keys(agent)) {
     const value = record[key];
@@ -42,7 +50,7 @@ function show(value: Primitive): string {
   return String(value);
 }
 
-/** A small live table of an agent's id, alive status and own number, string and boolean fields. */
+/** A small live table of an agent's id, alive status, own number, string and boolean fields, and the engine's getter-backed `x`, `y` and `cell`. */
 export function AgentInspector({ agent, frame }: AgentInspectorProps): ReactElement {
   if (!agent) {
     return <p className="ms-muted">Click an agent or cell to inspect it.</p>;

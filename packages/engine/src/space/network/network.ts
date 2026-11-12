@@ -19,6 +19,7 @@ export class Network<A extends Agent = Agent> {
 
   readonly #out = new Map<A, Set<A>>();
   readonly #in = new Map<A, Set<A>>();
+  readonly #cache = new Map<A, readonly A[]>();
 
   constructor(options: NetworkOptions = {}) {
     this.directed = options.directed ?? false;
@@ -53,10 +54,17 @@ export class Network<A extends Agent = Agent> {
     return this.#out.get(a)?.has(b) ?? false;
   }
 
-  /** The agents `a` links to, in order of link creation. */
-  neighbors(a: A): A[] {
+  /**
+   * The agents `a` links to, in order of link creation. The array is cached
+   * until the links of `a` change, so it must be treated as read-only.
+   */
+  neighbors(a: A): readonly A[] {
+    const cached = this.#cache.get(a);
+    if (cached && a.alive && cached.every((other) => other.alive)) return cached;
     this.#sweep(a);
-    return [...(this.#out.get(a) ?? [])];
+    const fresh = [...(this.#out.get(a) ?? [])];
+    this.#cache.set(a, fresh);
+    return fresh;
   }
 
   /** The agents that link to `a`, in order of link creation. Same as `neighbors` if undirected. */
@@ -90,8 +98,12 @@ export class Network<A extends Agent = Agent> {
 
   /** Removes every link to and from `a`. */
   disconnectAll(a: A): void {
+    this.#cache.delete(a);
     for (const b of this.#out.get(a) ?? []) this.#in.get(b)?.delete(a);
-    for (const b of this.#in.get(a) ?? []) this.#out.get(b)?.delete(a);
+    for (const b of this.#in.get(a) ?? []) {
+      this.#out.get(b)?.delete(a);
+      this.#cache.delete(b);
+    }
     this.#out.delete(a);
     this.#in.delete(a);
   }
@@ -100,6 +112,7 @@ export class Network<A extends Agent = Agent> {
   clear(): void {
     this.#out.clear();
     this.#in.clear();
+    this.#cache.clear();
   }
 
   /** Agents reachable from `a` in at most `hops` links, in breadth-first order, excluding `a`. */
@@ -160,6 +173,7 @@ export class Network<A extends Agent = Agent> {
   }
 
   #add(from: A, to: A): void {
+    this.#cache.delete(from);
     let out = this.#out.get(from);
     if (!out) this.#out.set(from, (out = new Set()));
     out.add(to);
@@ -169,6 +183,7 @@ export class Network<A extends Agent = Agent> {
   }
 
   #remove(from: A, to: A): void {
+    this.#cache.delete(from);
     this.#out.get(from)?.delete(to);
     this.#in.get(to)?.delete(from);
   }

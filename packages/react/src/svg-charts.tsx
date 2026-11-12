@@ -110,14 +110,27 @@ const HIST_RIGHT = 8;
 const HIST_TOP = 16;
 const HIST_BOTTOM = 40;
 
+/** Edge indexes from 0 to `bins`: every edge for up to 8 bins, else about `count` evenly spaced ones. */
+export function edgeTickIndexes(bins: number, count = 5): number[] {
+  const steps = Math.max(1, bins <= 8 ? bins : count - 1);
+  const indexes: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const index = Math.round((i / steps) * bins);
+    if (indexes[indexes.length - 1] !== index) indexes.push(index);
+  }
+  return indexes;
+}
+
 /**
- * Bars of the latest bin counts of a recorded distribution. The engine does
- * not expose a distribution's value range to views, so bins are labelled by
- * number rather than by value.
+ * Bars of the latest bin counts of a recorded distribution, with the x axis
+ * labelled by value (bin edges from the distribution's range).
  */
 export function HistogramChart({ spec, sim, frame }: HistogramChartProps): ReactElement {
   const counts = sim.data.distributionCounts(spec.distribution);
+  const info = sim.data.distributionInfo(spec.distribution);
   const bins = counts.length;
+  const width = (info.max - info.min) / Math.max(1, bins);
+  const edge = (i: number): number => info.min + i * width;
   let peak = 0;
   for (const c of counts) if (c > peak) peak = c;
   const plotWidth = HIST_WIDTH - HIST_LEFT - HIST_RIGHT;
@@ -126,13 +139,14 @@ export function HistogramChart({ spec, sim, frame }: HistogramChartProps): React
   const base = HIST_TOP + plotHeight;
   const color = toCss(spec.color ?? 0x3b7dd8);
   const showCounts = bins <= 16;
+  const ticks = edgeTickIndexes(bins);
 
   return (
     <svg
       className="ms-chart ms-histogram"
       viewBox={`0 0 ${HIST_WIDTH} ${HIST_HEIGHT}`}
       role="img"
-      aria-label={`${spec.title}: ${bins} bins, highest count ${peak}`}
+      aria-label={`${spec.title}: ${bins} bins from ${formatValue(info.min)} to ${formatValue(info.max)}, highest count ${peak}`}
       data-frame={frame}
     >
       <line className="ms-svg-axis" x1={HIST_LEFT} x2={HIST_LEFT} y1={HIST_TOP} y2={base} />
@@ -149,7 +163,7 @@ export function HistogramChart({ spec, sim, frame }: HistogramChartProps): React
         return (
           <g key={i}>
             <rect x={x + 0.5} y={base - h} width={Math.max(1, slot - 1)} height={h} fill={color}>
-              <title>{`Bin ${i + 1}: ${count}`}</title>
+              <title>{`${formatValue(edge(i))} to ${formatValue(edge(i + 1))}: ${count}`}</title>
             </rect>
             {showCounts && count > 0 && (
               <text className="ms-svg-value" x={x + slot / 2} y={base - h - 3} textAnchor="middle">
@@ -165,20 +179,17 @@ export function HistogramChart({ spec, sim, frame }: HistogramChartProps): React
       <text className="ms-svg-tick" x={HIST_LEFT - 4} y={HIST_TOP + 8} textAnchor="end">
         {peak}
       </text>
-      <text className="ms-svg-tick" x={HIST_LEFT} y={base + 14} textAnchor="start">
-        1
-      </text>
-      <text className="ms-svg-tick" x={HIST_WIDTH - HIST_RIGHT} y={base + 14} textAnchor="end">
-        {bins}
-      </text>
-      <text
-        className="ms-svg-label"
-        x={HIST_LEFT + plotWidth / 2}
-        y={HIST_HEIGHT - 6}
-        textAnchor="middle"
-      >
-        Bin
-      </text>
+      {ticks.map((index, k) => (
+        <text
+          key={index}
+          className="ms-svg-tick"
+          x={HIST_LEFT + index * slot}
+          y={base + 14}
+          textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}
+        >
+          {formatValue(edge(index))}
+        </text>
+      ))}
       <text className="ms-svg-label" x={4} y={10}>
         Count
       </text>
