@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
+export { assertValidModel, checkModel } from './check';
+export { compileModel } from './compile';
+export { epidemic, exampleSpecs, forager, life, pursuit, schelling } from './examples';
+export { OPERATORS, type ArgumentKind, type OperatorSignature, type ResultKind } from './operators';
+export { readAttribute } from './runtime';
 export {
   ModelFormatError,
   modelJsonSchema,
