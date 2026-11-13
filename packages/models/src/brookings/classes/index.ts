@@ -29,6 +29,7 @@ export const family = defineFamily({
   id: 'brookings-classes',
   name: 'Emergence of Classes',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['game theory', 'economics'],
   description:
     'A multi-agent bargaining model in which conventions about fair shares, and between tagged groups unequal shares, emerge from local encounters.',
   models: [

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import { describe, expect, it } from 'vitest';
-import { defineModel, int, ParameterError, type Simulation } from '..';
+import { defineModel, int, ParameterError, real, type Simulation } from '..';
 import { ManualClock, ManualScheduler, Runner, type RunnerOptions } from './index';
 
 /** A model with no agents; `onStep` runs each tick. */
@@ -529,5 +529,26 @@ describe('Manual test helpers', () => {
     expect(order).toEqual(['a', 'c']);
     expect(clock.now()).toBe(140);
     expect(scheduler.runNext()).toBe(false);
+  });
+});
+
+describe('Runner live parameters', () => {
+  const liveModel = defineModel({
+    name: 'live',
+    parameters: { rate: real(1, { live: true }), size: int(2) },
+    build() {},
+  });
+
+  it('changes a live parameter now and keeps it for restarts', () => {
+    const runner = new Runner(liveModel, { scheduler: new ManualScheduler() });
+    let frames = 0;
+    runner.onFrame(() => frames++);
+    runner.setParameter('rate', 3);
+    expect(runner.sim.parameters.rate).toBe(3);
+    expect(frames).toBe(1);
+    runner.restart();
+    expect(runner.sim.parameters.rate).toBe(3);
+    expect(runner.parameterOverrides).toEqual({ rate: 3 });
+    expect(() => runner.setParameter('size', 3)).toThrow(/not live/);
   });
 });

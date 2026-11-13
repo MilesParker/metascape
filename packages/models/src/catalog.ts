@@ -14,6 +14,13 @@ export interface ModelFamily {
   readonly collection: string;
   /** One or two sentences on what the family shows. */
   readonly description?: string;
+  /** Topics shared by the family's models, such as "epidemics"; models may add their own. */
+  readonly tags?: readonly string[];
+  /**
+   * Set when the models are steps to take in order rather than variants:
+   * `tutorial` for a step-by-step build-up, `book` for chapters of a book.
+   */
+  readonly path?: 'tutorial' | 'book';
   /** The models, simplest first. Every model name is unique across the whole catalogue. */
   readonly models: readonly Model[];
 }

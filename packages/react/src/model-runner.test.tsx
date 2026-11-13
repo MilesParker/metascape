@@ -95,14 +95,14 @@ describe('ModelRunner run-time editing', () => {
     render(<ModelRunner model={demoModel} options={{ seed: 5 }} />);
     const energy = chart('Energy over time');
     expect(within(energy).getByRole('img').getAttribute('aria-label')).toContain(
-      'energy.mean, energy.max',
+      'Mean energy, Max energy',
     );
     // The chart does not show the walker count, but it is recorded and can be picked.
     fireEvent.click(within(energy).getByRole('button', { name: 'Customize Energy over time' }));
     fireEvent.click(within(energy).getByLabelText('Count walkers'));
     fireEvent.click(within(energy).getByLabelText('Max energy'));
     expect(within(chart('Energy over time')).getByRole('img').getAttribute('aria-label')).toContain(
-      'energy.mean, walkers',
+      'Mean energy, Count walkers',
     );
     fireEvent.click(within(energy).getByLabelText('Bars'));
     expect(within(chart('Energy over time')).getByRole('img').getAttribute('aria-label')).toMatch(
@@ -116,7 +116,7 @@ describe('ModelRunner run-time editing', () => {
 
     fireEvent.click(within(after).getByRole('button', { name: 'Reset chart' }));
     expect(within(chart('Energy over time')).getByRole('img').getAttribute('aria-label')).toContain(
-      'energy.mean, energy.max',
+      'Mean energy, Max energy',
     );
   });
 

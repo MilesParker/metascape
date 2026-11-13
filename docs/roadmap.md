@@ -23,12 +23,21 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
 
 ## Next work
 
-- **UX polish** of Studio, the Rules tab and the chart customizer (functional, styling not yet
-  reviewed). Use an Opus session as the minimum for this kind of UX work.
-- **Browser pass over the ported models.** All build and run in tests, but most have not been
-  looked at in Studio. Views and colours are unverified for many families.
-- **Bundle size.** Studio's main chunk is about 870 kB (the build warns above 500 kB); split
-  the model catalogue with dynamic imports.
+- **Studio metadata, family by family.** The redesign (see `docs/design-brief.md`, as
+  amended by `docs/design-changes.md`) renders everything from model metadata with
+  fallbacks. Declared legends, readable series labels, time units, `live` parameters, rule
+  descriptions, inspector field names and things to try exist for the introductory models
+  and the brief's stress models; the other families show no legend, humanized identifiers
+  and ticks. A parameter may be marked `live` only where the model reads it afresh each tick
+  (the catalogue test checks it has an effect). Work through the ported families most used
+  first (Sugarscape, Civil Violence, Anasazi), without changing model behaviour.
+- **Interventions in the address.** A link holds the starting configuration; changes made
+  during a run are marked on the charts but not replayed from the link.
+- **Rewinding the world.** The charts share a cursor over the run so far; going back in the
+  views needs engine snapshots.
+- **Lab.** Experiments and sweeps, side-by-side runs and a model editor have a placeholder
+  route in Studio.
+- **Network layout.** `layout: 'force'` is still drawn as a circle.
 - **Web Worker execution.** Simulations run on the main thread with a per-frame time budget.
 
 ## Engine gaps found while porting
@@ -50,8 +59,9 @@ second user appears.
 - **Initial rules run for agents added mid-run.** Several families moved start-up logic into
   `sim.setup` to avoid this; consider a scape option to run initial rules only at start.
 - **Views:** a grid view cannot draw a network over the lattice (Sugarscape II-5); a continuous
-  view takes one scape and cannot hide agents; there is no scrolling 1D history view (Norms) or
-  rotating view (Retirement); grid views use the first occupant's shape.
+  view takes one scape and cannot hide agents; there is no rotating view (Retirement); grid views
+  use the first occupant's shape. One-row lattices (Norms, Bionland's strips) are now drawn as
+  a scrolling history by `@metascape/react`.
 - **Java-style random helpers** (`nextGaussian` with a spare value): `brookings/anasazi/java-random.ts`.
 
 ## Gaps in the model format (`@metascape/spec`)

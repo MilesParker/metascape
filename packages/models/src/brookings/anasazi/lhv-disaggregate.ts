@@ -17,8 +17,9 @@ export const lhvDisaggregate = defineModel({
   description:
     'An exploratory variant of the Long House Valley model in which households are made of individual people who are born, marry across clans, found new households and die at age-specific rates.',
   provenance: anasaziProvenance('LHVDisaggregate', NOTE),
+  time: { unit: 'year', originOf: (p) => p.startYear },
   parameters: {
-    ...lhvParameters({ stopYear: 1350, minFertility: 0.25 }),
+    ...lhvParameters({ stopYear: 1350, minFertility: 0.25 }, 'people'),
     ...personParameters(),
   },
   build(sim) {
@@ -35,8 +36,9 @@ export const lhvClan = defineModel({
     'LHVClan',
     `${NOTE} LHVClan only changes the stop year (1400), the minimum fertility default (0.33, unused by people) and the views.`,
   ),
+  time: { unit: 'year', originOf: (p) => p.startYear },
   parameters: {
-    ...lhvParameters({ stopYear: 1400, minFertility: 0.33 }),
+    ...lhvParameters({ stopYear: 1400, minFertility: 0.33 }, 'people'),
     ...personParameters(),
   },
   build(sim) {

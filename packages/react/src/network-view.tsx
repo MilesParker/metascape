@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: EPL-2.0
 import { toCss, type Agent, type NetworkViewSpec } from '@metascape/engine';
-import { useCallback, type ReactElement } from 'react';
-import { CanvasSurface, type CanvasSize } from './canvas-surface';
+import { useCallback, type ReactElement, type Ref } from 'react';
+import {
+  CanvasSurface,
+  type Camera,
+  type CanvasSize,
+  type CanvasSurfaceHandle,
+} from './canvas-surface';
+import { drawSelection } from './grid-view';
 import { FALLBACK_ACCENT, FALLBACK_BACKGROUND, FALLBACK_MUTED, colorOf, themeColor } from './theme';
 
 const LINK_ALPHA = 0.6;
@@ -14,6 +20,36 @@ export interface NetworkViewProps {
   readonly frame: number;
   /** Called when a node is clicked. */
   readonly onPick?: ((agent: Agent) => void) | undefined;
+  /** Called with the node under the pointer, and with nothing when there is none. */
+  readonly onHover?: ((agent?: Agent) => void) | undefined;
+  readonly selected?: Agent | undefined;
+  readonly fit?: 'width' | 'contain' | undefined;
+  readonly zoomable?: boolean | undefined;
+  readonly handleRef?: Ref<CanvasSurfaceHandle> | undefined;
+  /** Called whenever the view is zoomed or panned. */
+  readonly onCameraChange?: ((camera: Camera) => void) | undefined;
+}
+
+/** The node nearest a point given as fractions of the picture, if one is within reach. */
+function nodeAt(
+  spec: NetworkViewSpec,
+  fx: number,
+  fy: number,
+  cssWidth: number,
+): Agent | undefined {
+  const members = spec.nodes.members;
+  const reach = Math.max(nodeRadius(members.length, cssWidth), PICK_SLOP_PIXELS);
+  let best: Agent | undefined;
+  let bestDistance = Infinity;
+  members.forEach((agent, i) => {
+    const at = nodePosition(i, members.length);
+    const distance = Math.hypot(at.x - fx, at.y - fy) * cssWidth;
+    if (distance <= reach && distance < bestDistance) {
+      best = agent;
+      bestDistance = distance;
+    }
+  });
+  return best;
 }
 
 /** Node `index` of `count`, evenly spaced on a circle starting at the top, as fractions of the canvas. */
@@ -31,7 +67,17 @@ function nodeRadius(count: number, width: number): number {
  * The members of a scape as nodes on a circle in membership order, with the
  * network's links as thin lines. The `force` layout is drawn as a circle too.
  */
-export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactElement {
+export function NetworkView({
+  spec,
+  frame,
+  onPick,
+  onHover,
+  selected,
+  fit,
+  zoomable,
+  handleRef,
+  onCameraChange,
+}: NetworkViewProps): ReactElement {
   const draw = useCallback(
     (context: CanvasRenderingContext2D, size: CanvasSize) => {
       const members = spec.nodes.members;
@@ -47,7 +93,7 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
 
       context.strokeStyle = themeColor(context.canvas, '--ms-text-muted', FALLBACK_MUTED);
       context.globalAlpha = LINK_ALPHA;
-      context.lineWidth = 1;
+      context.lineWidth = 1 / (size.zoom ?? 1);
       context.beginPath();
       members.forEach((agent, i) => {
         const from = nodePosition(i, count);
@@ -62,7 +108,8 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
       context.stroke();
       context.globalAlpha = 1;
 
-      const radius = nodeRadius(count, size.width);
+      const zoom = size.zoom ?? 1;
+      const radius = nodeRadius(count, size.width * zoom) / zoom;
       members.forEach((agent, i) => {
         const at = nodePosition(i, count);
         context.fillStyle = colorOf(spec.color?.(agent), defaultColor);
@@ -70,28 +117,30 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
         context.arc(at.x * size.width, at.y * size.height, radius, 0, Math.PI * 2);
         context.fill();
       });
+      const chosen = selected ? index.get(selected) : undefined;
+      if (chosen !== undefined) {
+        const at = nodePosition(chosen, count);
+        drawSelection(context, at.x * size.width, at.y * size.height, radius, zoom);
+      }
     },
-    [spec],
+    [spec, selected],
   );
 
   const pick = useCallback(
     (fx: number, fy: number, cssWidth: number) => {
-      if (!onPick) return;
-      const members = spec.nodes.members;
-      const reach = Math.max(nodeRadius(members.length, cssWidth), PICK_SLOP_PIXELS);
-      let best: Agent | undefined;
-      let bestDistance = Infinity;
-      members.forEach((agent, i) => {
-        const at = nodePosition(i, members.length);
-        const distance = Math.hypot(at.x - fx, at.y - fy) * cssWidth;
-        if (distance <= reach && distance < bestDistance) {
-          best = agent;
-          bestDistance = distance;
-        }
-      });
-      if (best) onPick(best);
+      const agent = onPick && nodeAt(spec, fx, fy, cssWidth);
+      if (agent) onPick(agent);
     },
     [spec, onPick],
+  );
+
+  const hover = useCallback(
+    (fx?: number, fy?: number, cssWidth?: number) => {
+      if (!onHover) return;
+      if (fx === undefined || fy === undefined || cssWidth === undefined) onHover();
+      else onHover(nodeAt(spec, fx, fy, cssWidth));
+    },
+    [spec, onHover],
   );
 
   return (
@@ -100,7 +149,12 @@ export function NetworkView({ spec, frame, onPick }: NetworkViewProps): ReactEle
       frame={frame}
       draw={draw}
       onPointer={onPick ? pick : undefined}
+      onHover={onHover ? hover : undefined}
       label={spec.title}
+      fit={fit}
+      zoomable={zoomable}
+      handleRef={handleRef}
+      onCameraChange={onCameraChange}
     />
   );
 }

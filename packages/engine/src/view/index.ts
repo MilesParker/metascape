@@ -11,6 +11,7 @@ export {
   type ContinuousViewSpec,
   type GridViewSpec,
   type HistogramViewSpec,
+  type LegendEntry,
   type NetworkViewSpec,
   type TimeSeriesViewSpec,
   type ViewSpec,

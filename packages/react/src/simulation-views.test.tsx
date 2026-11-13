@@ -85,7 +85,8 @@ describe('SimulationViews', () => {
       y: 0,
       toJSON: () => ({}),
     });
-    fireEvent.click(grid, { clientX: 1, clientY: 1 });
+    fireEvent.pointerDown(grid, { clientX: 1, clientY: 1, button: 0 });
+    fireEvent.pointerUp(grid, { clientX: 1, clientY: 1, button: 0 });
     expect(picks).toHaveLength(1);
   });
 
@@ -106,9 +107,9 @@ describe('AgentInspector', () => {
     const walker = sim.scape('walkers').members[0] as Walker;
     const view = render(<AgentInspector agent={walker} frame={0} />);
     const table = screen.getByRole('table');
-    expect(table.textContent).toContain('energy');
+    expect(table.textContent).toContain('Energy');
     expect(table.textContent).toContain('walker');
-    expect(table.textContent).toContain('alive');
+    expect(table.textContent).toContain('Alive');
     const energy = walker.energy;
     walker.energy = energy + 100;
     view.rerender(<AgentInspector agent={walker} frame={1} />);

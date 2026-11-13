@@ -101,7 +101,7 @@ export class Bargainer extends PointAgent {
   intraHighPlayers = 0;
 
   constructor(protected readonly world: BargainingWorld) {
-    super(PLOT_WIDTH / 2, PLOT_HEIGHT / 3);
+    super(PLOT_WIDTH / 2, (PLOT_HEIGHT * 2) / 3);
   }
 
   override initialize(): void {
@@ -403,19 +403,33 @@ function startRules(rule: StartRule): ((a: BargainerTagged) => void)[] {
   }
 }
 
-/** Position on the simplex of a memory with the given counts; a memory with no counts sits at the centre. */
+/**
+ * Position on the simplex of a memory with the given counts: high bottom
+ * left, medium bottom right, low on top (y grows downwards on screen). A
+ * memory with no counts sits at the centre.
+ */
 function simplexPoint(high: number, medium: number, low: number, total: number): [number, number] {
-  if (total <= 0) return [PLOT_WIDTH / 2, PLOT_HEIGHT / 3];
+  if (total <= 0) return [PLOT_WIDTH / 2, (PLOT_HEIGHT * 2) / 3];
   const fm = medium / total;
   const fl = low / total;
   void high;
-  return [PLOT_WIDTH * (fm + fl / 2), PLOT_HEIGHT * fl];
+  return [PLOT_WIDTH * (fm + fl / 2), PLOT_HEIGHT * (1 - fl)];
 }
+
+/** The simplex the dots are placed in, with its corners named. */
+const SIMPLEX = {
+  points: [
+    [0, PLOT_HEIGHT],
+    [PLOT_WIDTH, PLOT_HEIGHT],
+    [PLOT_WIDTH / 2, 0],
+  ],
+  labels: ['High', 'Medium', 'Low'],
+} as const;
 
 /** A dot in the intergroup plot, following one bargainer. */
 class InterDot extends PointAgent {
   constructor(readonly bargainer: BargainerTagged) {
-    super(PLOT_WIDTH / 2, PLOT_HEIGHT / 3);
+    super(PLOT_WIDTH / 2, (PLOT_HEIGHT * 2) / 3);
   }
 }
 
@@ -582,8 +596,16 @@ export function bargainingModel(declaration: BargainingDeclaration) {
           title: 'Intragroup memory (high / medium / low)',
           scape: agents,
           color: (a) => a.plotColor,
+          legend: tagged
+            ? [
+                { color: 0xc0c0c0, label: 'Light-tagged agent' },
+                { color: 0x404040, label: 'Dark-tagged agent' },
+              ]
+            : [{ color: colors.blue, label: 'Agent, placed by the demands it remembers' }],
           radius: () => 1.2,
-          background: 0xffffff,
+          outline: SIMPLEX,
+          // Light and dark grey tags need a light ground; the untagged blue reads on either.
+          ...(tagged && { background: 0xffffff }),
         }),
       );
       if (inter) {
@@ -592,7 +614,12 @@ export function bargainingModel(declaration: BargainingDeclaration) {
             title: 'Intergroup memory (high / medium / low)',
             scape: inter,
             color: (d) => d.bargainer.plotColor,
+            legend: [
+              { color: 0xc0c0c0, label: 'Light-tagged agent' },
+              { color: 0x404040, label: 'Dark-tagged agent' },
+            ],
             radius: () => 1.2,
+            outline: SIMPLEX,
             background: 0xffffff,
           }),
         );

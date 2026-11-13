@@ -10,6 +10,7 @@ import {
   real,
   Scape,
   Simulation,
+  timeAt,
   type Model,
   type ParameterSchema,
 } from './index';
@@ -380,5 +381,42 @@ describe('setup callbacks', () => {
     expect(log).toEqual(['setup sees 1,1']);
     expect(sim.data.latest('position.mean')).toBe(5);
     expect(() => sim.setup(() => {})).toThrow(/while the model/);
+  });
+});
+
+describe('live parameters', () => {
+  const model = defineModel({
+    name: 'live',
+    parameters: { rate: real(1, { min: 0, live: true }), size: int(3) },
+    time: { unit: 'year', originOf: (p) => 800 + p.size },
+    build(sim) {
+      let total = 0;
+      sim.data.value('total', () => total);
+      sim.observe({ stepped: () => void (total += sim.parameters.rate) });
+    },
+  });
+
+  it('changes a live parameter mid-run and the model sees it', () => {
+    const sim = new Simulation(model, { seed: 1 });
+    sim.step();
+    sim.setParameter('rate', 5);
+    sim.step();
+    sim.step(); // data is sampled before this test's observer adds to the total
+    expect(sim.data.latest('total')).toBe(6);
+    expect(Object.isFrozen(sim.parameters)).toBe(true);
+  });
+
+  it('refuses parameters that are not live, unknown names and bad values', () => {
+    const sim = new Simulation(model, { seed: 1 });
+    expect(() => sim.setParameter('size', 4)).toThrow(ParameterError);
+    expect(() => sim.setParameter('nope', 4)).toThrow(/Unknown/);
+    expect(() => sim.setParameter('rate', -1)).toThrow(/at least 0/);
+    expect(sim.parameters.rate).toBe(1);
+  });
+
+  it('maps ticks onto the model time scale', () => {
+    const sim = new Simulation(model, { seed: 1 });
+    expect(timeAt(sim, 0)).toBe(803);
+    expect(timeAt(sim, 10)).toBe(813);
   });
 });

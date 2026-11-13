@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-life',
   name: "Conway's Life",
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['cellular automata'],
   description:
     "John Conway's cellular automaton in three Ascape forms: the full model, a small-world neighborhood variant and a condensed version.",
   models: [smallConwayLife, conwayLife, conwayLifeSmallWorld],

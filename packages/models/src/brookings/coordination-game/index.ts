@@ -9,6 +9,8 @@ export const family = defineFamily({
   id: 'brookings-coordination-game',
   name: 'Coordination Game (Ascape manual tutorial)',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['game theory', 'tutorial'],
+  path: 'tutorial',
   description:
     'The tutorial of the Ascape manual: a coordination game on a lattice, built up in five steps from imitation of neighbors to births, deaths and social networks.',
   models: [step1, step2, step3, step4, step5],

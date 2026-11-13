@@ -438,6 +438,11 @@ export const boidsAscape = defineModel({
               : colors.blue,
         radius: () => p.agentSize,
         heading: (agent) => (agent instanceof Boid ? agent.heading : undefined),
+        legend: [
+          { color: colors.red, label: 'Red boid' },
+          { color: colors.blue, label: 'Blue boid' },
+          { color: colors.black, label: 'Obstacle' },
+        ],
       }),
     );
     sim.addView(

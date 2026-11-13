@@ -43,18 +43,21 @@ export type CvDefaults = Partial<Record<keyof CvSettings, number>>;
 export function rebellionParameters(d: CvDefaults = {}) {
   return {
     width: int(d.width ?? 40, {
+      group: 'World',
       min: 5,
       max: 200,
       label: 'Lattice width',
       description: 'Number of columns (legacy: fixed at 40).',
     }),
     height: int(d.height ?? 40, {
+      group: 'World',
       min: 5,
       max: 200,
       label: 'Lattice height',
       description: 'Number of rows (legacy: fixed at 40).',
     }),
     initialPopulationDensity: real(d.initialPopulationDensity ?? 0.7, {
+      group: 'World',
       min: 0,
       max: 1,
       label: 'Initial population density',
@@ -62,24 +65,28 @@ export function rebellionParameters(d: CvDefaults = {}) {
         'Citizens as a fraction of lattice sites. With the initial cop density it must not exceed 1.',
     }),
     initialCopDensity: real(d.initialCopDensity ?? 0.04, {
+      group: 'World',
       min: 0,
       max: 1,
       label: 'Initial cop density',
       description: 'Cops as a fraction of lattice sites; also the target the cop count is kept at.',
     }),
     copVision: real(d.copVision ?? 1.7, {
+      group: 'Cops',
       min: 0,
       max: 16,
       label: 'Cop vision',
       description: 'How far a cop sees an active citizen, in lattice units.',
     }),
     citizenVision: real(d.citizenVision ?? 1.7, {
+      group: 'Citizens',
       min: 0,
       max: 16,
       label: 'Citizen vision',
       description: 'How far a citizen sees cops and active citizens, in lattice units.',
     }),
     legitimacy: real(d.legitimacy ?? 0.8, {
+      group: 'Citizens',
       min: 0,
       max: 1,
       label: 'Legitimacy',
@@ -87,12 +94,14 @@ export function rebellionParameters(d: CvDefaults = {}) {
         'Perceived legitimacy of the central authority; grievance is hardship times one minus legitimacy.',
     }),
     activeThreshold: real(d.activeThreshold ?? 0.1, {
+      group: 'Citizens',
       min: 0,
       max: 1,
       label: 'Active threshold',
       description: 'A citizen turns active when grievance minus perceived risk exceeds this.',
     }),
     jailTerm: int(d.jailTerm ?? 15, {
+      group: 'Cops',
       min: 0,
       max: NEVER_RELEASED,
       label: 'Jail term',
@@ -107,30 +116,35 @@ export function intergroupParameters(d: CvDefaults = {}) {
   return {
     ...rebellionParameters({ initialCopDensity: 0, ...d }),
     fissionProbability: real(d.fissionProbability ?? 0.05, {
+      group: 'Groups',
       min: 0,
       max: 1,
       label: 'Fission probability',
       description: 'Chance per tick that a citizen with a free neighboring site clones itself.',
     }),
     deathAge: int(d.deathAge ?? 200, {
+      group: 'Groups',
       min: 0,
       max: 100000,
       label: 'Death age',
       description: 'Citizens older than this die; initial ages are uniform up to it.',
     }),
     initialBlueLegitimacy: real(d.initialBlueLegitimacy ?? 0.2, {
+      group: 'Groups',
       min: 0,
       max: 1,
       label: 'Initial blue legitimacy',
       description: 'Starting value of the recorded blue legitimacy.',
     }),
     initialGreenLegitimacy: real(d.initialGreenLegitimacy ?? 0.2, {
+      group: 'Groups',
       min: 0,
       max: 1,
       label: 'Initial green legitimacy',
       description: 'Starting value of the recorded green legitimacy.',
     }),
     evaporation: real(d.evaporation ?? 0.9, {
+      group: 'Groups',
       min: 0,
       max: 1,
       label: 'Evaporation of history',
@@ -168,7 +182,12 @@ function occupantColor(o: Occupant<Cell>, intergroup: boolean): Color | undefine
 }
 
 /** Builds the world, rules, data and views shared by every Civil Violence model. */
-export function buildCivilViolence(sim: Simulation, s: CvSettings, variant: CvVariant): void {
+export function buildCivilViolence(
+  sim: Simulation,
+  settings: () => CvSettings,
+  variant: CvVariant,
+): void {
+  const s = settings();
   if (s.initialPopulationDensity + s.initialCopDensity > 1) {
     throw new RangeError('Initial population density plus initial cop density must not exceed 1');
   }
@@ -182,7 +201,7 @@ export function buildCivilViolence(sim: Simulation, s: CvSettings, variant: CvVa
       neighborhood: 'moore',
     }),
   );
-  const world = new CvWorld(lattice, s);
+  const world = new CvWorld(lattice, settings);
   if (variant.startTargetCopDensity !== undefined)
     world.targetCopDensity = variant.startTargetCopDensity;
   const sites = s.width * s.height;
@@ -286,6 +305,18 @@ export function buildCivilViolence(sim: Simulation, s: CvSettings, variant: CvVa
       title: 'Agent View',
       grid: lattice,
       background,
+      legend: intergroup
+        ? [
+            { color: colors.blue, label: 'Quiet citizen, blue group', mark: 'agent' },
+            { color: colors.green, label: 'Quiet citizen, green group', mark: 'agent' },
+            { color: colors.red, label: 'Active (rebelling) citizen', mark: 'agent' },
+            { color: colors.black, label: 'Cop', mark: 'agent' },
+          ]
+        : [
+            { color: colors.blue, label: 'Quiet citizen', mark: 'agent' },
+            { color: colors.red, label: 'Active (rebelling) citizen', mark: 'agent' },
+            { color: colors.black, label: 'Cop', mark: 'agent' },
+          ],
       occupantColor: (o) => occupantColor(o, intergroup),
       occupantShape: 'circle',
     }),
@@ -295,6 +326,12 @@ export function buildCivilViolence(sim: Simulation, s: CvSettings, variant: CvVa
       title: 'Grievance View',
       grid: lattice,
       background,
+      legend: [
+        { color: colors.red, label: 'Citizen with full grievance' },
+        { color: mix(background, colors.red, 0.5), label: 'Citizen with half grievance' },
+        { color: colors.black, label: 'Cop' },
+        { color: background, label: 'Empty' },
+      ],
       cellColor: (cell) => {
         const o = cell.occupant;
         if (o instanceof Cop) return colors.black;
@@ -393,8 +430,8 @@ function declareGroupData(sim: Simulation, world: CvWorld, people: Scape<Citizen
   }
   data.value('Greens Killed By Blue', () => world.killsByBlue);
   data.value('Blues Killed By Green', () => world.killsByGreen);
-  const evaporation = world.settings.evaporation;
   data.value('[Calculate Legitimacy]', () => {
+    const evaporation = world.settings.evaporation;
     // Legacy quirk kept: the guards test the other group's count than the divisor.
     if (sim.tick > 1) {
       const blue = data.latest('Blue');
@@ -440,25 +477,85 @@ function provenance(spec: CvModelSpec): Provenance {
   };
 }
 
+/**
+ * The settings derived from the parameters now: worked out again only when
+ * the parameters change (a change during a run replaces the parameters object).
+ */
+function following<P extends object>(
+  parameters: () => P,
+  derive: (p: P) => CvSettings,
+): () => CvSettings {
+  let source: P | undefined;
+  let settings: CvSettings | undefined;
+  return () => {
+    const now = parameters();
+    if (now !== source || !settings) {
+      source = now;
+      settings = derive(now);
+    }
+    return settings;
+  };
+}
+
+/**
+ * The parameters the agents read afresh each tick, so they can change while
+ * a model runs. A model lists fewer where the others show no effect in a
+ * short run (Model I Run 1 is too calm for most of them to matter).
+ */
+export const LIVE_REBELLION: readonly (keyof CvSettings)[] = [
+  'copVision',
+  'citizenVision',
+  'legitimacy',
+  'activeThreshold',
+  'jailTerm',
+];
+/** For calm runs, where nothing happens until legitimacy or the threshold give. */
+export const LIVE_CALM: readonly (keyof CvSettings)[] = ['legitimacy', 'activeThreshold'];
+/** For Model II without cops. */
+export const LIVE_INTERGROUP: readonly (keyof CvSettings)[] = [
+  'citizenVision',
+  'legitimacy',
+  'activeThreshold',
+  'fissionProbability',
+  'deathAge',
+  'evaporation',
+];
+
+/** The parameters with those named marked live. */
+function withLive<T extends Record<string, object>>(parameters: T, live: readonly string[]): T {
+  return Object.fromEntries(
+    Object.entries(parameters).map(([name, parameter]) => [
+      name,
+      live.includes(name) ? { ...parameter, live: true } : parameter,
+    ]),
+  ) as T;
+}
+
 /** Defines a Model I (rebellion) model from a legacy class. */
-export function defineRebellionModel(spec: CvModelSpec, defaults: CvDefaults = {}) {
+export function defineRebellionModel(
+  spec: CvModelSpec,
+  defaults: CvDefaults = {},
+  live: readonly (keyof CvSettings)[] = LIVE_REBELLION,
+) {
   return defineModel({
     name: spec.name,
     description: spec.description,
     provenance: provenance(spec),
-    parameters: rebellionParameters(defaults),
+    parameters: withLive(rebellionParameters(defaults), live),
     build(sim) {
-      const p = sim.parameters;
       buildCivilViolence(
         sim as unknown as Simulation,
-        {
-          ...p,
-          fissionProbability: 0,
-          deathAge: 0,
-          initialBlueLegitimacy: 0,
-          initialGreenLegitimacy: 0,
-          evaporation: 1,
-        },
+        following(
+          () => sim.parameters,
+          (p) => ({
+            ...p,
+            fissionProbability: 0,
+            deathAge: 0,
+            initialBlueLegitimacy: 0,
+            initialGreenLegitimacy: 0,
+            evaporation: 1,
+          }),
+        ),
         spec.variant,
       );
     },
@@ -466,14 +563,25 @@ export function defineRebellionModel(spec: CvModelSpec, defaults: CvDefaults = {
 }
 
 /** Defines a Model II (inter-group) model from a legacy class. */
-export function defineIntergroupModel(spec: CvModelSpec, defaults: CvDefaults = {}) {
+export function defineIntergroupModel(
+  spec: CvModelSpec,
+  defaults: CvDefaults = {},
+  live: readonly (keyof CvSettings)[] = LIVE_INTERGROUP,
+) {
   return defineModel({
     name: spec.name,
     description: spec.description,
     provenance: provenance(spec),
-    parameters: intergroupParameters(defaults),
+    parameters: withLive(intergroupParameters(defaults), live),
     build(sim) {
-      buildCivilViolence(sim as unknown as Simulation, { ...sim.parameters }, spec.variant);
+      buildCivilViolence(
+        sim as unknown as Simulation,
+        following(
+          () => sim.parameters,
+          (p) => ({ ...p }),
+        ),
+        spec.variant,
+      );
     },
   });
 }

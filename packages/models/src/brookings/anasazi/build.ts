@@ -43,6 +43,7 @@ import {
   Location,
   LongHouseValley,
   Settlement,
+  ENVIRONMENT_ZONES,
   ZONE_EMPTY,
 } from './valley';
 
@@ -59,9 +60,14 @@ export interface ParameterDefaults {
  * The `LHV` bean properties plus the run's start and stop years, which
  * Ascape exposed as the StartPeriod and StopPeriod model parameters.
  */
-export function lhvParameters(defaults: ParameterDefaults) {
+export function lhvParameters(
+  defaults: ParameterDefaults,
+  /** Whether the model tracks individual people, which changes what a running model reads. */
+  kind: 'households' | 'people' = 'households',
+) {
   return {
     startYear: int(800, {
+      group: 'Run',
       min: EARLIEST_YEAR,
       max: LATEST_YEAR - 1,
       label: 'Start year',
@@ -69,24 +75,31 @@ export function lhvParameters(defaults: ParameterDefaults) {
         'Year the run starts in; households are seeded from the historic record of that year.',
     }),
     stopYear: int(defaults.stopYear, {
+      live: true,
+      group: 'Run',
       min: EARLIEST_YEAR + 1,
       max: LATEST_YEAR,
       label: 'Stop year',
       description: 'Year the run stops at (one step per year).',
     }),
     harvestAdjustment: real(1.0, {
+      live: true,
+      group: 'Harvest',
       min: 0,
       max: 2,
       label: 'Harvest adjustment',
       description: 'Multiplies every location’s base maize yield.',
     }),
     harvestVarianceYear: real(0.1, {
+      group: 'Harvest',
       min: 0,
       max: 1,
       label: 'Harvest variance (year)',
       description: 'Declared by the legacy model but never used by it.',
     }),
     harvestVarianceLocation: real(0.1, {
+      live: true,
+      group: 'Harvest',
       min: 0,
       max: 1,
       label: 'Harvest variance (location)',
@@ -94,6 +107,7 @@ export function lhvParameters(defaults: ParameterDefaults) {
         'Standard deviation of location quality (fixed per run) and of each year’s harvest, relative to the mean.',
     }),
     typicalHouseholdSize: int(5, {
+      group: 'Households',
       min: 1,
       max: 20,
       label: 'Typical household size',
@@ -101,6 +115,8 @@ export function lhvParameters(defaults: ParameterDefaults) {
         'People per aggregate household. Only used, at start-up of the legacy class, to derive the default nutrition needs (5 x 160).',
     }),
     baseNutritionNeed: int(160, {
+      live: kind === 'people',
+      group: 'Households',
       min: 1,
       max: 1000,
       label: 'Base nutrition need',
@@ -108,72 +124,86 @@ export function lhvParameters(defaults: ParameterDefaults) {
         'Maize (kg per year) one adult needs; used by people in the disaggregated models.',
     }),
     householdMinNutritionNeed: int(800, {
+      group: 'Households',
       min: 1,
       max: 5000,
       label: 'Household min nutrition need',
       description: 'Least maize (kg per year) an aggregate household needs.',
     }),
     householdMaxNutritionNeed: int(800, {
+      group: 'Households',
       min: 1,
       max: 5000,
       label: 'Household max nutrition need',
       description: 'Most maize (kg per year) an aggregate household needs.',
     }),
     minFertilityAge: int(16, {
+      group: 'Households',
       min: 0,
       max: 60,
       label: 'Min fertility age',
       description: 'Least age at which a household can fission (people: the age of adulthood).',
     }),
     maxFertilityAge: int(16, {
+      group: 'Households',
       min: 0,
       max: 60,
       label: 'Max fertility age',
       description: 'Greatest age at which a household starts being able to fission.',
     }),
     minFertilityEndsAge: int(30, {
+      group: 'Households',
       min: 0,
       max: 80,
       label: 'Min fertility ends age',
       description: 'Least age after which a household no longer fissions.',
     }),
     maxFertilityEndsAge: int(30, {
+      group: 'Households',
       min: 0,
       max: 80,
       label: 'Max fertility ends age',
       description: 'Greatest age after which a household no longer fissions.',
     }),
     minDeathAge: int(30, {
+      group: 'Households',
       min: 0,
       max: 100,
       label: 'Min death age',
       description: 'Least age at which an aggregate household dissolves.',
     }),
     maxDeathAge: int(30, {
+      group: 'Households',
       min: 0,
       max: 100,
       label: 'Max death age',
       description: 'Greatest age at which an aggregate household dissolves.',
     }),
     minFertility: real(defaults.minFertility, {
+      group: 'Households',
       min: 0,
       max: 1,
       label: 'Min fertility',
       description: 'Least yearly probability that a fertile household fissions.',
     }),
     maxFertility: real(0.125, {
+      group: 'Households',
       min: 0,
       max: 1,
       label: 'Max fertility',
       description: 'Greatest yearly probability that a fertile household fissions.',
     }),
     maizeGiftToChild: real(0.33, {
+      live: kind === 'households',
+      group: 'Households',
       min: 0,
       max: 1,
       label: 'Maize gift to child',
       description: 'Share of its stored maize a household gives a new household.',
     }),
     waterSourceDistance: real(16.0, {
+      live: true,
+      group: 'Households',
       min: 1,
       max: 40,
       label: 'Water source distance',
@@ -181,30 +211,35 @@ export function lhvParameters(defaults: ParameterDefaults) {
         'Farthest a farm may lie from water, and a settlement from extra farmland (cells).',
     }),
     yearsOfStock: int(2, {
+      group: 'Households',
       min: 1,
       max: 10,
       label: 'Years of stock',
       description: 'Years maize can be stored.',
     }),
     householdMinInitialAge: int(0, {
+      group: 'Founding households',
       min: 0,
       max: 100,
       label: 'Household min initial age',
       description: 'Least age of an initial household.',
     }),
     householdMaxInitialAge: int(29, {
+      group: 'Founding households',
       min: 0,
       max: 100,
       label: 'Household max initial age',
       description: 'Greatest age of an initial household.',
     }),
     householdMinInitialCorn: int(2000, {
+      group: 'Founding households',
       min: 0,
       max: 10000,
       label: 'Household min initial corn',
       description: 'Least maize in each year of an initial household’s stock.',
     }),
     householdMaxInitialCorn: int(2400, {
+      group: 'Founding households',
       min: 0,
       max: 10000,
       label: 'Household max initial corn',
@@ -217,12 +252,14 @@ export function lhvParameters(defaults: ParameterDefaults) {
 export function personParameters() {
   return {
     personMinInitialAge: int(0, {
+      group: 'People',
       min: 0,
       max: 100,
       label: 'Person min initial age',
       description: 'Least age of a person when created (then overridden for founding families).',
     }),
     personMaxInitialAge: int(32, {
+      group: 'People',
       min: 0,
       max: 100,
       label: 'Person max initial age',
@@ -262,7 +299,7 @@ export function buildLongHouseValley<S extends ParameterSchema>(
 ): LongHouseValley {
   const p = sim.parameters as unknown as AnasaziParameters;
   const base = sim as unknown as Simulation;
-  const world = new LongHouseValley(base, p);
+  const world = new LongHouseValley(base);
 
   const environment = sim.addScape(
     new Scape<Agent>({ name: 'environment', size: 1, create: () => new Agent() }),
@@ -302,7 +339,10 @@ export function buildLongHouseValley<S extends ParameterSchema>(
   const scapes: { households?: Scape<HouseholdBase>; people?: Scape<Person> } = {};
   const context: HouseholdContext = {
     world,
-    parameters: p,
+    // Read when used, so a change during the run takes effect.
+    get parameters() {
+      return sim.parameters as unknown as AnasaziParameters;
+    },
     households: () => scapes.households!,
     people: () => {
       if (!scapes.people) throw new Error('This model has no people');
@@ -367,7 +407,8 @@ export function buildLongHouseValley<S extends ParameterSchema>(
 
   sim.observe({
     stepped: () => {
-      if (world.year >= p.stopYear) sim.stop(`reached the stop year ${p.stopYear}`);
+      const { stopYear } = sim.parameters as unknown as AnasaziParameters;
+      if (world.year >= stopYear) sim.stop(`reached the stop year ${stopYear}`);
     },
   });
 
@@ -437,6 +478,18 @@ function addViews<S extends ParameterSchema>(
     gridView<Location, Occupant<Location>>({
       title: 'Long House Valley: simulation',
       grid: valley,
+      legend: [
+        { color: AWT.black, label: 'Settlement, under 5 households', mark: 'agent' },
+        { color: AWT.green, label: 'Settlement, 5 to 19 households', mark: 'agent' },
+        { color: AWT.red, label: 'Settlement, 20 or more households', mark: 'agent' },
+        { color: AWT.yellow, label: 'Farm (the legacy yellow, as uplands natural)' },
+        { color: AWT.blue, label: 'Water source (the legacy blue, as uplands arable)' },
+        ...ENVIRONMENT_ZONES.filter((zone) => zone.index !== ZONE_EMPTY).map((zone) => ({
+          color: zone.color,
+          label: `Zone: ${zone.name}`,
+        })),
+        { color: AWT.lightGray, label: 'Outside the valley' },
+      ],
       cellColor: (location) => {
         if (offMap(location)) return AWT.lightGray;
         const marked = overlay(location);
@@ -457,6 +510,16 @@ function addViews<S extends ParameterSchema>(
     gridView<Location, Occupant<Location>>({
       title: 'Long House Valley: history',
       grid: valley,
+      legend: [
+        { color: AWT.black, label: 'Historic settlement, under 5 households', mark: 'agent' },
+        { color: AWT.green, label: 'Historic settlement, 5 to 19 households', mark: 'agent' },
+        { color: AWT.red, label: 'Historic settlement, 20 or more households', mark: 'agent' },
+        { color: AWT.yellow, label: 'Farm' },
+        { color: AWT.blue, label: 'Water source' },
+        { color: hydrologyColor(10), label: 'Wettest hydrology' },
+        { color: hydrologyColor(0), label: 'Driest hydrology' },
+        { color: AWT.lightGray, label: 'Outside the valley' },
+      ],
       cellColor: (location) => {
         if (offMap(location)) return AWT.lightGray;
         return overlay(location) ?? hydrologyColor(location.environmentZone.hydrology);

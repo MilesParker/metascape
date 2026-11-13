@@ -23,6 +23,7 @@ import { durationParameters, movementParameter, transmissionParameters } from '.
 import {
   Individual,
   Status,
+  STATUS_LABELS,
   statusColors,
   statusNames,
   type DiseaseParameters,
@@ -264,6 +265,11 @@ function buildRegion<S extends ParameterSchema>(
       occupantColor: (c) => c.color(),
       occupantShape: 'square',
       background: colors.white,
+      legend: [
+        { color: colors.gray, label: 'City where it started', mark: 'agent' },
+        { color: colors.yellow, label: 'City with infections seen', mark: 'agent' },
+        { color: colors.blue, label: 'City without', mark: 'agent' },
+      ],
     }),
   );
   for (let i = 0; i < Math.min(p.cityCount, 4); i++) {
@@ -272,6 +278,11 @@ function buildRegion<S extends ParameterSchema>(
       gridView<MapCell, Individual>({
         title: `City ${i}`,
         grid: map,
+        legend: statusNames.map((name) => ({
+          color: statusColors[name],
+          label: STATUS_LABELS[name],
+          mark: 'agent' as const,
+        })),
         occupantColor: (o) => o.color(),
         occupantShape: 'circle',
         background: colors.white,
@@ -283,11 +294,17 @@ function buildRegion<S extends ParameterSchema>(
       title: 'Individuals by status',
       series: [...statusNames],
       colors: palette,
+      labels: STATUS_LABELS,
       yMin: 0,
     }),
   );
   sim.addView(
-    barsView({ title: 'Individuals by status now', series: [...statusNames], colors: palette }),
+    barsView({
+      title: 'Individuals by status now',
+      series: [...statusNames],
+      colors: palette,
+      labels: STATUS_LABELS,
+    }),
   );
 }
 

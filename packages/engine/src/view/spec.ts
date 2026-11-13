@@ -19,13 +19,32 @@ import type { Color } from './color';
 
 interface ViewBase {
   readonly title: string;
+  /**
+   * Where a tool should put the view: `stage` for the main picture of the
+   * world, `aside` for a supporting one. Default: spatial views on the stage,
+   * charts aside (promoted to the stage when a model has no spatial view).
+   */
+  readonly role?: 'stage' | 'aside';
+}
+
+/** One entry of a view's colour key. */
+export interface LegendEntry {
+  readonly color: Color;
+  readonly label: string;
+  /** What carries the colour; default `cell` for grids, `agent` otherwise. */
+  readonly mark?: 'cell' | 'agent' | 'link';
+}
+
+interface SpatialBase extends ViewBase {
+  /** What the colours mean. Without it, tools show the colours present, unlabelled. */
+  readonly legend?: readonly LegendEntry[];
 }
 
 /** A lattice drawn from above: each cell coloured, with occupants on top. */
 export interface GridViewSpec<
   C extends Cell = Cell,
   O extends Occupant<C> = Occupant<C>,
-> extends ViewBase {
+> extends SpatialBase {
   readonly type: 'grid';
   readonly grid: GridScape<C>;
   /** Colour of each cell. Default: the background. */
@@ -38,7 +57,7 @@ export interface GridViewSpec<
 }
 
 /** Agents drawn at their positions in a continuous space. */
-export interface ContinuousViewSpec<A extends PointAgent = PointAgent> extends ViewBase {
+export interface ContinuousViewSpec<A extends PointAgent = PointAgent> extends SpatialBase {
   readonly type: 'continuous';
   readonly scape: ContinuousScape<A>;
   readonly color?: (agent: A) => Color;
@@ -47,10 +66,18 @@ export interface ContinuousViewSpec<A extends PointAgent = PointAgent> extends V
   /** Direction in radians; when given, agents are drawn as pointers facing that way. */
   readonly heading?: (agent: A) => number | undefined;
   readonly background?: Color;
+  /**
+   * A shape drawn under the agents, such as the triangle of a simplex: its
+   * corners in space units, and optionally a label for each corner.
+   */
+  readonly outline?: {
+    readonly points: readonly (readonly [number, number])[];
+    readonly labels?: readonly string[];
+  };
 }
 
 /** The members of a scape drawn as nodes, with the links of a network between them. */
-export interface NetworkViewSpec<A extends Agent = Agent> extends ViewBase {
+export interface NetworkViewSpec<A extends Agent = Agent> extends SpatialBase {
   readonly type: 'network';
   readonly nodes: Scape<A>;
   readonly network: Network<A>;
@@ -67,8 +94,12 @@ export interface TimeSeriesViewSpec extends ViewBase {
   readonly series: readonly string[];
   /** Colour per series id. Default: a standard palette in order. */
   readonly colors?: Readonly<Record<string, Color>>;
+  /** Readable names per series id, in place of the recorder's labels. */
+  readonly labels?: Readonly<Record<string, string>>;
   readonly yMin?: number;
   readonly yMax?: number;
+  /** What the y axis measures, such as "households". */
+  readonly yLabel?: string;
 }
 
 /** The latest values of several series compared as bars. */
@@ -76,6 +107,8 @@ export interface BarsViewSpec extends ViewBase {
   readonly type: 'bars';
   readonly series: readonly string[];
   readonly colors?: Readonly<Record<string, Color>>;
+  /** Readable names per series id, in place of the recorder's labels. */
+  readonly labels?: Readonly<Record<string, string>>;
 }
 
 /** The latest sample of a distribution declared with `sim.data.distribution`. */

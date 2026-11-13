@@ -159,6 +159,9 @@ export function gini(sorted: Float64Array, n: number): number {
  */
 export const sugarscape = defineModel({
   name: 'Sugarscape',
+  summary:
+    'Agents roam a landscape of sugar, eat to survive, and a skewed distribution of wealth emerges.',
+  tags: ['resources', 'economics', 'inequality'],
   description:
     "Joshua Epstein and Robert Axtell's Sugarscape, the basic model of chapter II of 'Growing " +
     "Artificial Societies' (Brookings Institution Press and MIT Press, 1996). Agents with " +
@@ -166,54 +169,105 @@ export const sugarscape = defineModel({
     "peaks. Death thins the population to the landscape's carrying capacity, the survivors are " +
     'the best-adapted, and wealth ends up very unequally distributed even though the rules ' +
     'are identical for everyone.',
+  explorations: [
+    {
+      title: 'Short-sighted agents',
+      description: 'Every agent sees only one cell. Does the population survive?',
+      parameters: { visionMin: 1, visionMax: 1 },
+    },
+    {
+      title: 'Stop the growback',
+      description: 'Switch off the growback rule: sugar eaten is gone for good.',
+      rules: [{ scape: 'land', disable: ['growback'] }],
+    },
+  ],
   parameters: {
-    width: int(50, { min: 10, max: 200, label: 'Width', description: 'Number of columns.' }),
-    height: int(50, { min: 10, max: 200, label: 'Height', description: 'Number of rows.' }),
+    width: int(50, {
+      group: 'World',
+      min: 10,
+      max: 200,
+      label: 'Width',
+      description: 'Number of columns.',
+    }),
+    height: int(50, {
+      group: 'World',
+      min: 10,
+      max: 200,
+      label: 'Height',
+      description: 'Number of rows.',
+    }),
     growback: real(1, {
+      live: true,
+      group: 'World',
       min: 0,
       max: 4,
       label: 'Growback',
       description: 'Sugar each cell regrows per tick, up to its capacity.',
     }),
     agents: int(400, {
+      group: 'Agents',
       min: 0,
       max: 2500,
       label: 'Agents',
       description: 'Initial population (and the fixed size when replacement is on).',
     }),
-    visionMin: int(1, { min: 1, max: 20, label: 'Vision min', description: 'Lowest vision.' }),
-    visionMax: int(6, { min: 1, max: 20, label: 'Vision max', description: 'Highest vision.' }),
+    visionMin: int(1, {
+      group: 'Agents',
+      min: 1,
+      max: 20,
+      label: 'Vision min',
+      description: 'Lowest vision.',
+    }),
+    visionMax: int(6, {
+      group: 'Agents',
+      min: 1,
+      max: 20,
+      label: 'Vision max',
+      description: 'Highest vision.',
+    }),
     metabolismMin: int(1, {
+      group: 'Agents',
       min: 1,
       max: 10,
       label: 'Metabolism min',
       description: 'Lowest sugar eaten per tick.',
     }),
     metabolismMax: int(4, {
+      group: 'Agents',
       min: 1,
       max: 10,
       label: 'Metabolism max',
       description: 'Highest sugar eaten per tick.',
     }),
     sugarMin: int(5, {
+      group: 'Agents',
       min: 1,
       max: 100,
       label: 'Initial sugar min',
       description: 'Lowest initial endowment.',
     }),
     sugarMax: int(25, {
+      group: 'Agents',
       min: 1,
       max: 100,
       label: 'Initial sugar max',
       description: 'Highest initial endowment.',
     }),
     replacement: bool(false, {
+      group: 'Agents',
       label: 'Replacement (rule R)',
       description:
         'Agents die at a maximum age and every dead agent is replaced by a random newcomer.',
     }),
-    ageMin: int(60, { min: 1, max: 1000, label: 'Max age min', description: 'Lowest lifespan.' }),
+    ageMin: int(60, {
+      group: 'Agents',
+      min: 1,
+      max: 1000,
+      label: 'Max age min',
+      description: 'Lowest lifespan.',
+    }),
     ageMax: int(100, {
+      group: 'Agents',
       min: 1,
       max: 1000,
       label: 'Max age max',
@@ -247,7 +301,8 @@ export const sugarscape = defineModel({
       }),
     );
     land.addRule('growback', (cell) => {
-      cell.sugar = Math.min(cell.capacity, cell.sugar + p.growback);
+      // Read each tick, so it can be changed while the model runs.
+      cell.sugar = Math.min(cell.capacity, cell.sugar + sim.parameters.growback);
     });
 
     const agents = sim.addScape(
@@ -283,6 +338,12 @@ export const sugarscape = defineModel({
       gridView<SugarCell, Walker>({
         title: 'Sugarscape',
         grid: land,
+        legend: [
+          { color: colors.red, label: 'Agent', mark: 'agent' },
+          { color: sugarColor(1), label: 'Most sugar' },
+          { color: sugarColor(0.5), label: 'Some sugar' },
+          { color: sugarColor(0), label: 'No sugar' },
+        ],
         cellColor: (cell) => sugarColor(cell.sugar / MAX_CAPACITY),
         occupantColor: () => colors.red,
         occupantShape: 'circle',

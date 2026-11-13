@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Agent, Simulation, ViewSpec } from '@metascape/engine';
+import type {
+  Agent,
+  BarsViewSpec,
+  ContinuousViewSpec,
+  GridViewSpec,
+  HistogramViewSpec,
+  NetworkViewSpec,
+  Simulation,
+  TimeSeriesViewSpec,
+  ViewSpec,
+} from '@metascape/engine';
 import {
   Component,
   useId,
@@ -7,7 +17,9 @@ import {
   type ErrorInfo,
   type ReactElement,
   type ReactNode,
+  type Ref,
 } from 'react';
+import type { Camera, CanvasSurfaceHandle } from './canvas-surface';
 import { ChartCustomizer } from './chart-customizer';
 import {
   choiceOf,
@@ -24,16 +36,127 @@ import { ContinuousView } from './continuous-view';
 import { GridView } from './grid-view';
 import { NetworkView } from './network-view';
 import { BarsChart, HistogramChart } from './svg-charts';
-import { TimeSeriesChart } from './time-series-chart';
+import { TimeSeriesChart, type GhostRun, type TimeMark } from './time-series-chart';
 
-/** Props of {@link ViewPanel}. */
-export interface ViewPanelProps {
+/** Options for charts drawn by the view registry. */
+export interface ChartViewOptions {
+  /** Take the height of the container. */
+  readonly fill?: boolean | undefined;
+  readonly syncKey?: string | undefined;
+  readonly ghost?: GhostRun | undefined;
+  readonly marks?: readonly TimeMark[] | undefined;
+  readonly cursorTick?: number | undefined;
+  readonly onCursorTick?: ((tick: number | undefined) => void) | undefined;
+}
+
+/** What every view renderer is given. */
+export interface ViewRendererProps {
   readonly spec: ViewSpec;
   readonly sim: Simulation;
   /** Changes on each frame to trigger redraws. */
   readonly frame: number;
   /** Called when the user clicks an agent or cell (a cell's occupant is preferred). */
   readonly onPick?: ((agent: Agent) => void) | undefined;
+  /** Called with the agent or cell under the pointer (occupant preferred), or nothing. */
+  readonly onHover?: ((agent?: Agent) => void) | undefined;
+  /** An agent or cell to mark. */
+  readonly selected?: Agent | undefined;
+  /** How a spatial view fills its box; `contain` with `zoomable` allows zoom and pan. */
+  readonly fit?: 'width' | 'contain' | undefined;
+  readonly zoomable?: boolean | undefined;
+  readonly handleRef?: Ref<CanvasSurfaceHandle> | undefined;
+  /** Called whenever a spatial view is zoomed or panned. */
+  readonly onCameraChange?: ((camera: Camera) => void) | undefined;
+  readonly chart?: ChartViewOptions | undefined;
+}
+
+/**
+ * Draws one kind of view by returning an element (it is called as a plain
+ * function, so it must not use hooks itself; the components it returns may).
+ */
+export type ViewRenderer = (props: ViewRendererProps) => ReactElement;
+
+const renderers = new Map<string, ViewRenderer>();
+
+/**
+ * Registers the renderer for a view type, replacing any before it. The
+ * built-in types are registered when this module loads; register a type again
+ * to draw it differently (for example with WebGL).
+ */
+export function registerView(type: string, renderer: ViewRenderer): void {
+  renderers.set(type, renderer);
+}
+
+/** The renderer registered for a view type. */
+export function viewRenderer(type: string): ViewRenderer | undefined {
+  return renderers.get(type);
+}
+
+/** Whether a view shows space (a lattice, a plane, a network) rather than data. */
+export function isSpatial(spec: ViewSpec): boolean {
+  return spec.type === 'grid' || spec.type === 'continuous' || spec.type === 'network';
+}
+
+const surface = (props: ViewRendererProps) => ({
+  frame: props.frame,
+  selected: props.selected,
+  fit: props.fit,
+  zoomable: props.zoomable,
+  handleRef: props.handleRef,
+  onCameraChange: props.onCameraChange,
+});
+
+registerView('grid', (props) => {
+  const spec = props.spec as GridViewSpec;
+  const { onPick, onHover } = props;
+  return (
+    <GridView
+      spec={spec}
+      sim={props.sim}
+      {...surface(props)}
+      onPick={onPick && ((cell, occupant) => onPick(occupant ?? cell))}
+      onHover={onHover && ((cell, occupant) => onHover(occupant ?? cell))}
+    />
+  );
+});
+registerView('continuous', (props) => (
+  <ContinuousView
+    spec={props.spec as ContinuousViewSpec}
+    {...surface(props)}
+    onPick={props.onPick}
+    onHover={props.onHover}
+  />
+));
+registerView('network', (props) => (
+  <NetworkView
+    spec={props.spec as NetworkViewSpec}
+    {...surface(props)}
+    onPick={props.onPick}
+    onHover={props.onHover}
+  />
+));
+registerView('timeSeries', (props) => (
+  <TimeSeriesChart
+    spec={props.spec as TimeSeriesViewSpec}
+    sim={props.sim}
+    frame={props.frame}
+    fill={props.chart?.fill}
+    syncKey={props.chart?.syncKey}
+    ghost={props.chart?.ghost}
+    marks={props.chart?.marks}
+    cursorTick={props.chart?.cursorTick}
+    onCursorTick={props.chart?.onCursorTick}
+  />
+));
+registerView('bars', (props) => (
+  <BarsChart spec={props.spec as BarsViewSpec} sim={props.sim} frame={props.frame} />
+));
+registerView('histogram', (props) => (
+  <HistogramChart spec={props.spec as HistogramViewSpec} sim={props.sim} frame={props.frame} />
+));
+
+/** Props of {@link ViewPanel}. */
+export interface ViewPanelProps extends ViewRendererProps {
   /** Shown beside the title, for example a chart's Customize button. */
   readonly controls?: ReactNode;
 }
@@ -62,7 +185,7 @@ interface BoundaryState {
 }
 
 /** Keeps one broken view from taking the rest of the page down. */
-class ViewBoundary extends Component<BoundaryProps, BoundaryState> {
+export class ViewBoundary extends Component<BoundaryProps, BoundaryState> {
   override state: BoundaryState = { message: undefined };
 
   static getDerivedStateFromError(error: unknown): BoundaryState {
@@ -83,28 +206,11 @@ class ViewBoundary extends Component<BoundaryProps, BoundaryState> {
   }
 }
 
-/** The component for one view spec, chosen by its type. */
-function ViewBody({ spec, sim, frame, onPick }: ViewPanelProps): ReactElement {
-  switch (spec.type) {
-    case 'grid':
-      return (
-        <GridView
-          spec={spec}
-          frame={frame}
-          onPick={onPick && ((cell, occupant) => onPick(occupant ?? cell))}
-        />
-      );
-    case 'continuous':
-      return <ContinuousView spec={spec} frame={frame} onPick={onPick} />;
-    case 'network':
-      return <NetworkView spec={spec} frame={frame} onPick={onPick} />;
-    case 'timeSeries':
-      return <TimeSeriesChart spec={spec} sim={sim} frame={frame} />;
-    case 'bars':
-      return <BarsChart spec={spec} sim={sim} frame={frame} />;
-    case 'histogram':
-      return <HistogramChart spec={spec} sim={sim} frame={frame} />;
-  }
+/** The registered renderer for a view spec, or a note when there is none. */
+export function ViewBody(props: ViewRendererProps): ReactElement {
+  const render = renderers.get(props.spec.type);
+  if (!render) return <p className="ms-muted">No renderer for “{props.spec.type}” views.</p>;
+  return render(props);
 }
 
 /** A titled panel showing one view. */

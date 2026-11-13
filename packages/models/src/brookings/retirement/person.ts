@@ -247,6 +247,13 @@ export function buildPopulation(
       title: 'Population (rows are ages; the youngest row moves up each tick)',
       grid,
       cellColor: personColor,
+      legend: [
+        { color: colors.blue, label: 'Working (imitator)' },
+        { color: colors.red, label: 'Retired (imitator)' },
+        { color: 0xff00ff, label: 'Rational: retires once eligible' },
+        { color: colors.yellow, label: 'Random: retires by chance' },
+        { color: colors.white, label: 'Dead' },
+      ],
     }),
   );
   const series = {

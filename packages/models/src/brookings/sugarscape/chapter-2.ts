@@ -34,6 +34,7 @@ import {
   deselectRule,
   gasBaseViews,
   gasSpiceBaseViews,
+  POLLUTION_LEGEND,
   pollutionCellColor,
   showViews,
   spiceParameters,
@@ -163,6 +164,7 @@ export const gasII5 = defineModel({
         nodes: world.agents,
         network,
         color: () => colors.red,
+        legend: [{ color: colors.red, label: 'Agent; links join neighbors' }],
         layout: 'force',
       }),
       ...sugarStatisticsCharts(),
@@ -209,12 +211,16 @@ export const gasII7 = defineModel({
   parameters: {
     ...sugarParameters(),
     winterSugarGrowbackRate: real(0.125, {
+      live: true,
+      group: 'Seasons',
       min: 0,
       max: 4,
       label: 'Winter sugar growback rate',
       description: 'The rate at which sugar grows back in the winter.',
     }),
     seasonLength: int(50, {
+      live: true,
+      group: 'Seasons',
       min: 1,
       max: 1000,
       label: 'Season length',
@@ -225,7 +231,13 @@ export const gasII7 = defineModel({
     const p = sim.parameters;
     const world = createGasII2(sim, sugarSettings(p));
     clearSelection(world.grid);
-    world.grid.addRule(sugarSeasonalGrowBackRule(p.winterSugarGrowbackRate, p.seasonLength));
+    // Read each tick, so both can be changed while it runs.
+    world.grid.addRule(
+      sugarSeasonalGrowBackRule(
+        () => sim.parameters.winterSugarGrowbackRate,
+        () => sim.parameters.seasonLength,
+      ),
+    );
     showBaseViews(sim, world);
   },
 });
@@ -260,6 +272,7 @@ export const gasII8 = defineModel({
         cellColor: pollutionCellColor,
         occupantColor: plan.agentColor,
         occupantShape: 'circle',
+        legend: [...plan.agentLegend, ...POLLUTION_LEGEND],
       }),
       ...sugarStatisticsCharts(),
       timeSeriesView({ title: 'Mean pollution', series: ['pollution.mean'] }),

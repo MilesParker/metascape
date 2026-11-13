@@ -110,12 +110,28 @@ export class Resident extends Occupant<SchellingCell> {
  */
 export const schelling = defineModel({
   name: 'Schelling segregation',
+  summary:
+    'Residents who want only a few like neighbours still end up in sharply divided neighbourhoods.',
+  tags: ['segregation', 'social'],
   description:
     "Thomas Schelling's segregation model ('Dynamic Models of Segregation', Journal of " +
     'Mathematical Sociology, 1971). Residents of two groups live on a grid with some empty ' +
     'sites and move to a random vacancy whenever too small a share of their neighbors is ' +
     'like themselves. Even a mild preference for like neighbors drives strongly segregated ' +
     'neighborhoods that nobody intended.',
+  explorations: [
+    {
+      title: 'Very tolerant residents',
+      description:
+        'Lower the share of like neighbours each resident wants. How low before the pattern fades?',
+      parameters: { tolerance: 0.25 },
+    },
+    {
+      title: 'A crowded city',
+      description: 'Fewer empty homes to move to: segregation forms more slowly, if at all.',
+      parameters: { density: 0.97 },
+    },
+  ],
   parameters: {
     width: int(40, { min: 3, max: 300, label: 'Width', description: 'Number of columns.' }),
     height: int(40, { min: 3, max: 300, label: 'Height', description: 'Number of rows.' }),
@@ -189,6 +205,11 @@ export const schelling = defineModel({
       gridView<SchellingCell>({
         title: 'Town',
         grid: town,
+        legend: [
+          { color: colors.blue, label: 'Group A' },
+          { color: colors.orange, label: 'Group B' },
+          { color: empty, label: 'Empty' },
+        ],
         cellColor: (cell) => {
           const resident = cell.occupant as Resident | undefined;
           return resident ? groupColors[resident.group]! : empty;

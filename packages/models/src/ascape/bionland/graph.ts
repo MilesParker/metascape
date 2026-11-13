@@ -362,6 +362,13 @@ function graphModel(settings: GraphSettings): Model {
             node.occupant ? (SPECIES_COLORS[node.occupant.species] as Color) : 0xffffff,
           layout: 'circle',
           background: 0xffffff,
+          legend: [
+            ...SPECIES.map((name, i) => ({
+              color: SPECIES_COLORS[i] as Color,
+              label: `${name} bion`,
+            })),
+            { color: 0xffffff, label: 'Empty node' },
+          ],
         }),
       );
       sim.addView(timeSeriesView({ title: 'Links', series: ['Links'] }));

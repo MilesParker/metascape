@@ -154,6 +154,11 @@ export const wikiExample = defineModel({
         cellColor: () => rgb(235, 235, 235),
         occupantColor: (i) => rgb(Math.floor(i.wealth * 255), 255, 255),
         occupantShape: 'circle',
+        legend: [
+          { color: rgb(255, 255, 255), label: 'Wealthiest individual', mark: 'agent' },
+          { color: rgb(0, 255, 255), label: 'Poorest individual', mark: 'agent' },
+          { color: rgb(235, 235, 235), label: 'Block' },
+        ],
       }),
     );
     sim.addView(

@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'amp-heatbugs',
   name: 'Heatbugs (AMP)',
   collection: 'Eclipse AMP example models',
+  tags: ['ecology'],
   description:
     'Bugs that warm their surroundings and seek a preferred temperature on a heat-diffusing grid.',
   models: [heatbugs],

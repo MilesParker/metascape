@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-prisoners-dilemma',
   name: "Demographic Prisoner's Dilemma",
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['game theory', 'demography'],
   description:
     "Joshua Epstein's demographic Prisoner's Dilemma: fixed-strategy players move, play their neighbors, reproduce when rich and die when broke, and zones of cooperation emerge.",
   models: [pd2d, pd2dSmallWorld, pd2dCellular, pd2dDemo],

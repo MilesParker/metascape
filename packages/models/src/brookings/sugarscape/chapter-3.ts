@@ -77,6 +77,11 @@ function traitViews(
   }
   // Legacy indexes the colour array directly; values outside it would throw there.
   plan.agentColor = (a) => trait.colors[value(a)] ?? awt.white;
+  plan.agentLegend = trait.colors.slice(1).map((color, i) => ({
+    color,
+    label: `${trait.label[0]!.toUpperCase()}${trait.label.slice(1)} ${i + 1}`,
+    mark: 'agent' as const,
+  }));
   plan.extra.push(
     barsView({ title: `Count by ${trait.label}`, series, colors: palette }),
     timeSeriesView({ title: `Count by ${trait.label} over time`, series, colors: palette }),
@@ -205,6 +210,10 @@ export const gasIII6 = defineModel({
     sim.data.count(world.agents, 'red', (a) => !culture(a));
     const plan = gasBaseViews();
     plan.agentColor = (a) => (culture(a) ? awt.blue : awt.red);
+    plan.agentLegend = [
+      { color: awt.blue, label: 'Blue culture', mark: 'agent' },
+      { color: awt.red, label: 'Red culture', mark: 'agent' },
+    ];
     plan.extra.push(
       timeSeriesView({
         title: 'Cultural groups',

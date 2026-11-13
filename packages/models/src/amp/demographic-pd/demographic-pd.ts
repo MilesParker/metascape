@@ -305,6 +305,10 @@ export const demographicPd = defineModel({
         cellColor: () => colors.green,
         occupantColor: (a) => (a.cooperate ? colors.blue : colors.red),
         occupantShape: 'circle',
+        legend: [
+          { color: colors.blue, label: 'Cooperates', mark: 'agent' },
+          { color: colors.red, label: 'Defects', mark: 'agent' },
+        ],
       }),
     );
     sim.addView(

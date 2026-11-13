@@ -195,6 +195,13 @@ export function buildStupidModel(
       cellColor: () => variant.habitatColor,
       occupantColor: (bug) => (variant.sizeColor ? sizeColor(bug.size) : colors.red),
       occupantShape: 'circle',
+      legend: variant.sizeColor
+        ? [
+            { color: sizeColor(10), label: 'Bug of size 10 or more', mark: 'agent' },
+            { color: sizeColor(5), label: 'Bug of size 5', mark: 'agent' },
+            { color: sizeColor(0), label: 'Smallest bug', mark: 'agent' },
+          ]
+        : [{ color: colors.red, label: 'Bug', mark: 'agent' }],
     }),
   );
   if (variant.grow !== 'none') {

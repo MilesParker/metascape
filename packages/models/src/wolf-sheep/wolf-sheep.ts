@@ -76,30 +76,35 @@ const parameters = {
     description: 'Number of wolves at the start.',
   }),
   sheepGain: real(4, {
+    live: true,
     min: 0,
     max: 100,
     label: 'Energy from grass',
     description: 'Energy a sheep gains by eating grass.',
   }),
   wolfGain: real(20, {
+    live: true,
     min: 0,
     max: 100,
     label: 'Energy from sheep',
     description: 'Energy a wolf gains by eating a sheep.',
   }),
   sheepReproduce: real(0.04, {
+    live: true,
     min: 0,
     max: 1,
     label: 'Sheep reproduction',
     description: 'Chance per tick that a sheep reproduces.',
   }),
   wolfReproduce: real(0.05, {
+    live: true,
     min: 0,
     max: 1,
     label: 'Wolf reproduction',
     description: 'Chance per tick that a wolf reproduces.',
   }),
   grassRegrowth: int(30, {
+    live: true,
     min: 1,
     max: 1000,
     label: 'Grass regrowth time',
@@ -109,8 +114,22 @@ const parameters = {
 
 export const wolfSheep = defineModel({
   name: 'Wolf Sheep Predation',
+  summary: 'Wolves eat sheep, sheep eat grass; populations boom and crash in predator-prey cycles.',
+  tags: ['ecology', 'predator-prey'],
   description:
     'Wolf Sheep Predation (Wilensky, 1997, NetLogo Models Library), after the Lotka-Volterra predator-prey equations. Sheep wander a wrapped grid eating grass, which regrows slowly; wolves wander and eat sheep. Animals pay energy to move, die when it runs out, and reproduce at random, splitting their energy with the offspring. The agent-based version shows what the equations cannot: oscillating populations that are driven by space, chance and local extinctions.',
+  explorations: [
+    {
+      title: 'Fast-growing grass',
+      description: 'More food for sheep: do the wolves win or lose?',
+      parameters: { grassRegrowth: 5 },
+    },
+    {
+      title: 'Lean wolves',
+      description: 'Each sheep gives a wolf less energy. Can the wolves survive?',
+      parameters: { wolfGain: 8 },
+    },
+  ],
   parameters,
   build(sim) {
     const p = sim.parameters;
@@ -158,14 +177,14 @@ export const wolfSheep = defineModel({
       const cell = animal.cell;
       if (cell?.grown) {
         cell.grown = false;
-        cell.regrowth = p.grassRegrowth;
-        animal.energy += p.sheepGain;
+        cell.regrowth = sim.parameters.grassRegrowth;
+        animal.energy += sim.parameters.sheepGain;
       }
       if (animal.energy < 0) {
         animal.die();
         return;
       }
-      if (cell && sheep.random.chance(p.sheepReproduce)) {
+      if (cell && sheep.random.chance(sim.parameters.sheepReproduce)) {
         animal.energy /= 2;
         sheep.add(new Sheep(animal.energy, cell));
       }
@@ -178,7 +197,7 @@ export const wolfSheep = defineModel({
         for (const occupant of cell.occupants) {
           if (occupant instanceof Sheep) {
             occupant.die();
-            animal.energy += p.wolfGain;
+            animal.energy += sim.parameters.wolfGain;
             break;
           }
         }
@@ -187,7 +206,7 @@ export const wolfSheep = defineModel({
         animal.die();
         return;
       }
-      if (cell && wolves.random.chance(p.wolfReproduce)) {
+      if (cell && wolves.random.chance(sim.parameters.wolfReproduce)) {
         animal.energy /= 2;
         wolves.add(new Wolf(animal.energy, cell));
       }
@@ -209,6 +228,12 @@ export const wolfSheep = defineModel({
       gridView<Patch, Animal>({
         title: 'Meadow',
         grid: grass,
+        legend: [
+          { color: colors.white, label: 'Sheep', mark: 'agent' },
+          { color: colors.black, label: 'Wolf', mark: 'agent' },
+          { color: grown, label: 'Grass' },
+          { color: bare, label: 'Bare ground' },
+        ],
         cellColor: (patch) => (patch.grown ? grown : bare),
         // Where a cell holds both kinds, only the wolf is drawn.
         occupantColor: (animal) => {

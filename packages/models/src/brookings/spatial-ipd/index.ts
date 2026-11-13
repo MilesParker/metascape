@@ -28,6 +28,7 @@ export const family = defineFamily({
   id: 'brookings-spatial-ipd',
   name: "Spatial Iterated Prisoner's Dilemma (GA)",
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['game theory', 'evolution'],
   description:
     "Players on a lattice evolve memory-based strategies for the iterated Prisoner's Dilemma with mutation and crossover, choosing partners at random, by genetic similarity or by an evolved preference.",
   models: [

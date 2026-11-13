@@ -4,6 +4,16 @@ interface ParameterBase {
   /** Display name; defaults to the parameter's key. */
   readonly label?: string;
   readonly description?: string;
+  /** Heading that tools group the parameter under, such as "Agents" or "Environment". */
+  readonly group?: string;
+  /** Unit shown beside the value, such as "years" or "%". */
+  readonly unit?: string;
+  /**
+   * Whether the model reads this parameter afresh as it runs, so that a change
+   * made with `Simulation.setParameter` takes effect without a restart. Only set
+   * it where that is true; other parameters shape the world when it is built.
+   */
+  readonly live?: boolean;
 }
 
 export interface IntParameter extends ParameterBase {
@@ -11,6 +21,8 @@ export interface IntParameter extends ParameterBase {
   readonly default: number;
   readonly min?: number;
   readonly max?: number;
+  /** Suggested increment for sliders and steppers. */
+  readonly step?: number;
 }
 
 export interface RealParameter extends ParameterBase {
@@ -18,6 +30,8 @@ export interface RealParameter extends ParameterBase {
   readonly default: number;
   readonly min?: number;
   readonly max?: number;
+  /** Suggested increment for sliders and steppers. */
+  readonly step?: number;
 }
 
 export interface BooleanParameter extends ParameterBase {

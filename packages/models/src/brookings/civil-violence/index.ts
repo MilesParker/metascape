@@ -41,6 +41,7 @@ export const family = defineFamily({
   id: 'brookings-civil-violence',
   name: 'Civil Violence',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['conflict'],
   description:
     "Joshua Epstein's civil violence models: rebellion against a central authority (Model I) and violence between two groups with cops as peacekeepers (Model II), with the runs of the paper.",
   models: [

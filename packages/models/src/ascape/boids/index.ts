@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'ascape-boids',
   name: 'Boids',
   collection: 'Ascape example models',
+  tags: ['flocking'],
   description:
     "Craig Reynolds' Boids (1987) as implemented in Ascape: flocking in a wrapped plane from prioritized local steering rules, with a red team that only avoids obstacles and a blue team that flocks.",
   models: [boidsAscape],

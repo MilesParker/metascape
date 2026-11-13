@@ -27,6 +27,10 @@ function addLifeViews(sim: Simulation, cells: GridScape<LifeCell>): void {
       title: 'Overhead View',
       grid: cells,
       cellColor: (cell) => (cell.on ? ALIVE : DEAD),
+      legend: [
+        { color: ALIVE, label: 'Alive' },
+        { color: DEAD, label: 'Dead' },
+      ],
     }),
   );
   sim.addView(timeSeriesView({ title: 'Live cells', series: ['Alive'], colors: { Alive: ALIVE } }));

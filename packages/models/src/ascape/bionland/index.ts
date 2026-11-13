@@ -52,6 +52,8 @@ export const family = defineFamily({
   id: 'ascape-bionland',
   name: 'Bionland',
   collection: 'Ascape example models',
+  tags: ['tutorial', 'ecology'],
+  path: 'tutorial',
   description:
     'A step-by-step Ascape tutorial: a lattice with randomly placed bions gains movement, three species that chase one another, energy, reproduction, diffusion, statistics and other spaces, up to the full model.',
   models: [

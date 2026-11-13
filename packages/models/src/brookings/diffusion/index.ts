@@ -11,6 +11,7 @@ export const family = defineFamily({
   id: 'brookings-diffusion',
   name: 'Diffusion',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['diffusion', 'social norms'],
   description:
     'Diffusion in social networks: cells adopt a behavior by its inherent payoff and how many neighbors have adopted it, with random error. Two, three and six actions.',
   models: [abDiffusion, abcDiffusion, abcdefDiffusion, bigAbcdefDiffusion, bigAbcdefDiffusionBW],

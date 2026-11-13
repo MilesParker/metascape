@@ -374,12 +374,23 @@ export const firmsModel = defineModel({
       const max = unitMax();
       return outputColor(max > 0 ? f.avgOutput / max : 0);
     };
+    const effortLegend = [
+      { color: effortColor(1), label: 'Full effort' },
+      { color: effortColor(0.5), label: 'Half effort' },
+      { color: colors.white, label: 'No effort, or no firm' },
+    ];
+    const outputLegend = [
+      { color: outputColor(1), label: 'Highest output per worker' },
+      { color: outputColor(0), label: 'Lowest output per worker' },
+      { color: colors.white, label: 'No firm' },
+    ];
     sim.addView(
       gridView<Cell>({
         title: 'Firm Effort',
         grid,
         background: colors.white,
         cellColor: (c) => effort(bySlot(c)),
+        legend: effortLegend,
       }),
     );
     sim.addView(
@@ -388,6 +399,7 @@ export const firmsModel = defineModel({
         grid,
         background: colors.white,
         cellColor: (c) => unit(bySlot(c)),
+        legend: outputLegend,
       }),
     );
     sim.addView(
@@ -396,6 +408,7 @@ export const firmsModel = defineModel({
         grid,
         background: colors.white,
         cellColor: (c) => effort(byAge(c)),
+        legend: effortLegend,
       }),
     );
     sim.addView(
@@ -404,6 +417,7 @@ export const firmsModel = defineModel({
         grid,
         background: colors.white,
         cellColor: (c) => unit(byAge(c)),
+        legend: outputLegend,
       }),
     );
     sim.addView(

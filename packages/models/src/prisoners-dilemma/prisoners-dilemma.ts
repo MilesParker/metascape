@@ -123,6 +123,9 @@ function randomFreeNeighbor(cell: Cell, pick: (n: number) => number): Cell | und
 
 export const prisonersDilemma = defineModel({
   name: "Demographic Prisoner's Dilemma",
+  summary:
+    'Cooperators and defectors play, breed and die on a lattice; clusters of cooperation can survive.',
+  tags: ['game theory', 'cooperation'],
   description:
     "Joshua Epstein's Demographic Prisoner's Dilemma (Zones of Cooperation in Demographic Prisoner's Dilemma, Complexity, 1998). Fixed-strategy cooperators and defectors wander a torus, play a Prisoner's Dilemma with each neighbor, die when their wealth is negative or they are old, and reproduce when rich. Because play is local and offspring appear next to their parents, clusters of cooperators can survive and grow even though defection pays better in any single encounter.",
   parameters,
@@ -217,6 +220,10 @@ export const prisonersDilemma = defineModel({
         title: 'Torus',
         grid,
         background: 0xffffff,
+        legend: [
+          { color: colors.blue, label: 'Cooperator', mark: 'agent' },
+          { color: colors.red, label: 'Defector', mark: 'agent' },
+        ],
         occupantColor: (player) => (player.cooperator ? colors.blue : colors.red),
         occupantShape: 'square',
       }),

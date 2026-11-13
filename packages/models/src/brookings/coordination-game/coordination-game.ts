@@ -299,6 +299,11 @@ export function buildCoordinationGame(
       background: colors.green,
       cellColor: () => colors.green,
       occupantColor: (p) => (p.color === 'red' ? colors.red : colors.blue),
+      legend: [
+        { color: colors.red, label: 'Plays red', mark: 'agent' },
+        { color: colors.blue, label: 'Plays blue', mark: 'agent' },
+        { color: colors.green, label: 'Empty site' },
+      ],
     }),
   );
   if (config.friends) {
@@ -308,6 +313,10 @@ export function buildCoordinationGame(
         nodes: players,
         network,
         color: (p) => (p.color === 'red' ? colors.red : colors.blue),
+        legend: [
+          { color: colors.red, label: 'Plays red' },
+          { color: colors.blue, label: 'Plays blue' },
+        ],
       }),
     );
   }

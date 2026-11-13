@@ -25,7 +25,7 @@ export const NEVER_RELEASED = 2147483647;
  */
 const K = -Math.log(0.1);
 
-/** Fixed settings of a run, read by the agents. */
+/** The settings of a run, read by the agents; the live ones may change while it runs. */
 export interface CvSettings {
   readonly width: number;
   readonly height: number;
@@ -46,7 +46,9 @@ export interface CvSettings {
 
 /** The state of a run that the agents share and that rules or runs may change. */
 export class CvWorld {
-  legitimacy: number;
+  #legitimacy: number;
+  /** The legitimacy parameter last seen, to notice when the user changes it. */
+  #legitimacySet: number;
   targetCopDensity: number;
   /** Kills during the current tick, reset after each tick's data sample. */
   killsByBlue = 0;
@@ -58,12 +60,37 @@ export class CvWorld {
 
   constructor(
     readonly grid: GridScape<Cell>,
-    readonly settings: CvSettings,
+    private readonly read: () => CvSettings,
   ) {
-    this.legitimacy = settings.legitimacy;
+    const settings = read();
+    this.#legitimacy = settings.legitimacy;
+    this.#legitimacySet = settings.legitimacy;
     this.targetCopDensity = settings.initialCopDensity;
     this.blueLegitimacy = settings.initialBlueLegitimacy;
     this.greenLegitimacy = settings.initialGreenLegitimacy;
+  }
+
+  /** The settings now, so a parameter changed during the run takes effect at once. */
+  get settings(): CvSettings {
+    return this.read();
+  }
+
+  /**
+   * Legitimacy now. Some runs change it as they go (legacy `scapeIterated`);
+   * setting the parameter during a run sets it too, as Ascape's setter did.
+   */
+  get legitimacy(): number {
+    const set = this.read().legitimacy;
+    if (set !== this.#legitimacySet) {
+      this.#legitimacySet = set;
+      this.#legitimacy = set;
+    }
+    return this.#legitimacy;
+  }
+
+  set legitimacy(value: number) {
+    void this.legitimacy; // Take up any change to the parameter first.
+    this.#legitimacy = value;
   }
 }
 

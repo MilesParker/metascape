@@ -148,15 +148,29 @@ export const gasIV1 = spiceModel({
 });
 
 /** Sugarscape IV-a. */
-export const gasIVa = spiceModel({
-  legacyClass: 'GAS_IV_a',
-  name: 'Sugarscape IV-a: Trade as in the book',
-  description:
-    'IV-1 plus trade as specified in Growing Artificial Societies: neighbors trade one unit ' +
-    'at a time at the geometric mean of their MRSs until neither gains.',
-  create: createGasIV1,
-  trade: tradeT,
-});
+export const gasIVa = {
+  ...spiceModel({
+    legacyClass: 'GAS_IV_a',
+    name: 'Sugarscape IV-a: Trade as in the book',
+    description:
+      'IV-1 plus trade as specified in Growing Artificial Societies: neighbors trade one unit ' +
+      'at a time at the geometric mean of their MRSs until neither gains.',
+    create: createGasIV1,
+    trade: tradeT,
+  }),
+  explorations: [
+    {
+      title: 'No trade',
+      description: 'Switch off Trade: watch the mean MRS and how many agents starve.',
+      rules: [{ scape: 'Spice Agents', disable: ['Trade'] }],
+    },
+    {
+      title: 'Trade before moving',
+      description:
+        'Drag Trade to the top of the Spice Agents rules to change the order of each tick.',
+    },
+  ],
+};
 
 /** Sugarscape IV-b. */
 export const gasIVb = spiceModel({

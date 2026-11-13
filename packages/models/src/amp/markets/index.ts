@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'amp-markets',
   name: 'Markets',
   collection: 'Eclipse AMP example models',
+  tags: ['markets', 'economics'],
   description:
     'Traders, firms and parcels of shares: a small ask-and-buy market in which firm prices follow the trades.',
   models: [markets],

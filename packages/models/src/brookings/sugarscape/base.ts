@@ -15,6 +15,7 @@ import {
   Scape,
   timeSeriesView,
   type Color,
+  type LegendEntry,
   type Provenance,
   type Rule,
   type Simulation,
@@ -79,6 +80,7 @@ export interface SugarDefaults {
 }
 
 const initialPopulation = int(400, {
+  group: 'Agents at setup',
   min: 0,
   max: 2500,
   label: 'Initial population',
@@ -91,54 +93,63 @@ const initialPopulation = int(400, {
 export function sugarParameters(defaults: SugarDefaults = {}) {
   return {
     sugarMoundness: real(defaults.sugarMoundness ?? 0.004, {
+      group: 'Landscape',
       min: 0,
       max: 0.1,
       label: 'Sugar moundness',
       description: 'Topology parameter of the two sugar peaks: larger values give narrower peaks.',
     }),
     minVision: int(defaults.minVision ?? 1, {
+      group: 'Agents at setup',
       min: 0,
       max: 24,
       label: 'Min vision',
       description: 'The minimum vision an agent may be given on initialization.',
     }),
     maxVision: int(defaults.maxVision ?? 6, {
+      group: 'Agents at setup',
       min: 0,
       max: 24,
       label: 'Max vision',
       description: 'The maximum vision an agent may be given on initialization.',
     }),
     minSugarMetabolism: int(1, {
+      group: 'Agents at setup',
       min: 0,
       max: 10,
       label: 'Min sugar metabolism',
       description: 'The minimum sugar metabolism an agent may be given on initialization.',
     }),
     maxSugarMetabolism: int(4, {
+      group: 'Agents at setup',
       min: 0,
       max: 10,
       label: 'Max sugar metabolism',
       description: 'The maximum sugar metabolism an agent may be given on initialization.',
     }),
     minInitialSugar: int(0, {
+      group: 'Agents at setup',
       min: 0,
       max: 200,
       label: 'Min initial sugar',
       description: 'The minimum sugar an agent may be given on initialization.',
     }),
     maxInitialSugar: int(30, {
+      group: 'Agents at setup',
       min: 0,
       max: 200,
       label: 'Max initial sugar',
       description: 'The maximum sugar an agent may be given on initialization.',
     }),
     minDeathAge: int(60, {
+      group: 'Agents at setup',
       min: 0,
       max: 500,
       label: 'Min death age',
       description: 'The minimum death age an agent may be given on initialization.',
     }),
     maxDeathAge: int(100, {
+      group: 'Agents at setup',
       min: 0,
       max: 500,
       label: 'Max death age',
@@ -179,6 +190,7 @@ export function spiceParameters() {
   return {
     minInitialSugar: sugar.minInitialSugar,
     maxInitialSugar: int(30, {
+      group: 'Agents at setup',
       min: 0,
       max: 200,
       label: 'Max initial sugar (sets max initial spice)',
@@ -189,24 +201,28 @@ export function spiceParameters() {
     minDeathAge: sugar.minDeathAge,
     maxDeathAge: sugar.maxDeathAge,
     spiceMoundness: real(0.008, {
+      group: 'Landscape',
       min: 0,
       max: 0.1,
       label: 'Spice moundness',
       description: 'Topology parameter of the two spice peaks.',
     }),
     minSpiceMetabolism: int(1, {
+      group: 'Agents at setup',
       min: 0,
       max: 10,
       label: 'Min spice metabolism',
       description: 'The minimum spice metabolism an agent may be given on initialization.',
     }),
     maxSpiceMetabolism: int(3, {
+      group: 'Agents at setup',
       min: 0,
       max: 10,
       label: 'Max spice metabolism',
       description: 'The maximum spice metabolism an agent may be given on initialization.',
     }),
     minInitialSpice: int(0, {
+      group: 'Agents at setup',
       min: 0,
       max: 200,
       label: 'Min initial spice',
@@ -411,6 +427,10 @@ export interface ViewPlan {
   title: string;
   cellColor: (cell: SugarCell) => Color;
   agentColor: (agent: SugarAgent) => Color;
+  /** What the cell colours mean, for the legend. */
+  cellLegend: LegendEntry[];
+  /** What the agent colours mean, for the legend. */
+  agentLegend: LegendEntry[];
   /** Further views, shown after the lattice. */
   readonly extra: ViewSpec[];
 }
@@ -421,13 +441,41 @@ export function gasBaseViews(): ViewPlan {
     title: 'Sugarscape',
     cellColor: sugarCellColor,
     agentColor: () => awt.red,
+    cellLegend: SUGAR_LEGEND,
+    agentLegend: [{ color: awt.red, label: 'Agent', mark: 'agent' }],
     extra: [],
   };
 }
 
+/** The sugar gradient, as legend entries. */
+export const SUGAR_LEGEND: LegendEntry[] = [
+  { color: sugarGradient(1), label: 'Most sugar' },
+  { color: sugarGradient(0.5), label: 'Some sugar' },
+  { color: sugarGradient(0), label: 'No sugar' },
+];
+
+/** The spice gradient, as legend entries. */
+export const SPICE_LEGEND: LegendEntry[] = [
+  { color: spiceGradient(1), label: 'Most spice' },
+  { color: spiceGradient(0.5), label: 'Some spice' },
+];
+
+/** The pollution gradient, as legend entries. */
+export const POLLUTION_LEGEND: LegendEntry[] = [
+  { color: pollutionGradient(1), label: 'Most pollution' },
+  { color: pollutionGradient(0.5), label: 'Some pollution' },
+  { color: pollutionGradient(0), label: 'No pollution' },
+];
+
 /** `GAS_SpiceBase.createViews`: as `GAS_Base`, with cells coloured by sugar or spice. */
 export function gasSpiceBaseViews(): ViewPlan {
-  return { ...gasBaseViews(), title: 'Sugar and spice', cellColor: spiceCellColor };
+  return {
+    ...gasBaseViews(),
+    title: 'Sugar and spice',
+    cellColor: spiceCellColor,
+    // Spice shows where it exceeds sugar, so the two gradients share the black end.
+    cellLegend: [...SPICE_LEGEND, ...SUGAR_LEGEND],
+  };
 }
 
 /** Adds the planned lattice view, then the planned charts. */
@@ -439,6 +487,7 @@ export function showViews(sim: Simulation, world: SugarscapeWorld, plan: ViewPla
       cellColor: plan.cellColor,
       occupantColor: plan.agentColor,
       occupantShape: 'circle',
+      legend: [...plan.agentLegend, ...plan.cellLegend],
     }),
   );
   for (const view of plan.extra) sim.addView(view);

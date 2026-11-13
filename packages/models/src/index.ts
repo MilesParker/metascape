@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Model } from '@metascape/engine';
-import { defineFamily, type ModelFamily } from './catalog';
-import { boids } from './boids/boids';
-import { epidemic } from './epidemic/epidemic';
-import { heatbugs } from './heatbugs/heatbugs';
-import { life } from './life/life';
-import { prisonersDilemma } from './prisoners-dilemma/prisoners-dilemma';
-import { schelling } from './schelling/schelling';
-import { sugarscape } from './sugarscape/sugarscape';
-import { wolfSheep } from './wolf-sheep/wolf-sheep';
+import type { ModelFamily } from './catalog';
+import { originals } from './originals';
+import {
+  boids,
+  epidemic,
+  heatbugs,
+  life,
+  prisonersDilemma,
+  schelling,
+  sugarscape,
+  wolfSheep,
+} from './originals';
 import { family as ampDemographicPd } from './amp/demographic-pd';
 import { family as ampEpidemic } from './amp/epidemic';
 import { family as ampHeatbugs } from './amp/heatbugs';
@@ -35,16 +38,18 @@ import { family as brookingsSpatialIpd } from './brookings/spatial-ipd';
 import { family as brookingsSugarscape } from './brookings/sugarscape';
 
 export { defineFamily, type ModelFamily } from './catalog';
-export { boids, epidemic, heatbugs, life, prisonersDilemma, schelling, sugarscape, wolfSheep };
-
-/** Models written for Metascape from the published descriptions, not derived from earlier code. */
-export const originals: ModelFamily = defineFamily({
-  id: 'metascape-examples',
-  name: 'Introductory examples',
-  collection: 'Metascape examples',
-  description: 'Well-known models written afresh for Metascape as short, readable examples.',
-  models: [life, schelling, sugarscape, heatbugs, wolfSheep, prisonersDilemma, boids, epidemic],
-});
+export {
+  boids,
+  epidemic,
+  heatbugs,
+  life,
+  originals,
+  prisonersDilemma,
+  schelling,
+  sugarscape,
+  wolfSheep,
+};
+export { familyLoaders } from './loaders';
 
 /** Every family of models, in the order a model picker should list them. */
 export const catalog: readonly ModelFamily[] = [

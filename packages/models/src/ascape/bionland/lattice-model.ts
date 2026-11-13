@@ -17,6 +17,7 @@ import {
   Scape,
   timeSeriesView,
   type Color,
+  type LegendEntry,
   type Model,
   type ParameterSchema,
   type Rule,
@@ -260,6 +261,30 @@ export interface LatticeWorld {
   readonly ring: boolean;
 }
 
+/** What the tile colours of a style mean. */
+function tileLegend(style: TileStyle): LegendEntry[] {
+  switch (style) {
+    case 'green':
+      return [{ color: 0x00ff00, label: 'Tile' }];
+    case 'lightGray':
+      return [{ color: 0xc0c0c0, label: 'Tile' }];
+    case 'black':
+      return [{ color: 0x000000, label: 'Tile' }];
+    case 'mixed':
+      return [
+        { color: rgb(255, 0, 0), label: 'Red energy on the tile' },
+        { color: rgb(255, 0.8 * 255, 0), label: 'Orange energy on the tile' },
+        { color: rgb(0, 0, 255), label: 'Blue energy on the tile' },
+      ];
+    case 'pure':
+      return [
+        { color: rgb(255, 0, 0), label: 'Red energy on the tile' },
+        { color: rgb(0, 255, 0), label: 'Orange energy on the tile' },
+        { color: rgb(0, 0, 255), label: 'Blue energy on the tile' },
+      ];
+  }
+}
+
 function tileColor(style: TileStyle, tile: BionTile): Color {
   const [r, o, b] = tile.energy;
   switch (style) {
@@ -460,6 +485,16 @@ function buildLattice(sim: Simulation, config: LatticeConfig): void {
       occupantColor: (bion) =>
         config.species === 'one' ? 0x000000 : (SPECIES_COLORS[bion.species] as Color),
       occupantShape: config.occupantShape,
+      legend: [
+        ...(config.species === 'one'
+          ? [{ color: 0x000000, label: 'Bion', mark: 'agent' as const }]
+          : SPECIES.map((name, i) => ({
+              color: SPECIES_COLORS[i] as Color,
+              label: `${name} bion`,
+              mark: 'agent' as const,
+            }))),
+        ...tileLegend(config.tiles),
+      ],
     }),
   );
   sim.addView(

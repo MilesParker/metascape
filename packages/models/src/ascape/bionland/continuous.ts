@@ -199,8 +199,11 @@ export const stepQ = defineModel({
         title: 'Map',
         scape: territory,
         color: (b) => SPECIES_COLORS[b.species] as Color,
+        legend: SPECIES.map((name, i) => ({
+          color: SPECIES_COLORS[i] as Color,
+          label: `${name} bion`,
+        })),
         radius: () => 5,
-        background: 0xffffff,
       }),
     );
     sim.addView(timeSeriesView({ title: 'Distance to prey', series: ['Mean distance to prey'] }));

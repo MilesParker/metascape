@@ -277,6 +277,12 @@ export const heatbugs = defineModel({
         cellColor: (cell) => rgb(Math.floor(Math.min(cell.heat / p.maximumHeat, 1) * 255), 0, 0),
         occupantColor: () => colors.green,
         occupantShape: 'circle',
+        legend: [
+          { color: colors.green, label: 'Heat bug', mark: 'agent' },
+          { color: rgb(255, 0, 0), label: 'Maximum heat' },
+          { color: rgb(128, 0, 0), label: 'Half the maximum' },
+          { color: rgb(0, 0, 0), label: 'No heat' },
+        ],
       }),
     );
     sim.addView(

@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-firms',
   name: 'Emergence of Firms',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['economics'],
   description:
     'Employees choose their effort and their firm under local increasing returns; firms form and a skewed distribution of firm sizes emerges.',
   models: [firmsModel],

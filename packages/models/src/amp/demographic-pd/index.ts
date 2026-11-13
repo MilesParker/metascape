@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'amp-demographic-pd',
   name: "Demographic Prisoner's Dilemma (AMP)",
   collection: 'Eclipse AMP example models',
+  tags: ['game theory', 'demography'],
   description:
     "Epstein's spatial Prisoner's Dilemma with births and deaths: strategies spread by reproduction, not imitation.",
   models: [demographicPd],

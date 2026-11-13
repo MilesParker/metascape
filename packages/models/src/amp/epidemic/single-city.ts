@@ -22,6 +22,7 @@ import {
   Creature,
   Individual,
   Status,
+  STATUS_LABELS,
   statusColors,
   statusNames,
   type DiseaseParameters,
@@ -171,6 +172,11 @@ export function buildCity<S extends ParameterSchema>(
     gridView<Place, Creature>({
       title: 'City',
       grid: city,
+      legend: statusNames.map((name) => ({
+        color: statusColors[name],
+        label: STATUS_LABELS[name],
+        mark: 'agent' as const,
+      })),
       occupantColor: (o) => o.color(),
       occupantShape: 'circle',
       background: colors.white,
@@ -181,11 +187,17 @@ export function buildCity<S extends ParameterSchema>(
       title: 'Individuals by status',
       series: [...statusNames],
       colors: palette,
+      labels: STATUS_LABELS,
       yMin: 0,
     }),
   );
   sim.addView(
-    barsView({ title: 'Individuals by status now', series: [...statusNames], colors: palette }),
+    barsView({
+      title: 'Individuals by status now',
+      series: [...statusNames],
+      colors: palette,
+      labels: STATUS_LABELS,
+    }),
   );
   if (contacts) {
     sim.addView(
@@ -194,6 +206,10 @@ export function buildCity<S extends ParameterSchema>(
         nodes: individuals,
         network: contacts,
         color: (o) => o.color(),
+        legend: statusNames.map((name) => ({
+          color: statusColors[name],
+          label: STATUS_LABELS[name],
+        })),
         layout: 'force',
       }),
     );

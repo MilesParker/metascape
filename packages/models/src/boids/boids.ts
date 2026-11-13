@@ -49,30 +49,35 @@ const parameters = {
     description: 'How far a boid sees its neighbors.',
   }),
   minSeparation: real(2.5, {
+    live: true,
     min: 0,
     max: 50,
     label: 'Minimum separation',
     description: 'Boids closer than this push each other apart.',
   }),
   separationWeight: real(1.5, {
+    live: true,
     min: 0,
     max: 5,
     label: 'Separation weight',
     description: 'How strongly a boid steers away from crowding neighbors.',
   }),
   alignmentWeight: real(0.8, {
+    live: true,
     min: 0,
     max: 5,
     label: 'Alignment weight',
     description: 'How strongly a boid matches the mean velocity of its neighbors.',
   }),
   cohesionWeight: real(0.08, {
+    live: true,
     min: 0,
     max: 5,
     label: 'Cohesion weight',
     description: 'How strongly a boid steers toward the center of its neighbors.',
   }),
   maxSpeed: real(1, {
+    live: true,
     min: 0.1,
     max: 10,
     label: 'Maximum speed',
@@ -80,6 +85,7 @@ const parameters = {
       'Upper limit on speed, in space units per tick. Boids never go slower than 40% of it.',
   }),
   maxTurn: real(0.35, {
+    live: true,
     min: 0.01,
     max: Math.PI,
     label: 'Maximum turn',
@@ -89,11 +95,14 @@ const parameters = {
 
 /** Steering rule: reads the current state, writes only `nextVx`/`nextVy`. */
 function steering(sim: Simulation<typeof parameters>, scape: ContinuousScape<Boid>): Rule<Boid> {
-  const p = sim.parameters;
-  const minSpeed = 0.4 * p.maxSpeed;
   return {
     name: 'steer',
+    description:
+      'Steer away from crowding, toward the mean heading and toward the centre of neighbours in sight.',
     execute(boid) {
+      // Read afresh each time, so the weights can change while the flock flies.
+      const p = sim.parameters;
+      const minSpeed = 0.4 * p.maxSpeed;
       let sepX = 0;
       let sepY = 0;
       let sumVx = 0;
@@ -162,8 +171,27 @@ const headingColor = gradient(
  */
 export const boids = defineModel({
   name: 'Boids',
+  summary: 'Birds follow three local steering rules, and a flock forms with no leader.',
+  tags: ['flocking', 'emergence'],
   description:
     "Craig Reynolds' boids (1987): each bird steers by three local rules, separation from crowding neighbors, alignment with the mean velocity of neighbors in sight, and cohesion toward their center, yet the group flocks without any leader or global plan. The model runs in a wrapped square space with synchronous updating and tracks polarization (the length of the mean unit velocity, near 0 for disorder and 1 for perfect alignment) and the mean distance to the nearest neighbor.",
+  explorations: [
+    {
+      title: 'Cohesion only',
+      description: 'Switch off separation and alignment: the flock collapses into tight balls.',
+      parameters: { separationWeight: 0, alignmentWeight: 0, cohesionWeight: 0.5 },
+    },
+    {
+      title: 'No alignment',
+      description: 'Without matching headings, groups form but never travel together.',
+      parameters: { alignmentWeight: 0 },
+    },
+    {
+      title: 'Nimble birds',
+      description: 'Let them turn faster and watch the polarization chart.',
+      parameters: { maxTurn: 1.2 },
+    },
+  ],
   parameters,
   build(sim) {
     const p = sim.parameters;
@@ -215,6 +243,12 @@ export const boids = defineModel({
         title: 'Flock',
         scape,
         heading: (boid) => boid.heading,
+        legend: [
+          { color: headingColor(0.25), label: 'Heading up' },
+          { color: headingColor(0.5), label: 'Heading right' },
+          { color: headingColor(0.75), label: 'Heading down' },
+          { color: headingColor(0), label: 'Heading left' },
+        ],
         color: (boid) => headingColor((boid.heading + Math.PI) / (2 * Math.PI)),
         radius: () => 1,
       }),

@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'amp-sir',
   name: 'SIR (system dynamics)',
   collection: 'Eclipse AMP example models',
+  tags: ['epidemics', 'system dynamics'],
   description:
     'The classic susceptible, infected and recovered compartment model as stocks and flows.',
   models: [sir],

@@ -43,6 +43,16 @@ export const statusColors: Readonly<Record<(typeof statusNames)[number], Color>>
   dead: colors.black,
 };
 
+/** Readable names of the statuses, for legends and charts. */
+export const STATUS_LABELS: Readonly<Record<(typeof statusNames)[number], string>> = {
+  susceptible: 'Susceptible',
+  exposed: 'Exposed',
+  asymptomInfectious: 'Infectious, no symptoms',
+  symptomInfectious: 'Infectious, with symptoms',
+  recovered: 'Recovered',
+  dead: 'Dead',
+};
+
 /** The disease parameters every epidemic variant shares. */
 export interface DiseaseParameters {
   readonly initialInfectionProbability: number;

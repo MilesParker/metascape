@@ -108,6 +108,9 @@ export class HeatBug extends Occupant<HeatCell> {
  */
 export const heatbugs = defineModel({
   name: 'Heatbugs',
+  summary:
+    'Bugs that like a certain warmth give off heat and huddle into clusters that wander and dissolve.',
+  tags: ['ecology', 'emergence'],
   description:
     'The Heatbugs model from the Swarm simulation system (Santa Fe Institute, Minar, Burkhart, ' +
     'Langton and Askenazi, 1996). Bugs radiate heat and try to sit at a preferred temperature, ' +
@@ -217,6 +220,12 @@ export const heatbugs = defineModel({
       gridView<HeatCell, HeatBug>({
         title: 'Heat and bugs',
         grid: world,
+        legend: [
+          { color: colors.green, label: 'Bug', mark: 'agent' },
+          { color: heatColor(1), label: 'Hottest' },
+          { color: heatColor(0.5), label: 'Warm' },
+          { color: heatColor(0), label: 'Cold' },
+        ],
         cellColor: (cell) => heatColor(cell.heat / maxHeat),
         occupantColor: () => colors.green,
         occupantShape: 'circle',

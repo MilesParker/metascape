@@ -178,6 +178,10 @@ export const norms = defineModel({
       gridView<NormCell>({
         title: 'Strategy',
         grid: ring,
+        legend: [
+          { color: colors.blue, label: 'Holds norm 0' },
+          { color: colors.yellow, label: 'Holds norm 1' },
+        ],
         cellColor: (cell) => (cell.strategy === 0 ? colors.blue : colors.yellow),
       }),
     );
@@ -186,6 +190,11 @@ export const norms = defineModel({
       gridView<NormCell>({
         title: 'Radius',
         grid: ring,
+        legend: [
+          { color: shade(0), label: 'Radius 1' },
+          { color: shade(0.5), label: 'Radius 3' },
+          { color: shade(1), label: 'Radius 5 or more' },
+        ],
         cellColor: (cell) => shade(Math.min(1, Math.max(0, (cell.radius - 1) / 4))),
       }),
     );
@@ -208,6 +217,7 @@ export const norms = defineModel({
         title: 'Norms held',
         series: ['strategy0', 'strategy1'],
         colors: { strategy0: colors.blue, strategy1: colors.yellow },
+        labels: { strategy0: 'Norm 0', strategy1: 'Norm 1' },
       }),
     );
   },

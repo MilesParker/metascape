@@ -100,6 +100,10 @@ export const abDiffusion = defineModel({
         title: 'Cells',
         grid: cells,
         cellColor: (cell) => (cell.isA ? rgb(255, 255, 0) : rgb(0, 0, 0)),
+        legend: [
+          { color: rgb(255, 255, 0), label: 'Plays A' },
+          { color: rgb(0, 0, 0), label: 'Plays B' },
+        ],
       }),
     );
     sim.addView(

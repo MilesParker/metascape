@@ -326,6 +326,10 @@ export function buildDemographicPd(sim: Simulation<PdParameters>, options: PdBui
       background: colors.white,
       occupantColor: strategyColor,
       occupantShape: 'circle',
+      legend: [
+        { color: colors.blue, label: 'Cooperates', mark: 'agent' },
+        { color: colors.red, label: 'Defects', mark: 'agent' },
+      ],
     }),
   );
   for (const view of pdCharts()) sim.addView(view);

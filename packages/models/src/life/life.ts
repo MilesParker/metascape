@@ -51,12 +51,33 @@ export class LifeCell extends Cell {
  */
 export const life = defineModel({
   name: 'Game of Life',
+  fields: { on: 'Alive', next: null },
+  summary:
+    'Cells live or die by counting their neighbours; gliders and oscillators emerge from three simple rules.',
+  tags: ['cellular automata', 'emergence'],
   description:
     "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a " +
     'two-dimensional cellular automaton in which a live cell survives with two or three live ' +
     'neighbors and a dead cell comes alive with exactly three. Simple local rules produce ' +
     'oscillators, gliders that travel across the lattice and long-lived chaotic growth, and ' +
     'it is the standard demonstration of emergence in agent-based systems.',
+  explorations: [
+    {
+      title: 'Start from one glider',
+      description: 'Five live cells that crawl diagonally forever on the wrapped lattice.',
+      parameters: { pattern: 'glider' },
+    },
+    {
+      title: 'The R-pentomino',
+      description: 'Five cells that take over a thousand ticks to settle down.',
+      parameters: { pattern: 'r-pentomino' },
+    },
+    {
+      title: 'Edges that kill',
+      description: 'Switch wrapping off: cells beyond the edge stay dead, and gliders crash.',
+      parameters: { wrap: false },
+    },
+  ],
   parameters: {
     width: int(60, { min: 3, max: 400, label: 'Width', description: 'Number of columns.' }),
     height: int(60, { min: 3, max: 400, label: 'Height', description: 'Number of rows.' }),
@@ -125,6 +146,10 @@ export const life = defineModel({
       gridView<LifeCell>({
         title: 'Cells',
         grid: cells,
+        legend: [
+          { color: colors.green, label: 'Alive' },
+          { color: rgb(24, 28, 34), label: 'Dead' },
+        ],
         cellColor: (cell) => (cell.on ? colors.green : rgb(24, 28, 34)),
       }),
     );

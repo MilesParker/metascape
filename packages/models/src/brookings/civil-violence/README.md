@@ -67,6 +67,12 @@ The legacy implementation is by Miles Parker, The Brookings Institution. Licence
 
 ## Deviations
 
+- Live parameters: the agents read their settings when they use them, so legitimacy, the active
+  threshold, both visions, the jail term and (Model II) fission probability, death age and
+  evaporation can change during a run, as Ascape's setters allowed. Setting legitimacy during a
+  run sets the current legitimacy, which Runs 3 and 4 then keep changing from. Each model marks
+  live only those that show an effect in a short run: the calm runs (Model I Runs 1, 3-5 base
+  and 4; Model II Run 1) offer fewer. Cop density stays restart-only.
 - `CVModelInterGroupRetr` throws in Ascape on construction (it selects `DECIDE_STATE_RETRIBUTION`,
   which `CVModelInterGroup` never adds, only comments out). The port runs the evidently intended
   behaviour: the retaliation decision rule replaces the ordinary one in the same position.

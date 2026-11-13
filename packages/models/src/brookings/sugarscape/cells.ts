@@ -210,19 +210,22 @@ export function pollutionDiffusionRule(): Rule<PollutableSugarCell> {
  * `iteration / (2 * seasonLength)` exceeds 0.5, so with length 50 ticks 1-50
  * are winter in the top half.
  */
-export function sugarSeasonalGrowBackRule(epsilon: number, seasonLength: number): Rule<SugarCell> {
+export function sugarSeasonalGrowBackRule(
+  epsilon: () => number,
+  seasonLength: () => number,
+): Rule<SugarCell> {
   return {
     name: 'Sugar Grow Back Seasonally',
     execute(cell) {
       const iter = cell.sim.tick;
-      const period = seasonLength * 2;
+      const period = seasonLength() * 2;
       const fraction = Math.fround(iter / period) - Math.trunc(iter / period);
       const top = cell.y < 25;
       if (fraction > 0.5) {
         if (top) cell.sugar.growBack1();
-        else cell.sugar.growBackEpsilon(epsilon);
+        else cell.sugar.growBackEpsilon(epsilon());
       } else if (top) {
-        cell.sugar.growBackEpsilon(epsilon);
+        cell.sugar.growBackEpsilon(epsilon());
       } else {
         cell.sugar.growBack1();
       }

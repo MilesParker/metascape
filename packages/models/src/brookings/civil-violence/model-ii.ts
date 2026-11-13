@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineIntergroupModel } from './core';
+import { defineIntergroupModel, LIVE_INTERGROUP } from './core';
 
 const MODEL_II =
   "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; " +
@@ -48,6 +48,8 @@ export const cvModelIIRun1 = defineIntergroupModel(
     variant: { kind: 'intergroup' },
   },
   { initialCopDensity: 0, legitimacy: 0.9 },
+  // Too calm for vision or the memory of killings to matter in a short run.
+  ['legitimacy', 'activeThreshold', 'fissionProbability', 'deathAge'],
 );
 
 /** `CVModelIIRun2and3`: legitimacy 0.80, no cops. */
@@ -70,4 +72,6 @@ export const cvModelIIRun4aandb = defineIntergroupModel(
     variant: { kind: 'intergroup' },
   },
   { initialCopDensity: 0.04, legitimacy: 0.8 },
+  // With cops, their vision and the jail term matter too.
+  [...LIVE_INTERGROUP, 'copVision', 'jailTerm'],
 );

@@ -56,18 +56,21 @@ const parameters = {
     description: 'People infected at the start (capped at the population).',
   }),
   transmission: real(0.1, {
+    live: true,
     min: 0,
     max: 1,
     label: 'Transmission probability',
     description: 'Chance per tick that one infected neighbor infects a susceptible person.',
   }),
   infectiousPeriod: int(8, {
+    live: true,
     min: 1,
     max: 200,
     label: 'Infectious period',
     description: 'Ticks a person stays infected before recovering.',
   }),
   immunityPeriod: int(0, {
+    live: true,
     min: 0,
     max: 1000,
     label: 'Immunity period',
@@ -85,8 +88,28 @@ const stateColor = (person: Person): number =>
 
 export const epidemic = defineModel({
   name: 'Epidemic (SIR on a small-world network)',
+  summary: 'An infection spreads over a small-world network of contacts until it burns out.',
+  tags: ['epidemics', 'networks'],
   description:
     'A susceptible-infected-recovered epidemic spreading over a Watts-Strogatz small-world network (Watts and Strogatz, Nature, 1998) with the compartmental logic of Kermack and McKendrick (1927). Each susceptible person is infected with probability 1 - (1 - transmission)^n, where n is the number of infected neighbors; infected people recover after a fixed period and are immune, permanently or for a limited time. Updating is synchronous, so results do not depend on the order of agents. A few random shortcuts make the outbreak far faster than on a pure ring.',
+  explorations: [
+    {
+      title: 'Add shortcuts',
+      description:
+        'Rewire a fifth of the links at random: the outbreak no longer creeps round the ring.',
+      parameters: { rewire: 0.2 },
+    },
+    {
+      title: 'Immunity that wears off',
+      description: 'Recovered people become susceptible again after 20 ticks; look for waves.',
+      parameters: { immunityPeriod: 20 },
+    },
+    {
+      title: 'A less catching disease',
+      description: 'Halve the transmission probability while it spreads.',
+      parameters: { transmission: 0.05 },
+    },
+  ],
   parameters,
   build(sim) {
     const p = sim.parameters;
@@ -116,16 +139,23 @@ export const epidemic = defineModel({
             for (let i = 0; i < contacts.length; i++) {
               if (contacts[i]!.health === Health.Infected) infected++;
             }
-            if (infected > 0 && people.random.chance(1 - Math.pow(1 - p.transmission, infected))) {
+            if (
+              infected > 0 &&
+              people.random.chance(1 - Math.pow(1 - sim.parameters.transmission, infected))
+            ) {
               person.nextHealth = Health.Infected;
             }
             break;
           }
           case Health.Infected:
-            if (person.timer + 1 >= p.infectiousPeriod) person.nextHealth = Health.Recovered;
+            if (person.timer + 1 >= sim.parameters.infectiousPeriod)
+              person.nextHealth = Health.Recovered;
             break;
           case Health.Recovered:
-            if (p.immunityPeriod > 0 && person.timer + 1 >= p.immunityPeriod) {
+            if (
+              sim.parameters.immunityPeriod > 0 &&
+              person.timer + 1 >= sim.parameters.immunityPeriod
+            ) {
               person.nextHealth = Health.Susceptible;
             }
             break;
@@ -164,6 +194,11 @@ export const epidemic = defineModel({
         title: 'Contact network',
         nodes: people,
         network,
+        legend: [
+          { color: colors.blue, label: 'Susceptible' },
+          { color: colors.red, label: 'Infected' },
+          { color: colors.green, label: 'Recovered' },
+        ],
         color: stateColor,
         layout: 'circle',
       }),

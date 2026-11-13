@@ -137,6 +137,10 @@ Bios projects; it says nothing about the data and does not apply to Metascape.
 
 ## Deviations from the legacy behaviour
 
+- Live parameters: the stop year, harvest adjustment, location harvest variance and water source
+  distance (all models), maize gift to child (household models) and base nutrition need (the
+  people and clan models) are read when used, so they can change during a run. Ranges, the years
+  of stock (which sizes each household's store) and the start year stay restart-only.
 - Random numbers come from the engine's seeded streams (one per scape), so runs do not reproduce
   Java's sequence. `java-random.ts` reimplements Java's `nextGaussian` (polar method),
   Ascape's inclusive `randomInRange` and Java's `(int)` cast. Where Ascape shuffled a rank and

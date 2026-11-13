@@ -1,0 +1,3547 @@
+{
+  "families": [
+    {
+      "id": "metascape-examples",
+      "name": "Introductory examples",
+      "collection": "Metascape examples",
+      "description": "Well-known models written afresh for Metascape as short, readable examples.",
+      "tags": [],
+      "models": [
+        "game-of-life",
+        "schelling-segregation",
+        "sugarscape",
+        "heatbugs",
+        "wolf-sheep-predation",
+        "demographic-prisoner-s-dilemma",
+        "boids",
+        "epidemic-sir-on-a-small-world-network"
+      ]
+    },
+    {
+      "id": "brookings-sugarscape",
+      "name": "Sugarscape",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Epstein and Axtell's Sugarscape as implemented in Ascape, following the chapters of Growing Artificial Societies: foraging, growback, seasons and pollution (II), sex, inheritance and culture (III), and spice and trade (IV).",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "path": "book",
+      "models": [
+        "sugarscape-ii-1-immediate-growback",
+        "sugarscape-ii-2-unit-growback",
+        "sugarscape-ii-3-carrying-capacity",
+        "sugarscape-ii-4-wealth-deciles",
+        "sugarscape-ii-5-neighbor-networks",
+        "sugarscape-ii-6-migration-from-a-corner",
+        "sugarscape-ii-7-seasons",
+        "sugarscape-ii-8-pollution",
+        "sugarscape-spice-ii-1-sugar-and-spice-immediate-growback",
+        "sugarscape-spice-ii-2-sugar-and-spice-unit-growback",
+        "sugarscape-iii-2-sexual-reproduction-and-vision",
+        "sugarscape-iii-3-sexual-reproduction-and-metabolism",
+        "sugarscape-iii-6-cultural-transmission",
+        "sugarscape-iv-1-sugar-and-spice-no-trade",
+        "sugarscape-iv-a-trade-as-in-the-book",
+        "sugarscape-iv-b-one-big-trade",
+        "sugarscape-iv-c-best-offer-matched",
+        "sugarscape-iv-d-negotiation",
+        "sugarscape-iv-e-old-age-and-reproduction-no-trade",
+        "sugarscape-iv-f-reproduction-with-trade-as-in-the-book",
+        "sugarscape-iv-g-reproduction-with-one-big-trade",
+        "sugarscape-iv-h-reproduction-with-best-offer-matched",
+        "sugarscape-iv-i-reproduction-with-negotiation"
+      ]
+    },
+    {
+      "id": "brookings-anasazi",
+      "name": "Artificial Anasazi",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Agent-based reconstruction of the Kayenta Anasazi of Long House Valley, Arizona, AD 800-1350: households farm maize under the reconstructed climate, and their numbers are compared with the archaeological record of growth and collapse.",
+      "tags": [
+        "archaeology",
+        "demography",
+        "resources"
+      ],
+      "models": [
+        "artificial-anasazi-long-house-valley-lhv",
+        "artificial-anasazi-long-house-valley-greedy-households-lhvgreedy",
+        "artificial-anasazi-long-house-valley-individual-people-lhvdisaggregate",
+        "artificial-anasazi-long-house-valley-clans-lhvclan"
+      ]
+    },
+    {
+      "id": "brookings-civil-violence",
+      "name": "Civil Violence",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Joshua Epstein's civil violence models: rebellion against a central authority (Model I) and violence between two groups with cops as peacekeepers (Model II), with the runs of the paper.",
+      "tags": [
+        "conflict"
+      ],
+      "models": [
+        "civil-violence-model-i-cvmodel",
+        "civil-violence-model-i",
+        "civil-violence-model-i-run-1",
+        "civil-violence-model-i-run-2",
+        "civil-violence-model-i-runs-3-5-base",
+        "civil-violence-model-i-run-3",
+        "civil-violence-model-i-run-4",
+        "civil-violence-model-i-run-5",
+        "civil-violence-model-ii-cvmodelintergroup",
+        "civil-violence-model-ii-with-retaliation-cvmodelintergroupretr",
+        "civil-violence-model-ii",
+        "civil-violence-model-ii-run-1",
+        "civil-violence-model-ii-runs-2-and-3",
+        "civil-violence-model-ii-runs-4a-and-4b"
+      ]
+    },
+    {
+      "id": "brookings-norms",
+      "name": "Norms",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Learning to be thoughtless: a ring of agents who adopt a norm from their neighbors and adapt how many neighbors they consult.",
+      "tags": [
+        "social norms"
+      ],
+      "models": [
+        "norms"
+      ]
+    },
+    {
+      "id": "brookings-retirement",
+      "name": "Retirement",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Coordination in transient social networks: rational, random and imitating agents decide when to retire.",
+      "tags": [
+        "social norms",
+        "economics"
+      ],
+      "models": [
+        "retirement-small-world-population",
+        "retirement-population",
+        "retirement-coupled-populations"
+      ]
+    },
+    {
+      "id": "brookings-classes",
+      "name": "Emergence of Classes",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "A multi-agent bargaining model in which conventions about fair shares, and between tagged groups unequal shares, emerge from local encounters.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "models": [
+        "emergence-of-classes-model-one",
+        "emergence-of-classes-figure-2",
+        "emergence-of-classes-figure-3",
+        "emergence-of-classes-model-two",
+        "emergence-of-classes-figure-6",
+        "emergence-of-classes-figure-7",
+        "emergence-of-classes-figure-8",
+        "emergence-of-classes-figure-9",
+        "emergence-of-classes-model-peyton"
+      ]
+    },
+    {
+      "id": "brookings-firms",
+      "name": "Emergence of Firms",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Employees choose their effort and their firm under local increasing returns; firms form and a skewed distribution of firm sizes emerges.",
+      "tags": [
+        "economics"
+      ],
+      "models": [
+        "emergence-of-firms"
+      ]
+    },
+    {
+      "id": "brookings-prisoners-dilemma",
+      "name": "Demographic Prisoner's Dilemma",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Joshua Epstein's demographic Prisoner's Dilemma: fixed-strategy players move, play their neighbors, reproduce when rich and die when broke, and zones of cooperation emerge.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "models": [
+        "demographic-pd-pd2d",
+        "demographic-pd-pd2dsmallworld",
+        "demographic-pd-pd2dcellular",
+        "demographic-pd-pd2ddemo"
+      ]
+    },
+    {
+      "id": "brookings-spatial-ipd",
+      "name": "Spatial Iterated Prisoner's Dilemma (GA)",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Players on a lattice evolve memory-based strategies for the iterated Prisoner's Dilemma with mutation and crossover, choosing partners at random, by genetic similarity or by an evolved preference.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "models": [
+        "spatial-ipd-ga-pd2dga",
+        "spatial-ipd-ga-pd2dga-random",
+        "spatial-ipd-ga-pd2dga-closest",
+        "spatial-ipd-ga-pd2dga-furthest",
+        "spatial-ipd-ga-pd2dga-preference",
+        "spatial-ipd-ga-pd2dgamulti",
+        "spatial-ipd-ga-pd2dgamultiple",
+        "spatial-ipd-ga-pd2dgamultipleto"
+      ]
+    },
+    {
+      "id": "brookings-diffusion",
+      "name": "Diffusion",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Diffusion in social networks: cells adopt a behavior by its inherent payoff and how many neighbors have adopted it, with random error. Two, three and six actions.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "models": [
+        "diffusion-ab-diffusion-model",
+        "diffusion-abc-diffusion-model",
+        "diffusion-abcdef-diffusion-model",
+        "diffusion-big-abcdef-diffusion-model",
+        "diffusion-big-abcdef-diffusion-model-black-and-white"
+      ]
+    },
+    {
+      "id": "brookings-life",
+      "name": "Conway's Life",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "John Conway's cellular automaton in three Ascape forms: the full model, a small-world neighborhood variant and a condensed version.",
+      "tags": [
+        "cellular automata"
+      ],
+      "models": [
+        "conway-s-life-smallconwaylife",
+        "conway-s-life-conwaylife",
+        "conway-s-life-conwaylifesmallworld"
+      ]
+    },
+    {
+      "id": "brookings-bb",
+      "name": "Busy Beavers (bb)",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "Beavers search for small Turing machines that write the most ones, using a fixed rule, random rules or genetic algorithms.",
+      "tags": [
+        "computation"
+      ],
+      "models": [
+        "busy-beavers-bb"
+      ]
+    },
+    {
+      "id": "brookings-coordination-game",
+      "name": "Coordination Game (Ascape manual tutorial)",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "The tutorial of the Ascape manual: a coordination game on a lattice, built up in five steps from imitation of neighbors to births, deaths and social networks.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "path": "tutorial",
+      "models": [
+        "coordination-game-step-1",
+        "coordination-game-step-2",
+        "coordination-game-step-3",
+        "coordination-game-step-4",
+        "coordination-game-step-5"
+      ]
+    },
+    {
+      "id": "brookings-simple",
+      "name": "Simple",
+      "collection": "Brookings Institution models (from Ascape)",
+      "description": "The smallest Ascape example: one agent whose happiness doubles every tick and an environment that sometimes breaks it.",
+      "tags": [
+        "tutorial"
+      ],
+      "models": [
+        "simple"
+      ]
+    },
+    {
+      "id": "ascape-bionland",
+      "name": "Bionland",
+      "collection": "Ascape example models",
+      "description": "A step-by-step Ascape tutorial: a lattice with randomly placed bions gains movement, three species that chase one another, energy, reproduction, diffusion, statistics and other spaces, up to the full model.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "path": "tutorial",
+      "models": [
+        "bionland-step-a",
+        "bionland-step-b",
+        "bionland-step-c",
+        "bionland-step-d",
+        "bionland-step-e",
+        "bionland-step-f",
+        "bionland-step-g",
+        "bionland-step-h",
+        "bionland-step-i",
+        "bionland-step-j",
+        "bionland-step-k",
+        "bionland-step-l",
+        "bionland-step-m",
+        "bionland-step-p",
+        "bionland-step-q",
+        "bionland-step-r",
+        "bionland-step-s",
+        "bionland-full-model",
+        "bionland-data-run-full-model",
+        "bionland-data-run-n",
+        "bionland-data-run-o"
+      ]
+    },
+    {
+      "id": "ascape-boids",
+      "name": "Boids",
+      "collection": "Ascape example models",
+      "description": "Craig Reynolds' Boids (1987) as implemented in Ascape: flocking in a wrapped plane from prioritized local steering rules, with a red team that only avoids obstacles and a blue team that flocks.",
+      "tags": [
+        "flocking"
+      ],
+      "models": [
+        "boids-ascape"
+      ]
+    },
+    {
+      "id": "ascape-traffic",
+      "name": "Traffic",
+      "collection": "Ascape example models",
+      "description": "A simple traffic model demonstrating that simple rules can elicit complex traffic behavior such as rolling backups.",
+      "tags": [
+        "traffic"
+      ],
+      "models": [
+        "traffic-model-ascape"
+      ]
+    },
+    {
+      "id": "amp-stupid-model",
+      "name": "StupidModel",
+      "collection": "Eclipse AMP example models",
+      "description": "Steps 1, 2, 3 and 5 of the StupidModel teaching series: bugs wander a grid, then grow, then live on habitats that produce food.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "path": "tutorial",
+      "models": [
+        "stupidmodel-1",
+        "stupidmodel-2",
+        "stupidmodel-3",
+        "stupidmodel-5"
+      ]
+    },
+    {
+      "id": "amp-wiki-example",
+      "name": "Wiki Example",
+      "collection": "Eclipse AMP example models",
+      "description": "Individuals of different ages on a city grid seek out others of their own age and settle beside them.",
+      "tags": [
+        "tutorial"
+      ],
+      "models": [
+        "wiki-example"
+      ]
+    },
+    {
+      "id": "amp-heatbugs",
+      "name": "Heatbugs (AMP)",
+      "collection": "Eclipse AMP example models",
+      "description": "Bugs that warm their surroundings and seek a preferred temperature on a heat-diffusing grid.",
+      "tags": [
+        "ecology"
+      ],
+      "models": [
+        "heatbugs-amp"
+      ]
+    },
+    {
+      "id": "amp-demographic-pd",
+      "name": "Demographic Prisoner's Dilemma (AMP)",
+      "collection": "Eclipse AMP example models",
+      "description": "Epstein's spatial Prisoner's Dilemma with births and deaths: strategies spread by reproduction, not imitation.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "models": [
+        "demographic-prisoner-s-dilemma-amp"
+      ]
+    },
+    {
+      "id": "amp-epidemic",
+      "name": "Epidemic (AMP)",
+      "collection": "Eclipse AMP example models",
+      "description": "Epidemic spread through individuals on a grid, with variants that record contacts, add rats and fleas, or link several cities by migration.",
+      "tags": [
+        "epidemics"
+      ],
+      "models": [
+        "epidemic-amp",
+        "epidemic-amp-contact",
+        "epidemic-amp-plague",
+        "epidemic-amp-regional",
+        "epidemic-amp-regional-periods"
+      ]
+    },
+    {
+      "id": "amp-markets",
+      "name": "Markets",
+      "collection": "Eclipse AMP example models",
+      "description": "Traders, firms and parcels of shares: a small ask-and-buy market in which firm prices follow the trades.",
+      "tags": [
+        "markets",
+        "economics"
+      ],
+      "models": [
+        "markets"
+      ]
+    },
+    {
+      "id": "amp-sir",
+      "name": "SIR (system dynamics)",
+      "collection": "Eclipse AMP example models",
+      "description": "The classic susceptible, infected and recovered compartment model as stocks and flows.",
+      "tags": [
+        "epidemics",
+        "system dynamics"
+      ],
+      "models": [
+        "sir-system-dynamics"
+      ]
+    },
+    {
+      "id": "metascape-data",
+      "name": "Written as data",
+      "collection": "Metascape examples",
+      "description": "Models defined in the declarative model format, with no model code.",
+      "tags": [
+        "model format"
+      ],
+      "models": [
+        "data-life",
+        "data-schelling",
+        "data-epidemic",
+        "data-forager",
+        "data-pursuit"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "game-of-life",
+      "name": "Game of Life",
+      "familyId": "metascape-examples",
+      "summary": "Cells live or die by counting their neighbours; gliders and oscillators emerge from three simple rules.",
+      "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems.",
+      "tags": [
+        "cellular automata",
+        "emergence"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/game-of-life.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "schelling-segregation",
+      "name": "Schelling segregation",
+      "familyId": "metascape-examples",
+      "summary": "Residents who want only a few like neighbours still end up in sharply divided neighbourhoods.",
+      "description": "Thomas Schelling's segregation model ('Dynamic Models of Segregation', Journal of Mathematical Sociology, 1971). Residents of two groups live on a grid with some empty sites and move to a random vacancy whenever too small a share of their neighbors is like themselves. Even a mild preference for like neighbors drives strongly segregated neighborhoods that nobody intended.",
+      "tags": [
+        "segregation",
+        "social"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 6,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/schelling-segregation.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape",
+      "name": "Sugarscape",
+      "familyId": "metascape-examples",
+      "summary": "Agents roam a landscape of sugar, eat to survive, and a skewed distribution of wealth emerges.",
+      "description": "Joshua Epstein and Robert Axtell's Sugarscape, the basic model of chapter II of 'Growing Artificial Societies' (Brookings Institution Press and MIT Press, 1996). Agents with differing vision, metabolism and initial wealth forage for sugar on a landscape with two peaks. Death thins the population to the landscape's carrying capacity, the survivors are the best-adapted, and wealth ends up very unequally distributed even though the rules are identical for everyone.",
+      "tags": [
+        "resources",
+        "economics",
+        "inequality"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 2,
+      "thumb": {
+        "file": "thumbs/sugarscape.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "heatbugs",
+      "name": "Heatbugs",
+      "familyId": "metascape-examples",
+      "summary": "Bugs that like a certain warmth give off heat and huddle into clusters that wander and dissolve.",
+      "description": "The Heatbugs model from the Swarm simulation system (Santa Fe Institute, Minar, Burkhart, Langton and Askenazi, 1996). Bugs radiate heat and try to sit at a preferred temperature, while the heat diffuses and evaporates across a torus. No bug is told to cluster, yet the swarm gathers into warm clumps that drift about as each bug seeks the right temperature, a standard illustration of self-organization from purely local rules.",
+      "tags": [
+        "ecology",
+        "emergence"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 11,
+      "ruleCount": 2,
+      "thumb": {
+        "file": "thumbs/heatbugs.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "wolf-sheep-predation",
+      "name": "Wolf Sheep Predation",
+      "familyId": "metascape-examples",
+      "summary": "Wolves eat sheep, sheep eat grass; populations boom and crash in predator-prey cycles.",
+      "description": "Wolf Sheep Predation (Wilensky, 1997, NetLogo Models Library), after the Lotka-Volterra predator-prey equations. Sheep wander a wrapped grid eating grass, which regrows slowly; wolves wander and eat sheep. Animals pay energy to move, die when it runs out, and reproduce at random, splitting their energy with the offspring. The agent-based version shows what the equations cannot: oscillating populations that are driven by space, chance and local extinctions.",
+      "tags": [
+        "ecology",
+        "predator-prey"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 3,
+      "thumb": {
+        "file": "thumbs/wolf-sheep-predation.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-prisoner-s-dilemma",
+      "name": "Demographic Prisoner's Dilemma",
+      "familyId": "metascape-examples",
+      "summary": "Cooperators and defectors play, breed and die on a lattice; clusters of cooperation can survive.",
+      "description": "Joshua Epstein's Demographic Prisoner's Dilemma (Zones of Cooperation in Demographic Prisoner's Dilemma, Complexity, 1998). Fixed-strategy cooperators and defectors wander a torus, play a Prisoner's Dilemma with each neighbor, die when their wealth is negative or they are old, and reproduce when rich. Because play is local and offspring appear next to their parents, clusters of cooperators can survive and grow even though defection pays better in any single encounter.",
+      "tags": [
+        "game theory",
+        "cooperation"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/demographic-prisoner-s-dilemma.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "boids",
+      "name": "Boids",
+      "familyId": "metascape-examples",
+      "summary": "Birds follow three local steering rules, and a flock forms with no leader.",
+      "description": "Craig Reynolds' boids (1987): each bird steers by three local rules, separation from crowding neighbors, alignment with the mean velocity of neighbors in sight, and cohesion toward their center, yet the group flocks without any leader or global plan. The model runs in a wrapped square space with synchronous updating and tracks polarization (the length of the mean unit velocity, near 0 for disorder and 1 for perfect alignment) and the mean distance to the nearest neighbor.",
+      "tags": [
+        "flocking",
+        "emergence"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/boids.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "epidemic-sir-on-a-small-world-network",
+      "name": "Epidemic (SIR on a small-world network)",
+      "familyId": "metascape-examples",
+      "summary": "An infection spreads over a small-world network of contacts until it burns out.",
+      "description": "A susceptible-infected-recovered epidemic spreading over a Watts-Strogatz small-world network (Watts and Strogatz, Nature, 1998) with the compartmental logic of Kermack and McKendrick (1927). Each susceptible person is infected with probability 1 - (1 - transmission)^n, where n is the number of infected neighbors; infected people recover after a fixed period and are immune, permanently or for a limited time. Updating is synchronous, so results do not depend on the order of agents. A few random shortcuts make the outbreak far faster than on a pure ring.",
+      "tags": [
+        "epidemics",
+        "networks"
+      ],
+      "spaces": [
+        "network"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/epidemic-sir-on-a-small-world-network.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "sugarscape-ii-1-immediate-growback",
+      "name": "Sugarscape II-1: Immediate growback",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents with random vision and metabolism move to the best sugar they can see on a two-peaked landscape, eat it and die when they run out; sugar grows back to…",
+      "description": "Agents with random vision and metabolism move to the best sugar they can see on a two-peaked landscape, eat it and die when they run out; sugar grows back to capacity at once.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_1",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-1-immediate-growback.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-2-unit-growback",
+      "name": "Sugarscape II-2: Unit growback",
+      "familyId": "brookings-sugarscape",
+      "summary": "As II-1, but sugar grows back one unit per tick, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "description": "As II-1, but sugar grows back one unit per tick, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_2",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-2-unit-growback.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-3-carrying-capacity",
+      "name": "Sugarscape II-3: Carrying capacity",
+      "familyId": "brookings-sugarscape",
+      "summary": "The II-2 model with a chart of the population, which settles at the carrying capacity of the sugar landscape.",
+      "description": "The II-2 model with a chart of the population, which settles at the carrying capacity of the sugar landscape.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_3",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-3-carrying-capacity.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-4-wealth-deciles",
+      "name": "Sugarscape II-4: Wealth deciles",
+      "familyId": "brookings-sugarscape",
+      "summary": "The III-2 model (sexual reproduction and old age) with the population counted by decile of wealth, showing a skewed distribution of wealth.",
+      "description": "The III-2 model (sexual reproduction and old age) with the population counted by decile of wealth, showing a skewed distribution of wealth.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_4",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-4-wealth-deciles.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-5-neighbor-networks",
+      "name": "Sugarscape II-5: Neighbor networks",
+      "familyId": "brookings-sugarscape",
+      "summary": "The II-2 model in which each agent records the agents on its neighboring cells after it acts, giving a social network of neighbors that changes as agents move.",
+      "description": "The II-2 model in which each agent records the agents on its neighboring cells after it acts, giving a social network of neighbors that changes as agents move.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice",
+        "network"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_5",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-5-neighbor-networks.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-6-migration-from-a-corner",
+      "name": "Sugarscape II-6: Migration from a corner",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 ticks.",
+      "description": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 ticks.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_6",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-6-migration-from-a-corner.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-7-seasons",
+      "name": "Sugarscape II-7: Seasons",
+      "familyId": "brookings-sugarscape",
+      "summary": "Sugar grows back one unit per tick in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision migrate…",
+      "description": "Sugar grows back one unit per tick in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision migrate between them.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 12,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_7",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-7-seasons.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-8-pollution",
+      "name": "Sugarscape II-8: Pollution",
+      "familyId": "brookings-sugarscape",
+      "summary": "Harvesting and metabolism pollute the landscape, pollution diffuses, and agents value a cell by its sugar divided by one plus its pollution.",
+      "description": "Harvesting and metabolism pollute the landscape, pollution diffuses, and agents value a cell by its sugar divided by one plus its pollution.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_8",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-8-pollution.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-spice-ii-1-sugar-and-spice-immediate-growback",
+      "name": "Sugarscape Spice II-1: Sugar and spice, immediate growback",
+      "familyId": "brookings-sugarscape",
+      "summary": "A landscape with two sugar peaks and two spice peaks that grow back at once; agents need both goods and move to the cell that would most improve their welfare.",
+      "description": "A landscape with two sugar peaks and two spice peaks that grow back at once; agents need both goods and move to the cell that would most improve their welfare.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.Spice_II_1",
+      "thumb": {
+        "file": "thumbs/sugarscape-spice-ii-1-sugar-and-spice-immediate-growback.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-spice-ii-2-sugar-and-spice-unit-growback",
+      "name": "Sugarscape Spice II-2: Sugar and spice, unit growback",
+      "familyId": "brookings-sugarscape",
+      "summary": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per tick; as in the legacy code, spice is not grown back at all.",
+      "description": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per tick; as in the legacy code, spice is not grown back at all.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.Spice_II_2",
+      "thumb": {
+        "file": "thumbs/sugarscape-spice-ii-2-sugar-and-spice-unit-growback.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iii-2-sexual-reproduction-and-vision",
+      "name": "Sugarscape III-2: Sexual reproduction and vision",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents of two sexes reproduce with fertile neighbors, passing on vision and metabolism, and die of starvation or old age; agents are coloured by vision to show…",
+      "description": "Agents of two sexes reproduce with fertile neighbors, passing on vision and metabolism, and die of starvation or old age; agents are coloured by vision to show its evolution.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_III_2",
+      "thumb": {
+        "file": "thumbs/sugarscape-iii-2-sexual-reproduction-and-vision.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iii-3-sexual-reproduction-and-metabolism",
+      "name": "Sugarscape III-3: Sexual reproduction and metabolism",
+      "familyId": "brookings-sugarscape",
+      "summary": "The III-2 model with agents coloured and counted by sugar metabolism, to show selection for low metabolism.",
+      "description": "The III-2 model with agents coloured and counted by sugar metabolism, to show selection for low metabolism.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_III_3",
+      "thumb": {
+        "file": "thumbs/sugarscape-iii-3-sexual-reproduction-and-metabolism.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iii-6-cultural-transmission",
+      "name": "Sugarscape III-6: Cultural transmission",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents carry an 11-bit cultural tag; each tick they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share.",
+      "description": "Agents carry an 11-bit cultural tag; each tick they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share. Agents are blue or red by the majority of their bits.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_III_6",
+      "thumb": {
+        "file": "thumbs/sugarscape-iii-6-cultural-transmission.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-1-sugar-and-spice-no-trade",
+      "name": "Sugarscape IV-1: Sugar and spice, no trade",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents need sugar and spice, which grow back one unit per tick on separate peaks, and die when they run out of either.",
+      "description": "Agents need sugar and spice, which grow back one unit per tick on separate peaks, and die when they run out of either. There is no trade.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_1",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-1-sugar-and-spice-no-trade.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-a-trade-as-in-the-book",
+      "name": "Sugarscape IV-a: Trade as in the book",
+      "familyId": "brookings-sugarscape",
+      "summary": "IV-1 plus trade as specified in Growing Artificial Societies: neighbors trade one unit at a time at the geometric mean of their MRSs until neither gains.",
+      "description": "IV-1 plus trade as specified in Growing Artificial Societies: neighbors trade one unit at a time at the geometric mean of their MRSs until neither gains.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_a",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-a-trade-as-in-the-book.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-b-one-big-trade",
+      "name": "Sugarscape IV-b: One big trade",
+      "familyId": "brookings-sugarscape",
+      "summary": "Trades like the book, except agents make one big trade with each neighbor instead of many little ones.",
+      "description": "Trades like the book, except agents make one big trade with each neighbor instead of many little ones.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_b",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-b-one-big-trade.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-c-best-offer-matched",
+      "name": "Sugarscape IV-c: Best offer matched",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents solicit offers from all neighbors, take the best, and offer the remaining neighbors the chance to trade on those same terms.",
+      "description": "Agents solicit offers from all neighbors, take the best, and offer the remaining neighbors the chance to trade on those same terms.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_c",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-c-best-offer-matched.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-d-negotiation",
+      "name": "Sugarscape IV-d: Negotiation",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents negotiate with offers and counter-offers based on their own MRSs, a negotiating factor and a personal limit on the number of offers.",
+      "description": "Agents negotiate with offers and counter-offers based on their own MRSs, a negotiating factor and a personal limit on the number of offers.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_d",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-d-negotiation.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-e-old-age-and-reproduction-no-trade",
+      "name": "Sugarscape IV-e: Old age and reproduction, no trade",
+      "familyId": "brookings-sugarscape",
+      "summary": "Sugar and spice agents that age, die and reproduce sexually, passing on vision and metabolisms.",
+      "description": "Sugar and spice agents that age, die and reproduce sexually, passing on vision and metabolisms. There is no trade.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_e",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-e-old-age-and-reproduction-no-trade.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-f-reproduction-with-trade-as-in-the-book",
+      "name": "Sugarscape IV-f: Reproduction with trade as in the book",
+      "familyId": "brookings-sugarscape",
+      "summary": "IV-e plus trade as specified in Growing Artificial Societies.",
+      "description": "IV-e plus trade as specified in Growing Artificial Societies.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_f",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-f-reproduction-with-trade-as-in-the-book.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-g-reproduction-with-one-big-trade",
+      "name": "Sugarscape IV-g: Reproduction with one big trade",
+      "familyId": "brookings-sugarscape",
+      "summary": "IV-e plus one big trade with each neighbor, like IV-b.",
+      "description": "IV-e plus one big trade with each neighbor, like IV-b.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_g",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-g-reproduction-with-one-big-trade.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-h-reproduction-with-best-offer-matched",
+      "name": "Sugarscape IV-h: Reproduction with best offer matched",
+      "familyId": "brookings-sugarscape",
+      "summary": "IV-e plus best-offer trading, like IV-c, with old age and reproduction.",
+      "description": "IV-e plus best-offer trading, like IV-c, with old age and reproduction.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_h",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-h-reproduction-with-best-offer-matched.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-iv-i-reproduction-with-negotiation",
+      "name": "Sugarscape IV-i: Reproduction with negotiation",
+      "familyId": "brookings-sugarscape",
+      "summary": "IV-e plus negotiation, like IV-d, with old age and reproduction.",
+      "description": "IV-e plus negotiation, like IV-d, with old age and reproduction.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 7,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_IV_i",
+      "thumb": {
+        "file": "thumbs/sugarscape-iv-i-reproduction-with-negotiation.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "artificial-anasazi-long-house-valley-lhv",
+      "name": "Artificial Anasazi: Long House Valley (LHV)",
+      "familyId": "brookings-anasazi",
+      "summary": "Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water…",
+      "description": "Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The simulated number of households is charted against the archaeological record, which grows and then collapses around AD 1300.",
+      "tags": [
+        "archaeology",
+        "demography",
+        "resources"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 24,
+      "ruleCount": 5,
+      "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
+      "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHV",
+      "thumb": {
+        "file": "thumbs/artificial-anasazi-long-house-valley-lhv.png",
+        "width": 80,
+        "height": 120,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "artificial-anasazi-long-house-valley-greedy-households-lhvgreedy",
+      "name": "Artificial Anasazi: Long House Valley, greedy households (LHVGreedy)",
+      "familyId": "brookings-anasazi",
+      "summary": "A preliminary variant of the Long House Valley model whose households were to claim buffer farms around their own; the claiming was never enabled in the legacy…",
+      "description": "A preliminary variant of the Long House Valley model whose households were to claim buffer farms around their own; the claiming was never enabled in the legacy code, so it runs like the base model.",
+      "tags": [
+        "archaeology",
+        "demography",
+        "resources"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 24,
+      "ruleCount": 5,
+      "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
+      "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVGreedy",
+      "thumb": {
+        "file": "thumbs/artificial-anasazi-long-house-valley-greedy-households-lhvgreedy.png",
+        "width": 80,
+        "height": 120,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "artificial-anasazi-long-house-valley-individual-people-lhvdisaggregate",
+      "name": "Artificial Anasazi: Long House Valley, individual people (LHVDisaggregate)",
+      "familyId": "brookings-anasazi",
+      "summary": "An exploratory variant of the Long House Valley model in which households are made of individual people who are born, marry across clans, found new households…",
+      "description": "An exploratory variant of the Long House Valley model in which households are made of individual people who are born, marry across clans, found new households and die at age-specific rates.",
+      "tags": [
+        "archaeology",
+        "demography",
+        "resources"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 26,
+      "ruleCount": 11,
+      "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
+      "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVDisaggregate",
+      "thumb": {
+        "file": "thumbs/artificial-anasazi-long-house-valley-individual-people-lhvdisaggregate.png",
+        "width": 80,
+        "height": 120,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "artificial-anasazi-long-house-valley-clans-lhvclan",
+      "name": "Artificial Anasazi: Long House Valley, clans (LHVClan)",
+      "familyId": "brookings-anasazi",
+      "summary": "The individual-people variant of the Long House Valley model run to AD 1400, charting households by clan and colouring farmland by the clan that worked it.",
+      "description": "The individual-people variant of the Long House Valley model run to AD 1400, charting households by clan and colouring farmland by the clan that worked it.",
+      "tags": [
+        "archaeology",
+        "demography",
+        "resources"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 26,
+      "ruleCount": 11,
+      "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
+      "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVClan",
+      "thumb": {
+        "file": "thumbs/artificial-anasazi-long-house-valley-clans-lhvclan.png",
+        "width": 80,
+        "height": 120,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-cvmodel",
+      "name": "Civil Violence: Model I (CVModel)",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.CVModel",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-cvmodel.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i",
+      "name": "Civil Violence: Model I",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelI",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-run-1",
+      "name": "Civil Violence: Model I, Run 1",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Citizens stay where they were placed; only cops move.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 4,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun1",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-run-1.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-run-2",
+      "name": "Civil Violence: Model I, Run 2",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Long vision and a long jail term: rebellion arrives in punctuated outbursts.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun2",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-run-2.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-runs-3-5-base",
+      "name": "Civil Violence: Model I, Runs 3-5 (base)",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Jailed citizens are never released; legitimacy is held at 0.90.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun3and4and5",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-runs-3-5-base.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-run-3",
+      "name": "Civil Violence: Model I, Run 3",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy erodes by 0.01 every third tick while jailed citizens stay jailed.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun3",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-run-3.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-run-4",
+      "name": "Civil Violence: Model I, Run 4",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy is cut from 0.90 to 0.65 after tick 75.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun4",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-run-4.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-i-run-5",
+      "name": "Civil Violence: Model I, Run 5",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. The number of cops is steadily reduced from a 6% target down to none.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIRun5",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-run-5.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii-cvmodelintergroup",
+      "name": "Civil Violence: Model II (CVModelInterGroup)",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.CVModelInterGroup",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii-cvmodelintergroup.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii-with-retaliation-cvmodelintergroupretr",
+      "name": "Civil Violence: Model II with Retaliation (CVModelInterGroupRetr)",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers. Citizens also weigh the risk of retaliation by the other group.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.CVModelInterGroupRetr",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii-with-retaliation-cvmodelintergroupretr.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii",
+      "name": "Civil Violence: Model II",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelII",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii-run-1",
+      "name": "Civil Violence: Model II, Run 1",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers. High legitimacy and no cops.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIIRun1",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii-run-1.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii-runs-2-and-3",
+      "name": "Civil Violence: Model II, Runs 2 and 3",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers. Lower legitimacy and no cops.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIIRun2and3",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii-runs-2-and-3.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "civil-violence-model-ii-runs-4a-and-4b",
+      "name": "Civil Violence: Model II, Runs 4a and 4b",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view,…",
+      "description": "Epstein's model of inter-group violence: citizens of two groups, blue and green, multiply and die; active citizens attack members of the other group in view, and cops act as peacekeepers. Cops, 4% of sites, keep the peace.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 9,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelIIRun4aandb",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-ii-runs-4a-and-4b.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "norms",
+      "name": "Norms",
+      "familyId": "brookings-norms",
+      "summary": "A ring of agents, each holding a binary norm (such as driving on the left or the right) and a sampling radius.",
+      "description": "A ring of agents, each holding a binary norm (such as driving on the left or the right) and a sampling radius. Agents adopt the majority norm within their radius and adjust the radius incrementally, so that the radius evolves with the stability of the norm.",
+      "tags": [
+        "social norms"
+      ],
+      "spaces": [
+        "strip"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.norms.Norms",
+      "thumb": {
+        "file": "thumbs/norms.png",
+        "width": 191,
+        "height": 160,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "retirement-small-world-population",
+      "name": "Retirement: Small World Population",
+      "familyId": "brookings-retirement",
+      "summary": "The retirement model with fixed lattice neighborhoods instead of random networks: each person imitates the people within two cells on the age-by-cohort…",
+      "description": "The retirement model with fixed lattice neighborhoods instead of random networks: each person imitates the people within two cells on the age-by-cohort lattice, whose ends join up.",
+      "tags": [
+        "social norms",
+        "economics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 2,
+      "authors": "Robert L. Axtell and Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.retirement.PopulationSmallWorld",
+      "thumb": {
+        "file": "thumbs/retirement-small-world-population.png",
+        "width": 100,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "retirement-population",
+      "name": "Retirement: Population",
+      "familyId": "brookings-retirement",
+      "summary": "Agents decide when to retire: a few are rational and retire as soon as they are eligible, a few retire at random, and most imitate, retiring once at least half…",
+      "description": "Agents decide when to retire: a few are rational and retire as soon as they are eligible, a few retire at random, and most imitate, retiring once at least half of the eligible people in their social network have retired. Networks are redrawn at each rebirth from people of a similar age.",
+      "tags": [
+        "social norms",
+        "economics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 2,
+      "authors": "Robert L. Axtell and Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.retirement.Population",
+      "thumb": {
+        "file": "thumbs/retirement-population.png",
+        "width": 100,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "retirement-coupled-populations",
+      "name": "Retirement: Coupled Populations",
+      "familyId": "brookings-retirement",
+      "summary": "The coupled-subpopulations variant of the retirement model, in which two halves of the cohort would be linked by a fraction of cross-network ties.",
+      "description": "The coupled-subpopulations variant of the retirement model, in which two halves of the cohort would be linked by a fraction of cross-network ties. As in the Ascape sources, the coupling is never in effect and the model behaves as the plain population.",
+      "tags": [
+        "social norms",
+        "economics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 2,
+      "authors": "Robert L. Axtell and Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.retirement.PopulationCoupled",
+      "thumb": {
+        "file": "thumbs/retirement-coupled-populations.png",
+        "width": 100,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "emergence-of-classes-model-one",
+      "name": "Emergence of Classes: Model One",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. One population of identical agents.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelOne",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-model-one.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-2",
+      "name": "Emergence of Classes: Figure 2",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Every agent remembers exactly 20 encounters.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure2",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-2.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-3",
+      "name": "Emergence of Classes: Figure 3",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Every agent remembers exactly 20 encounters, initially all low or high demands.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure3",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-3.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-model-two",
+      "name": "Emergence of Classes: Model Two",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Agents carry a light or dark tag and keep separate expectations about their own group and the other.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelTwo",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-model-two.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-6",
+      "name": "Emergence of Classes: Figure 6",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Two tagged groups with memories of 20 encounters and 5% random demands, starting from random memories.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure6",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-6.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-7",
+      "name": "Emergence of Classes: Figure 7",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Two tagged groups; light agents begin remembering only low or high demands from their own group.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure7",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-7.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-8",
+      "name": "Emergence of Classes: Figure 8",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Two tagged groups with 20% random demands; light agents begin expecting low demands from the dark group, dark agents high demands from the light group.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure8",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-8.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-figure-9",
+      "name": "Emergence of Classes: Figure 9",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Two tagged groups; light agents begin with low expectations of the dark group and low or high expectations of their own, dark agents with high expectations of the light group.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure9",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-figure-9.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-model-peyton",
+      "name": "Emergence of Classes: Model Peyton",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. Norms of what to demand emerge from these decentralized encounters and then persist, even though they may have arisen from random events. Two tagged groups playing a coordination game, where a demand pays only if the opponent's demand is complementary.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelPeyton",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-model-peyton.png",
+        "width": 192,
+        "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-firms",
+      "name": "Emergence of Firms",
+      "familyId": "brookings-firms",
+      "summary": "Employees choose how hard to work and which firm to work in, comparing their own firm, a new firm of their own and the neighbouring firms.",
+      "description": "Employees choose how hard to work and which firm to work in, comparing their own firm, a new firm of their own and the neighbouring firms. Because output has local increasing returns, firms form and grow into a skewed, power-law-like size distribution without any central coordination.",
+      "tags": [
+        "economics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 1,
+      "ruleCount": 2,
+      "authors": "Robert L. Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.firms.Model1",
+      "thumb": {
+        "file": "thumbs/emergence-of-firms.png",
+        "width": 23,
+        "height": 23,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-pd-pd2d",
+      "name": "Demographic PD: PD2D",
+      "familyId": "brookings-prisoners-dilemma",
+      "summary": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors.",
+      "description": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors. Payoffs accumulate, rich players clone onto neighboring sites, players with negative wealth die, and zones of cooperation emerge.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.pd.PD2D",
+      "thumb": {
+        "file": "thumbs/demographic-pd-pd2d.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-pd-pd2dsmallworld",
+      "name": "Demographic PD: PD2DSmallWorld",
+      "familyId": "brookings-prisoners-dilemma",
+      "summary": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors.",
+      "description": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors. Payoffs accumulate, rich players clone onto neighboring sites, players with negative wealth die, and zones of cooperation emerge. (In the legacy source this variant still uses the von Neumann lattice.)",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.pd.PD2DSmallWorld",
+      "thumb": {
+        "file": "thumbs/demographic-pd-pd2dsmallworld.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-pd-pd2dcellular",
+      "name": "Demographic PD: PD2DCellular",
+      "familyId": "brookings-prisoners-dilemma",
+      "summary": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors.",
+      "description": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors. Payoffs accumulate, rich players clone onto neighboring sites, players with negative wealth die, and zones of cooperation emerge. This variant plays on a bounded 8-neighbor (Moore) lattice.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.pd.PD2DCellular",
+      "thumb": {
+        "file": "thumbs/demographic-pd-pd2dcellular.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-pd-pd2ddemo",
+      "name": "Demographic PD: PD2DDemo",
+      "familyId": "brookings-prisoners-dilemma",
+      "summary": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors.",
+      "description": "Epstein's demographic Prisoner's Dilemma: tagless players with a fixed, inherited cooperate-or-defect strategy move to random sites on a lattice and play their neighbors. Payoffs accumulate, rich players clone onto neighboring sites, players with negative wealth die, and zones of cooperation emerge.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 13,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.pd.PD2DDemo",
+      "thumb": {
+        "file": "thumbs/demographic-pd-pd2ddemo.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dga",
+      "name": "Spatial IPD (GA): PD2DGA",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Random partners. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that…",
+      "description": "Random partners. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGA",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dga.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dga-random",
+      "name": "Spatial IPD (GA): PD2DGA_RANDOM",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Random partners. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that…",
+      "description": "Random partners. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGA_RANDOM",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dga-random.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dga-closest",
+      "name": "Spatial IPD (GA): PD2DGA_CLOSEST",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Plays the closest neighbor.",
+      "description": "Plays the closest neighbor. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGA_CLOSEST",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dga-closest.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dga-furthest",
+      "name": "Spatial IPD (GA): PD2DGA_FURTHEST",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Plays the furthest neighbor.",
+      "description": "Plays the furthest neighbor. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGA_FURTHEST",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dga-furthest.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dga-preference",
+      "name": "Spatial IPD (GA): PD2DGA_PREFERENCE",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Plays the closest or furthest neighbor according to an evolved preference gene.",
+      "description": "Plays the closest or furthest neighbor according to an evolved preference gene. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGA_PREFERENCE",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dga-preference.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dgamulti",
+      "name": "Spatial IPD (GA): PD2DGAMulti",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Batch variant that records the most common genomes of a finished run.",
+      "description": "Batch variant that records the most common genomes of a finished run. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGAMulti",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dgamulti.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dgamultiple",
+      "name": "Spatial IPD (GA): PD2DGAMultiple",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Batch variant (35 runs of 1000 ticks in the legacy sweep) with random and preference play.",
+      "description": "Batch variant (35 runs of 1000 ticks in the legacy sweep) with random and preference play. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGAMultiple",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dgamultiple.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "spatial-ipd-ga-pd2dgamultipleto",
+      "name": "Spatial IPD (GA): PD2DGAMultipleTo",
+      "familyId": "brookings-spatial-ipd",
+      "summary": "Batch variant with random and closest play that stops when the population is extinct.",
+      "description": "Batch variant with random and closest play that stops when the population is extinct. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "tags": [
+        "game theory",
+        "evolution"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 17,
+      "ruleCount": 10,
+      "authors": "Miles T. Parker",
+      "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGAMultipleTo",
+      "thumb": {
+        "file": "thumbs/spatial-ipd-ga-pd2dgamultipleto.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-ab-diffusion-model",
+      "name": "Diffusion: AB Diffusion Model",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behavior spread through a network when agents adopt a behavior according to its payoff and how many neighbors have adopted it, subject to random error.",
+      "description": "Norms of behavior spread through a network when agents adopt a behavior according to its payoff and how many neighbors have adopted it, subject to random error. Here every cell plays one of two actions against its four neighbors.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 2,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABModel",
+      "thumb": {
+        "file": "thumbs/diffusion-ab-diffusion-model.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-abc-diffusion-model",
+      "name": "Diffusion: ABC Diffusion Model",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error.",
+      "description": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error. Cells choose among three actions and differ in how much each action pays them.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 12,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABCModel",
+      "thumb": {
+        "file": "thumbs/diffusion-abc-diffusion-model.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-abcdef-diffusion-model",
+      "name": "Diffusion: ABCDEF Diffusion Model",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error.",
+      "description": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error. Cells choose among six actions and differ in how much each action pays them.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 21,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABCDEFModel",
+      "thumb": {
+        "file": "thumbs/diffusion-abcdef-diffusion-model.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-big-abcdef-diffusion-model",
+      "name": "Diffusion: Big ABCDEF Diffusion Model",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error.",
+      "description": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error. Cells choose among six actions and differ in how much each action pays them.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 21,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.BigABCDEFModel",
+      "thumb": {
+        "file": "thumbs/diffusion-big-abcdef-diffusion-model.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-big-abcdef-diffusion-model-black-and-white",
+      "name": "Diffusion: Big ABCDEF Diffusion Model (black and white)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error.",
+      "description": "Norms of behavior spread through a network when agents adopt a behavior according to its inherent payoff and how many neighbors have adopted it, subject to random error. Cells choose among six actions and differ in how much each action pays them.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 21,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.BigABCDEFModelBW",
+      "thumb": {
+        "file": "thumbs/diffusion-big-abcdef-diffusion-model-black-and-white.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "conway-s-life-smallconwaylife",
+      "name": "Conway's Life: SmallConwayLife",
+      "familyId": "brookings-life",
+      "summary": "A condensed version of Conway's Life, to show how small a working model can be.",
+      "description": "A condensed version of Conway's Life, to show how small a working model can be. A live cell with two or three live neighbors survives and a dead cell with three comes alive.",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 1,
+      "ruleCount": 1,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.SmallConwayLife",
+      "thumb": {
+        "file": "thumbs/conway-s-life-smallconwaylife.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "conway-s-life-conwaylife",
+      "name": "Conway's Life: ConwayLife",
+      "familyId": "brookings-life",
+      "summary": "A classic cellular automaton: a live cell with two or three live neighbors survives, a dead cell with exactly three live neighbors comes alive, and very simple…",
+      "description": "A classic cellular automaton: a live cell with two or three live neighbors survives, a dead cell with exactly three live neighbors comes alive, and very simple rules give lively, life-like patterns. Cells update synchronously.",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 1,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.ConwayLife",
+      "thumb": {
+        "file": "thumbs/conway-s-life-conwaylife.png",
+        "width": 51,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "conway-s-life-conwaylifesmallworld",
+      "name": "Conway's Life: ConwayLifeSmallWorld",
+      "familyId": "brookings-life",
+      "summary": "Conway's Life on a lattice whose neighborhoods can be rewired at random, as in a small-world network.",
+      "description": "Conway's Life on a lattice whose neighborhoods can be rewired at random, as in a small-world network. With no rewiring (the default) it is ordinary Life on a lattice with edges. Cells update synchronously.",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 1,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.ConwayLifeSmallWorld",
+      "thumb": {
+        "file": "thumbs/conway-s-life-conwaylifesmallworld.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "busy-beavers-bb",
+      "name": "Busy Beavers: Bb",
+      "familyId": "brookings-bb",
+      "summary": "Agents (\"beavers\") search for the small Turing machine that halts after writing the most ones on a blank tape.",
+      "description": "Agents (\"beavers\") search for the small Turing machine that halts after writing the most ones on a blank tape. One beaver uses a fixed rule, and the others try random rules or evolve rule tables with a genetic algorithm, either whole tables or one state at a time.",
+      "tags": [
+        "computation"
+      ],
+      "spaces": [
+        "charts"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.bb.Bb",
+      "thumb": {
+        "file": "thumbs/busy-beavers-bb.png",
+        "width": 192,
+        "height": 119,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "coordination-game-step-1",
+      "name": "Coordination Game: Step 1",
+      "familyId": "brookings-coordination-game",
+      "summary": "Players on a lattice take random steps and play a coordination game with a random neighbor: matching on red or on blue pays the player.",
+      "description": "Players on a lattice take random steps and play a coordination game with a random neighbor: matching on red or on blue pays the player. After a few plays each player copies the colour of any neighbor who is scoring better.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.manual.model1.CoordinationGame",
+      "thumb": {
+        "file": "thumbs/coordination-game-step-1.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "coordination-game-step-2",
+      "name": "Coordination Game: Step 2",
+      "familyId": "brookings-coordination-game",
+      "summary": "Step 1 with errors: with a given chance a player picks a colour at random instead of imitating.",
+      "description": "Step 1 with errors: with a given chance a player picks a colour at random instead of imitating. The chart adds the average payoff.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.manual.model2.CoordinationGame",
+      "thumb": {
+        "file": "thumbs/coordination-game-step-2.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "coordination-game-step-3",
+      "name": "Coordination Game: Step 3",
+      "familyId": "brookings-coordination-game",
+      "summary": "Players remember the colours of their last five partners and switch to the colour with the higher expected payoff against them (a best reply), choosing at…",
+      "description": "Players remember the colours of their last five partners and switch to the colour with the higher expected payoff against them (a best reply), choosing at random on ties or with the given error.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.manual.model3.CoordinationGame",
+      "thumb": {
+        "file": "thumbs/coordination-game-step-3.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "coordination-game-step-4",
+      "name": "Coordination Game: Step 4",
+      "familyId": "brookings-coordination-game",
+      "summary": "Players no longer change colour.",
+      "description": "Players no longer change colour. A player whose last five plays score exactly the reproduction score has an offspring of the same colour on a free neighboring cell; a player with low score after enough plays dies. The population evolves by selection.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 6,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.manual.model4.CoordinationGame",
+      "thumb": {
+        "file": "thumbs/coordination-game-step-4.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "coordination-game-step-5",
+      "name": "Coordination Game: Step 5",
+      "familyId": "brookings-coordination-game",
+      "summary": "Players play their lattice neighbors but imitate four randomly chosen friends anywhere on the lattice, so that conventions spread through a social network…",
+      "description": "Players play their lattice neighbors but imitate four randomly chosen friends anywhere on the lattice, so that conventions spread through a social network instead of through space.",
+      "tags": [
+        "game theory",
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice",
+        "network"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.manual.model5.CoordinationGame",
+      "thumb": {
+        "file": "thumbs/coordination-game-step-5.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "simple",
+      "name": "Simple",
+      "familyId": "brookings-simple",
+      "summary": "The smallest Ascape tutorial model: one agent whose happiness doubles every tick up to a ceiling, and any other agents, which each have a one in ten chance per…",
+      "description": "The smallest Ascape tutorial model: one agent whose happiness doubles every tick up to a ceiling, and any other agents, which each have a one in ten chance per tick of resetting that happiness. The lattice is part of the model but stays empty.",
+      "tags": [
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 1,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, edu.brook.Simple.Simple",
+      "thumb": {
+        "file": "thumbs/simple.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-a",
+      "name": "Bionland: Step A",
+      "familyId": "ascape-bionland",
+      "summary": "A bare 25 x 25 lattice with 100 bions dropped at random positions.",
+      "description": "A bare 25 x 25 lattice with 100 bions dropped at random positions. Nothing moves yet: the first step of the Bionland tutorial.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 0,
+      "ruleCount": 0,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_A",
+      "thumb": {
+        "file": "thumbs/bionland-step-a.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-b",
+      "name": "Bionland: Step B",
+      "familyId": "ascape-bionland",
+      "summary": "The bions now take a random walk each tick, one step to a random neighboring site when it is free, on light gray tiles.",
+      "description": "The bions now take a random walk each tick, one step to a random neighboring site when it is free, on light gray tiles.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 0,
+      "ruleCount": 1,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_B",
+      "thumb": {
+        "file": "thumbs/bionland-step-b.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-c",
+      "name": "Bionland: Step C",
+      "familyId": "ascape-bionland",
+      "summary": "Three species of bions (red, orange and blue) share the lattice at a chosen overall density and random-walk on black tiles.",
+      "description": "Three species of bions (red, orange and blue) share the lattice at a chosen overall density and random-walk on black tiles.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 1,
+      "ruleCount": 3,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_C",
+      "thumb": {
+        "file": "thumbs/bionland-step-c.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-d",
+      "name": "Bionland: Step D",
+      "familyId": "ascape-bionland",
+      "summary": "Bions can now see up to a vision distance and move away from the nearest bion of the species that preys on them (red from blue, orange from red, blue from…",
+      "description": "Bions can now see up to a vision distance and move away from the nearest bion of the species that preys on them (red from blue, orange from red, blue from orange), as well as walking at random.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 6,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_D",
+      "thumb": {
+        "file": "thumbs/bionland-step-d.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-e",
+      "name": "Bionland: Step E",
+      "familyId": "ascape-bionland",
+      "summary": "Each species leaves a coloured energy on the tile it stands on, and eats the energy of the other two species from its tile; the tile colour mixes the three energies.",
+      "description": "Each species leaves a coloured energy on the tile it stands on, and eats the energy of the other two species from its tile; the tile colour mixes the three energies.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 15,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_E",
+      "thumb": {
+        "file": "thumbs/bionland-step-e.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-f",
+      "name": "Bionland: Step F",
+      "familyId": "ascape-bionland",
+      "summary": "The same model as Step E; only the way it is drawn changes (bions as balls rather than squares).",
+      "description": "The same model as Step E; only the way it is drawn changes (bions as balls rather than squares).",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 15,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_F",
+      "thumb": {
+        "file": "thumbs/bionland-step-f.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-g",
+      "name": "Bionland: Step G",
+      "familyId": "ascape-bionland",
+      "summary": "Bions now carry stored energy: they pay for living, gain what they eat, split in two when they hold more than 2 and die when they run out.",
+      "description": "Bions now carry stored energy: they pay for living, gain what they eat, split in two when they hold more than 2 and die when they run out.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 6,
+      "ruleCount": 21,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_G",
+      "thumb": {
+        "file": "thumbs/bionland-step-g.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-h",
+      "name": "Bionland: Step H",
+      "familyId": "ascape-bionland",
+      "summary": "Bions now follow gradients of tile energy: toward the energy of the species they eat and away from the energy of the species that eats them.",
+      "description": "Bions now follow gradients of tile energy: toward the energy of the species they eat and away from the energy of the species that eats them. An energy gain parameter sets what energy is worth.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 24,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_H",
+      "thumb": {
+        "file": "thumbs/bionland-step-h.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-i",
+      "name": "Bionland: Step I",
+      "familyId": "ascape-bionland",
+      "summary": "As Step H, with statistics: the chart shows each species' average stored energy.",
+      "description": "As Step H, with statistics: the chart shows each species' average stored energy.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 24,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_I",
+      "thumb": {
+        "file": "thumbs/bionland-step-i.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-j",
+      "name": "Bionland: Step J",
+      "familyId": "ascape-bionland",
+      "summary": "Tile energy now spreads: each tile takes the average of its neighbors every tick.",
+      "description": "Tile energy now spreads: each tile takes the average of its neighbors every tick. The chart now counts bions.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_J",
+      "thumb": {
+        "file": "thumbs/bionland-step-j.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-k",
+      "name": "Bionland: Step K",
+      "familyId": "ascape-bionland",
+      "summary": "Diffusion now has a diffusion constant and an evaporation rate.",
+      "description": "Diffusion now has a diffusion constant and an evaporation rate. At the defaults (1 and 0) it is the same as Step J.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_K",
+      "thumb": {
+        "file": "thumbs/bionland-step-k.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-l",
+      "name": "Bionland: Step L",
+      "familyId": "ascape-bionland",
+      "summary": "The lattice now has a von Neumann neighborhood (four neighbors) instead of Moore (eight), which changes walking, diffusion and how far bions can follow energy.",
+      "description": "The lattice now has a von Neumann neighborhood (four neighbors) instead of Moore (eight), which changes walking, diffusion and how far bions can follow energy.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_L",
+      "thumb": {
+        "file": "thumbs/bionland-step-l.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-m",
+      "name": "Bionland: Step M",
+      "familyId": "ascape-bionland",
+      "summary": "Back on the Moore lattice, drawn with a ring around each bion that shrinks as its stored energy falls.",
+      "description": "Back on the Moore lattice, drawn with a ring around each bion that shrinks as its stored energy falls.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_M",
+      "thumb": {
+        "file": "thumbs/bionland-step-m.png",
+        "width": 25,
+        "height": 25,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-p",
+      "name": "Bionland: Step P",
+      "familyId": "ascape-bionland",
+      "summary": "The lattice becomes a one-dimensional ring of 190 sites at 10% density, shown with pure red, orange and blue tile energies.",
+      "description": "The lattice becomes a one-dimensional ring of 190 sites at 10% density, shown with pure red, orange and blue tile energies.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "strip"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_P",
+      "thumb": {
+        "file": "thumbs/bionland-step-p.png",
+        "width": 190,
+        "height": 160,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-step-q",
+      "name": "Bionland: Step Q",
+      "familyId": "ascape-bionland",
+      "summary": "Red, orange and blue bions chase and flee each other across a continuous 600 x 600 space: each moves toward its nearest prey and away from its nearest predator…",
+      "description": "Red, orange and blue bions chase and flee each other across a continuous 600 x 600 space: each moves toward its nearest prey and away from its nearest predator within its vision, at its own speed.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 6,
+      "ruleCount": 0,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_Q",
+      "thumb": {
+        "file": "thumbs/bionland-step-q.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "bionland-step-r",
+      "name": "Bionland: Step R",
+      "familyId": "ascape-bionland",
+      "summary": "Fifteen bions of three species chase and flee each other across a random directed graph of 50 nodes, whose links are occasionally rebuilt.",
+      "description": "Fifteen bions of three species chase and flee each other across a random directed graph of 50 nodes, whose links are occasionally rebuilt.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "network"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 7,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_R",
+      "thumb": {
+        "file": "thumbs/bionland-step-r.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "bionland-step-s",
+      "name": "Bionland: Step S",
+      "familyId": "ascape-bionland",
+      "summary": "The species chase of Step R on a small-world graph: a ring of two-way links with a few random extra links.",
+      "description": "The species chase of Step R on a small-world graph: a ring of two-way links with a few random extra links.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "network"
+      ],
+      "parameterCount": 8,
+      "ruleCount": 7,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_S",
+      "thumb": {
+        "file": "thumbs/bionland-step-s.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "bionland-full-model",
+      "name": "Bionland: Full Model",
+      "familyId": "ascape-bionland",
+      "summary": "Three species chase each other along a ring of 190 sites, each eating the energy of the species it hunts, leaving its own behind, and splitting or dying with…",
+      "description": "Three species chase each other along a ring of 190 sites, each eating the energy of the species it hunts, leaving its own behind, and splitting or dying with its stored energy.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "strip"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 21,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model",
+      "thumb": {
+        "file": "thumbs/bionland-full-model.png",
+        "width": 190,
+        "height": 160,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-data-run-full-model",
+      "name": "Bionland: Data Run (Full Model)",
+      "familyId": "ascape-bionland",
+      "summary": "The full model, set to stop after 50 ticks as the legacy data-collecting launcher did.",
+      "description": "The full model, set to stop after 50 ticks as the legacy data-collecting launcher did.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "strip"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 21,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData",
+      "thumb": {
+        "file": "thumbs/bionland-data-run-full-model.png",
+        "width": 190,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-data-run-n",
+      "name": "Bionland: Data Run N",
+      "familyId": "ascape-bionland",
+      "summary": "Step M on a 10 x 10 lattice, set to stop after 2000 ticks as the legacy data-collecting launcher did.",
+      "description": "Step M on a 10 x 10 lattice, set to stop after 2000 ticks as the legacy data-collecting launcher did.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_N",
+      "thumb": {
+        "file": "thumbs/bionland-data-run-n.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "bionland-data-run-o",
+      "name": "Bionland: Data Run O",
+      "familyId": "ascape-bionland",
+      "summary": "Step M on a 10 x 10 lattice, set to stop after 500 ticks as the legacy data-collecting launcher did.",
+      "description": "Step M on a 10 x 10 lattice, set to stop after 500 ticks as the legacy data-collecting launcher did.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 27,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_O",
+      "thumb": {
+        "file": "thumbs/bionland-data-run-o.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "boids-ascape",
+      "name": "Boids (Ascape)",
+      "familyId": "ascape-boids",
+      "summary": "An implementation of Craig Reynolds' Boids (1987), the classic A-Life model of flocking from simple rules.",
+      "description": "An implementation of Craig Reynolds' Boids (1987), the classic A-Life model of flocking from simple rules. Boids steer by priority: avoid obstacles, avoid collisions, head for the flock, then align with it.",
+      "tags": [
+        "flocking"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 9,
+      "ruleCount": 6,
+      "authors": "Craig W. Reynolds",
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.boids.BaseModel",
+      "thumb": {
+        "file": "thumbs/boids-ascape.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "traffic-model-ascape",
+      "name": "Traffic Model (Ascape)",
+      "familyId": "ascape-traffic",
+      "summary": "A simple traffic model demonstrating that simple rules can elicit complex traffic behavior such as rolling backups.",
+      "description": "A simple traffic model demonstrating that simple rules can elicit complex traffic behavior such as rolling backups.",
+      "tags": [
+        "traffic"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 2,
+      "portedFrom": "Ascape 5.6.1, org.ascape.examples.traffic.TrafficModel",
+      "thumb": {
+        "file": "thumbs/traffic-model-ascape.png",
+        "width": 80,
+        "height": 6,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "stupidmodel-1",
+      "name": "StupidModel 1",
+      "familyId": "amp-stupid-model",
+      "summary": "Bugs move to a random free cell within their vision on a periodic Moore grid, nothing else.",
+      "description": "Bugs move to a random free cell within their vision on a periodic Moore grid, nothing else.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 1,
+      "authors": "Steven F. Railsback, Steven L. Lytinen and Volker Grimm",
+      "portedFrom": "Eclipse AMP, StupidModel1.metaabm",
+      "thumb": {
+        "file": "thumbs/stupidmodel-1.png",
+        "width": 100,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "stupidmodel-2",
+      "name": "StupidModel 2",
+      "familyId": "amp-stupid-model",
+      "summary": "Bugs move as in StupidModel 1 and also grow by one each tick; their colour fades from white to red with size.",
+      "description": "Bugs move as in StupidModel 1 and also grow by one each tick; their colour fades from white to red with size.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 2,
+      "authors": "Steven F. Railsback, Steven L. Lytinen and Volker Grimm",
+      "portedFrom": "Eclipse AMP, StupidModel2.metaabm",
+      "thumb": {
+        "file": "thumbs/stupidmodel-2.png",
+        "width": 100,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "stupidmodel-3",
+      "name": "StupidModel 3",
+      "familyId": "amp-stupid-model",
+      "summary": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per tick.",
+      "description": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per tick. Bugs neither eat nor look for food.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 3,
+      "authors": "Steven F. Railsback, Steven L. Lytinen and Volker Grimm",
+      "portedFrom": "Eclipse AMP, StupidModel3.metaabm",
+      "thumb": {
+        "file": "thumbs/stupidmodel-3.png",
+        "width": 100,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "stupidmodel-5",
+      "name": "StupidModel 5",
+      "familyId": "amp-stupid-model",
+      "summary": "Habitats accumulate food by a draw in [0, 0.5) per tick and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
+      "description": "Habitats accumulate food by a draw in [0, 0.5) per tick and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
+      "tags": [
+        "tutorial",
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 3,
+      "authors": "Steven F. Railsback, Steven L. Lytinen and Volker Grimm",
+      "portedFrom": "Eclipse AMP, StupidModel5.metaabm",
+      "thumb": {
+        "file": "thumbs/stupidmodel-5.png",
+        "width": 100,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "wiki-example",
+      "name": "Wiki Example",
+      "familyId": "amp-wiki-example",
+      "summary": "Individuals of random ages scattered over a bounded city grid each tick move next to a randomly chosen individual of the same age within their vision, so…",
+      "description": "Individuals of random ages scattered over a bounded city grid each tick move next to a randomly chosen individual of the same age within their vision, so same-aged individuals gradually cluster together.",
+      "tags": [
+        "tutorial"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 5,
+      "ruleCount": 1,
+      "portedFrom": "Eclipse AMP, WikiExample.metaabm",
+      "thumb": {
+        "file": "thumbs/wiki-example.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "heatbugs-amp",
+      "name": "Heatbugs (AMP)",
+      "familyId": "amp-heatbugs",
+      "summary": "Heat bugs radiate heat into the cell they stand on and move to a neighbouring cell that brings them toward their own ideal temperature, while heat diffuses and…",
+      "description": "Heat bugs radiate heat into the cell they stand on and move to a neighbouring cell that brings them toward their own ideal temperature, while heat diffuses and evaporates over a bounded grid.",
+      "tags": [
+        "ecology"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 10,
+      "ruleCount": 2,
+      "portedFrom": "Eclipse AMP, Heatbugs.metaabm",
+      "thumb": {
+        "file": "thumbs/heatbugs-amp.png",
+        "width": 100,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "demographic-prisoner-s-dilemma-amp",
+      "name": "Demographic Prisoner's Dilemma (AMP)",
+      "familyId": "amp-demographic-pd",
+      "summary": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every tick; wealthy players have children,…",
+      "description": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every tick; wealthy players have children, poor or old ones die, and strategies are inherited with some mutation.",
+      "tags": [
+        "game theory",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 16,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Eclipse AMP, DemographicPrisoner_sDilemma.metaabm",
+      "thumb": {
+        "file": "thumbs/demographic-prisoner-s-dilemma-amp.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "epidemic-amp",
+      "name": "Epidemic (AMP)",
+      "familyId": "amp-epidemic",
+      "summary": "A simple model of epidemic dynamics.",
+      "description": "A simple model of epidemic dynamics. Individual agents have different disease states: susceptible, exposed, infectious (symptomatic or asymptomatic) and then an outcome of recovered or dead. Agents can transmit infection to their immediate neighbors.",
+      "tags": [
+        "epidemics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 15,
+      "ruleCount": 3,
+      "authors": "Miles Parker",
+      "portedFrom": "Eclipse AMP, Epidemic.metaabm",
+      "thumb": {
+        "file": "thumbs/epidemic-amp.png",
+        "width": 40,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "epidemic-amp-contact",
+      "name": "Epidemic (AMP): Contact",
+      "familyId": "amp-epidemic",
+      "summary": "A simple model of epidemic dynamics.",
+      "description": "A simple model of epidemic dynamics. Individual agents have different disease states: susceptible, exposed, infectious (symptomatic or asymptomatic) and then an outcome of recovered or dead. Agents can transmit infection to their immediate neighbors. This variant also records a directed network of who infected whom.",
+      "tags": [
+        "epidemics"
+      ],
+      "spaces": [
+        "lattice",
+        "network"
+      ],
+      "parameterCount": 15,
+      "ruleCount": 3,
+      "authors": "Miles Parker",
+      "portedFrom": "Eclipse AMP, EpidemicContact.metaabm",
+      "thumb": {
+        "file": "thumbs/epidemic-amp-contact.png",
+        "width": 40,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "epidemic-amp-plague",
+      "name": "Epidemic (AMP): Plague",
+      "familyId": "amp-epidemic",
+      "summary": "A simple model of epidemic dynamics.",
+      "description": "A simple model of epidemic dynamics. Individual agents have different disease states: susceptible, exposed, infectious (symptomatic or asymptomatic) and then an outcome of recovered or dead. Agents can transmit infection to their immediate neighbors. This variant adds stationary rats and fleas that move toward the nearest rat within range; it starts with no individuals.",
+      "tags": [
+        "epidemics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 18,
+      "ruleCount": 4,
+      "authors": "Miles Parker",
+      "portedFrom": "Eclipse AMP, EpidemicPlague.metaabm",
+      "thumb": {
+        "file": "thumbs/epidemic-amp-plague.png",
+        "width": 40,
+        "height": 100,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "epidemic-amp-regional",
+      "name": "Epidemic (AMP): Regional",
+      "familyId": "amp-epidemic",
+      "summary": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map.",
+      "description": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map. Individuals occasionally migrate to a neighbouring city; one city is chosen at random as the origin of the infection.",
+      "tags": [
+        "epidemics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 18,
+      "ruleCount": 16,
+      "authors": "Miles Parker",
+      "portedFrom": "Eclipse AMP, EpidemicRegional.metaabm",
+      "thumb": {
+        "file": "thumbs/epidemic-amp-regional.png",
+        "width": 2,
+        "height": 2,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "epidemic-amp-regional-periods",
+      "name": "Epidemic (AMP): Regional Periods",
+      "familyId": "amp-epidemic",
+      "summary": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map.",
+      "description": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map. Individuals occasionally migrate to a neighbouring city; one city is chosen at random as the origin of the infection. This run uses a long, thin region of 100 cities and rare migration, and stops after 3000 periods.",
+      "tags": [
+        "epidemics"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 18,
+      "ruleCount": 400,
+      "authors": "Miles Parker",
+      "portedFrom": "Eclipse AMP, EpidemicPeriods.java (subclass of the generated Region of EpidemicRegional.metaabm)",
+      "thumb": {
+        "file": "thumbs/epidemic-amp-regional-periods.png",
+        "width": 40,
+        "height": 4,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "markets",
+      "name": "Markets",
+      "familyId": "amp-markets",
+      "summary": "Traders hold instruments, parcels of shares in firms, and each period ask a new price for one they hold; a trader then picks a random firm and buys an asked…",
+      "description": "Traders hold instruments, parcels of shares in firms, and each period ask a new price for one they hold; a trader then picks a random firm and buys an asked instrument of that firm if it can afford it, which also sets the firm's last price. Firm earnings drift randomly.",
+      "tags": [
+        "markets",
+        "economics"
+      ],
+      "spaces": [
+        "charts"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 5,
+      "portedFrom": "Eclipse AMP, Markets.metaabm",
+      "thumb": {
+        "file": "thumbs/markets.png",
+        "width": 192,
+        "height": 119,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "sir-system-dynamics",
+      "name": "SIR (system dynamics)",
+      "familyId": "amp-sir",
+      "summary": "A stock-and-flow susceptible, infected and recovered model of an epidemic: the infection rate is susceptible times contact rate times infectivity times…",
+      "description": "A stock-and-flow susceptible, infected and recovered model of an epidemic: the infection rate is susceptible times contact rate times infectivity times infected over population, and infected people recover at a rate of infected divided by illness duration. Stocks are integrated with explicit Euler steps of one period.",
+      "tags": [
+        "epidemics",
+        "system dynamics"
+      ],
+      "spaces": [
+        "charts"
+      ],
+      "parameterCount": 7,
+      "ruleCount": 1,
+      "authors": "W. O. Kermack and A. G. McKendrick",
+      "portedFrom": "Eclipse AMP, SIR.metaabm",
+      "thumb": {
+        "file": "thumbs/sir-system-dynamics.png",
+        "width": 192,
+        "height": 119,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "data-life",
+      "name": "Life",
+      "familyId": "metascape-data",
+      "summary": "Conway's Game of Life on a torus.",
+      "description": "Conway's Game of Life on a torus.",
+      "tags": [
+        "model format"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 2,
+      "ruleCount": 1,
+      "thumb": {
+        "file": "thumbs/data-life.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "data-schelling",
+      "name": "Schelling segregation",
+      "familyId": "metascape-data",
+      "summary": "Mild preferences for similar neighbours produce strong segregation.",
+      "description": "Mild preferences for similar neighbours produce strong segregation.",
+      "tags": [
+        "model format"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 2,
+      "thumb": {
+        "file": "thumbs/data-schelling.png",
+        "width": 30,
+        "height": 30,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "data-epidemic",
+      "name": "Small-world epidemic",
+      "familyId": "metascape-data",
+      "summary": "Susceptible, infected, recovered on a Watts-Strogatz network.",
+      "description": "Susceptible, infected, recovered on a Watts-Strogatz network.",
+      "tags": [
+        "model format"
+      ],
+      "spaces": [
+        "network"
+      ],
+      "parameterCount": 8,
+      "ruleCount": 4,
+      "thumb": {
+        "file": "thumbs/data-epidemic.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "data-forager",
+      "name": "Foragers",
+      "familyId": "metascape-data",
+      "summary": "Movement, eating, reproduction and death on a regrowing landscape.",
+      "description": "Movement, eating, reproduction and death on a regrowing landscape.",
+      "tags": [
+        "model format"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 8,
+      "ruleCount": 3,
+      "thumb": {
+        "file": "thumbs/data-forager.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "data-pursuit",
+      "name": "Pursuit",
+      "familyId": "metascape-data",
+      "summary": "Chasing and fleeing in a continuous space.",
+      "description": "Chasing and fleeing in a continuous space.",
+      "tags": [
+        "model format"
+      ],
+      "spaces": [
+        "plane"
+      ],
+      "parameterCount": 8,
+      "ruleCount": 6,
+      "thumb": {
+        "file": "thumbs/data-pursuit.png",
+        "width": 192,
+        "height": 192,
+        "pixelated": false
+      }
+    }
+  ]
+}

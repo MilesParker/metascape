@@ -70,6 +70,8 @@ export const family = defineFamily({
   id: 'brookings-sugarscape',
   name: 'Sugarscape',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['resources', 'economics', 'demography'],
+  path: 'book',
   description:
     "Epstein and Axtell's Sugarscape as implemented in Ascape, following the chapters of " +
     'Growing Artificial Societies: foraging, growback, seasons and pollution (II), sex, ' +

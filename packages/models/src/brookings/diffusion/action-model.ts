@@ -158,6 +158,10 @@ export function buildActionModel(sim: Simulation, options: ActionModelOptions): 
       title: 'Cells',
       grid: cells,
       cellColor: (cell) => palette[cell.action] ?? ACTION_COLORS[0] ?? 0,
+      legend: labels.map((label, action) => ({
+        color: palette[action] ?? ACTION_COLORS[0] ?? 0,
+        label: `Plays ${label}`,
+      })),
     }),
   );
   sim.addView(timeSeriesView({ title: 'Action Above', series: above, colors: aboveColors }));

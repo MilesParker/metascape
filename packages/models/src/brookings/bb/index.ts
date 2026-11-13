@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-bb',
   name: 'Busy Beavers (bb)',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['computation'],
   description:
     'Beavers search for small Turing machines that write the most ones, using a fixed rule, random rules or genetic algorithms.',
   models: [busyBeavers],

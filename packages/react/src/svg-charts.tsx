@@ -5,8 +5,10 @@ import {
   type HistogramViewSpec,
   type Simulation,
 } from '@metascape/engine';
-import type { ReactElement } from 'react';
-import { seriesColor } from './palette';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { seriesLabel } from './labels';
+import { DEFAULT_PALETTE } from './palette';
+import { readableOn, themeColor } from './theme';
 
 /** Short readable text for a number: integers as is, others to four significant digits. */
 export function formatValue(value: number): string {
@@ -14,6 +16,30 @@ export function formatValue(value: number): string {
   if (!Number.isFinite(value)) return value > 0 ? '∞' : '-∞';
   if (Number.isInteger(value)) return String(value);
   return String(Number(value.toPrecision(4)));
+}
+
+/**
+ * The size of the box a chart is drawn in, so it can draw at that size and
+ * its text stays the size of other charts' text. Until measured (or where it
+ * cannot be, as in jsdom), the fallback.
+ */
+function useBox(fallback: { width: number; height: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState(fallback);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry?.contentRect.width ?? 0);
+      const height = Math.round(entry?.contentRect.height ?? 0);
+      if (width > 80) setBox({ width, height: height > 80 ? height : fallback.height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+    // The fallback only matters until the first measurement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return { ref, box };
 }
 
 function shorten(text: string, max: number): string {
@@ -28,70 +54,85 @@ export interface BarsChartProps {
   readonly frame: number;
 }
 
+/** Drawn this wide until the box it sits in has been measured. */
 const BAR_WIDTH = 420;
-const BAR_LEFT = 130;
+const BAR_LEFT = 150;
 const BAR_RIGHT = 56;
 const BAR_ROW = 26;
 const BAR_AXIS = 22;
 
 /** Horizontal bars showing the latest value of each series, with values as text. */
 export function BarsChart({ spec, sim, frame }: BarsChartProps): ReactElement {
+  const { ref: boxRef, box } = useBox({ width: BAR_WIDTH, height: 0 });
+  const chartWidth = box.width;
+  const root = typeof document === 'undefined' ? undefined : document.documentElement;
+  const surface = root ? themeColor(root, '--ms-surface', '#fff') : '#fff';
+  const text = root ? themeColor(root, '--ms-text', '#222') : '#222';
   const rows = spec.series.map((id, i) => ({
     id,
-    label: sim.data.get(id).label,
+    label: seriesLabel(sim, id, spec),
     value: sim.data.latest(id),
-    color: seriesColor(spec.colors, id, i),
+    color: readableOn(
+      spec.colors?.[id] ?? DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]!,
+      surface,
+      text,
+    ),
   }));
   const finite = rows.map((r) => r.value).filter(Number.isFinite);
   const low = Math.min(0, ...finite);
   const high = Math.max(0, ...finite);
   const span = high - low || 1;
-  const plotWidth = BAR_WIDTH - BAR_LEFT - BAR_RIGHT;
-  const x = (v: number): number => BAR_LEFT + ((v - low) / span) * plotWidth;
+  const left = Math.min(BAR_LEFT, Math.round(chartWidth * 0.36));
+  const plotWidth = chartWidth - left - BAR_RIGHT;
+  const x = (v: number): number => left + ((v - low) / span) * plotWidth;
   const zero = x(0);
   const height = rows.length * BAR_ROW + BAR_AXIS + 4;
 
   return (
-    <svg
-      className="ms-chart ms-bars"
-      viewBox={`0 0 ${BAR_WIDTH} ${height}`}
-      role="img"
-      aria-label={`${spec.title}: ${rows.map((r) => `${r.label} ${formatValue(r.value)}`).join(', ')}`}
-      data-frame={frame}
-    >
-      {rows.map((row, i) => {
-        const y = 2 + i * BAR_ROW;
-        const value = Number.isFinite(row.value) ? row.value : 0;
-        const left = Math.min(zero, x(value));
-        const barWidth = Math.abs(x(value) - zero);
-        return (
-          <g key={row.id}>
-            <text className="ms-svg-label" x={BAR_LEFT - 6} y={y + 16} textAnchor="end">
-              {shorten(row.label, 20)}
-              <title>{row.label}</title>
-            </text>
-            <rect
-              x={left}
-              y={y + 4}
-              width={barWidth}
-              height={BAR_ROW - 10}
-              fill={row.color}
-              rx={2}
-            />
-            <text className="ms-svg-value" x={Math.max(x(value), zero) + 4} y={y + 16}>
-              {formatValue(row.value)}
-            </text>
-          </g>
-        );
-      })}
-      <line className="ms-svg-axis" x1={zero} x2={zero} y1={0} y2={rows.length * BAR_ROW + 2} />
-      <text className="ms-svg-tick" x={x(low)} y={height - 6} textAnchor="start">
-        {formatValue(low)}
-      </text>
-      <text className="ms-svg-tick" x={x(high)} y={height - 6} textAnchor="end">
-        {formatValue(high)}
-      </text>
-    </svg>
+    <div ref={boxRef} className="ms-bars-box">
+      <svg
+        className="ms-chart ms-bars"
+        viewBox={`0 0 ${chartWidth} ${height}`}
+        width={chartWidth}
+        height={height}
+        role="img"
+        aria-label={`${spec.title}: ${rows.map((r) => `${r.label} ${formatValue(r.value)}`).join(', ')}`}
+        data-frame={frame}
+      >
+        {rows.map((row, i) => {
+          const y = 2 + i * BAR_ROW;
+          const value = Number.isFinite(row.value) ? row.value : 0;
+          const start = Math.min(zero, x(value));
+          const barWidth = Math.abs(x(value) - zero);
+          return (
+            <g key={row.id}>
+              <text className="ms-svg-label" x={left - 6} y={y + 16} textAnchor="end">
+                {shorten(row.label, Math.max(6, Math.floor(left / 7)))}
+                <title>{row.label}</title>
+              </text>
+              <rect
+                x={start}
+                y={y + 4}
+                width={barWidth}
+                height={BAR_ROW - 10}
+                fill={row.color}
+                rx={2}
+              />
+              <text className="ms-svg-value" x={Math.max(x(value), zero) + 4} y={y + 16}>
+                {formatValue(row.value)}
+              </text>
+            </g>
+          );
+        })}
+        <line className="ms-svg-axis" x1={zero} x2={zero} y1={0} y2={rows.length * BAR_ROW + 2} />
+        <text className="ms-svg-tick" x={x(low)} y={height - 6} textAnchor="start">
+          {formatValue(low)}
+        </text>
+        <text className="ms-svg-tick" x={x(high)} y={height - 6} textAnchor="end">
+          {formatValue(high)}
+        </text>
+      </svg>
+    </div>
   );
 }
 
@@ -103,6 +144,7 @@ export interface HistogramChartProps {
   readonly frame: number;
 }
 
+/** Drawn at this size until the box it sits in has been measured. */
 const HIST_WIDTH = 420;
 const HIST_HEIGHT = 220;
 const HIST_LEFT = 40;
@@ -126,6 +168,8 @@ export function edgeTickIndexes(bins: number, count = 5): number[] {
  * labelled by value (bin edges from the distribution's range).
  */
 export function HistogramChart({ spec, sim, frame }: HistogramChartProps): ReactElement {
+  const { ref: boxRef, box } = useBox({ width: HIST_WIDTH, height: HIST_HEIGHT });
+  const { width: chartWidth, height: chartHeight } = box;
   const counts = sim.data.distributionCounts(spec.distribution);
   const info = sim.data.distributionInfo(spec.distribution);
   const bins = counts.length;
@@ -133,8 +177,8 @@ export function HistogramChart({ spec, sim, frame }: HistogramChartProps): React
   const edge = (i: number): number => info.min + i * width;
   let peak = 0;
   for (const c of counts) if (c > peak) peak = c;
-  const plotWidth = HIST_WIDTH - HIST_LEFT - HIST_RIGHT;
-  const plotHeight = HIST_HEIGHT - HIST_TOP - HIST_BOTTOM;
+  const plotWidth = chartWidth - HIST_LEFT - HIST_RIGHT;
+  const plotHeight = chartHeight - HIST_TOP - HIST_BOTTOM;
   const slot = plotWidth / Math.max(1, bins);
   const base = HIST_TOP + plotHeight;
   const color = toCss(spec.color ?? 0x3b7dd8);
@@ -142,57 +186,66 @@ export function HistogramChart({ spec, sim, frame }: HistogramChartProps): React
   const ticks = edgeTickIndexes(bins);
 
   return (
-    <svg
-      className="ms-chart ms-histogram"
-      viewBox={`0 0 ${HIST_WIDTH} ${HIST_HEIGHT}`}
-      role="img"
-      aria-label={`${spec.title}: ${bins} bins from ${formatValue(info.min)} to ${formatValue(info.max)}, highest count ${peak}`}
-      data-frame={frame}
-    >
-      <line className="ms-svg-axis" x1={HIST_LEFT} x2={HIST_LEFT} y1={HIST_TOP} y2={base} />
-      <line
-        className="ms-svg-axis"
-        x1={HIST_LEFT}
-        x2={HIST_WIDTH - HIST_RIGHT}
-        y1={base}
-        y2={base}
-      />
-      {Array.from(counts, (count, i) => {
-        const h = peak === 0 ? 0 : (count / peak) * plotHeight;
-        const x = HIST_LEFT + i * slot;
-        return (
-          <g key={i}>
-            <rect x={x + 0.5} y={base - h} width={Math.max(1, slot - 1)} height={h} fill={color}>
-              <title>{`${formatValue(edge(i))} to ${formatValue(edge(i + 1))}: ${count}`}</title>
-            </rect>
-            {showCounts && count > 0 && (
-              <text className="ms-svg-value" x={x + slot / 2} y={base - h - 3} textAnchor="middle">
-                {count}
-              </text>
-            )}
-          </g>
-        );
-      })}
-      <text className="ms-svg-tick" x={HIST_LEFT - 4} y={base} textAnchor="end">
-        0
-      </text>
-      <text className="ms-svg-tick" x={HIST_LEFT - 4} y={HIST_TOP + 8} textAnchor="end">
-        {peak}
-      </text>
-      {ticks.map((index, k) => (
-        <text
-          key={index}
-          className="ms-svg-tick"
-          x={HIST_LEFT + index * slot}
-          y={base + 14}
-          textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}
-        >
-          {formatValue(edge(index))}
+    <div ref={boxRef} className="ms-histogram-box">
+      <svg
+        className="ms-chart ms-histogram"
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        width={chartWidth}
+        height={chartHeight}
+        role="img"
+        aria-label={`${spec.title}: ${bins} bins from ${formatValue(info.min)} to ${formatValue(info.max)}, highest count ${peak}`}
+        data-frame={frame}
+      >
+        <line className="ms-svg-axis" x1={HIST_LEFT} x2={HIST_LEFT} y1={HIST_TOP} y2={base} />
+        <line
+          className="ms-svg-axis"
+          x1={HIST_LEFT}
+          x2={chartWidth - HIST_RIGHT}
+          y1={base}
+          y2={base}
+        />
+        {Array.from(counts, (count, i) => {
+          const h = peak === 0 ? 0 : (count / peak) * plotHeight;
+          const x = HIST_LEFT + i * slot;
+          return (
+            <g key={i}>
+              <rect x={x + 0.5} y={base - h} width={Math.max(1, slot - 1)} height={h} fill={color}>
+                <title>{`${formatValue(edge(i))} to ${formatValue(edge(i + 1))}: ${count}`}</title>
+              </rect>
+              {showCounts && count > 0 && (
+                <text
+                  className="ms-svg-value"
+                  x={x + slot / 2}
+                  y={base - h - 3}
+                  textAnchor="middle"
+                >
+                  {count}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        <text className="ms-svg-tick" x={HIST_LEFT - 4} y={base} textAnchor="end">
+          0
         </text>
-      ))}
-      <text className="ms-svg-label" x={4} y={10}>
-        Count
-      </text>
-    </svg>
+        <text className="ms-svg-tick" x={HIST_LEFT - 4} y={HIST_TOP + 8} textAnchor="end">
+          {peak}
+        </text>
+        {ticks.map((index, k) => (
+          <text
+            key={index}
+            className="ms-svg-tick"
+            x={HIST_LEFT + index * slot}
+            y={base + 14}
+            textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}
+          >
+            {formatValue(edge(index))}
+          </text>
+        ))}
+        <text className="ms-svg-label" x={4} y={10}>
+          Count
+        </text>
+      </svg>
+    </div>
   );
 }

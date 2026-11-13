@@ -14,13 +14,13 @@ from Ascape and Eclipse AMP, ported with their provenance. Open work is listed i
 
 ## Packages
 
-| Path              | Package             | Purpose                                                               |
-| ----------------- | ------------------- | --------------------------------------------------------------------- |
-| `packages/engine` | `@metascape/engine` | Headless engine: simulations, scapes, spaces, data, run control       |
-| `packages/models` | `@metascape/models` | The model catalogue: 25 families, 127 models (see below)              |
-| `packages/spec`   | `@metascape/spec`   | Models as data: typed format, checker, interpreter and five examples  |
-| `packages/react`  | `@metascape/react`  | Views, charts, run controls, rule and chart editing, a model runner   |
-| `apps/studio`     | `@metascape/studio` | Browser app: pick a family and model, run, inspect and reconfigure it |
+| Path              | Package             | Purpose                                                                               |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| `packages/engine` | `@metascape/engine` | Headless engine: simulations, scapes, spaces, data, run control                       |
+| `packages/models` | `@metascape/models` | The model catalogue: 25 families, 127 models (see below)                              |
+| `packages/spec`   | `@metascape/spec`   | Models as data: typed format, checker, interpreter and five examples                  |
+| `packages/react`  | `@metascape/react`  | Views, charts, run controls, rule and chart editing, a model runner                   |
+| `apps/studio`     | `@metascape/studio` | Browser app: a Library to find models and a Workbench to run, inspect and change them |
 
 ## The model catalogue
 
@@ -39,21 +39,23 @@ Diffusion, Conway's Life and others.
 Ported models are faithful to the legacy code, including its quirks and bugs: each family's
 `README.md` lists every legacy class, how it was ported, and every kept bug or deviation.
 Each model carries its provenance (authors, publication, the legacy class it came from, and the
-original copyright), which Studio shows under the model's name. See [NOTICE](NOTICE) and
+original copyright), which Studio shows in each model's About panel, linked from the title bar. See [NOTICE](NOTICE) and
 [LICENSES](LICENSES) for the BSD terms of the Ascape-derived files.
 
 ## Changing a model while it runs
 
 As in Ascape, a model's behaviour can be changed in Studio without code:
 
-- **Parameters:** edit and apply with a restart.
+- **Parameters:** those a model declares `live` change while it runs (the engine's
+  `Simulation.setParameter`); the rest collect into one "restart to apply" beside the play button.
 - **Rules:** for each scape, switch rules on and off, reorder them, and choose the execution
   order (by agent or by rule), the visit order (shuffled or sequential), and complete tour or
   repeated draw with a number of agents per step. Changes apply at once.
 - **Charts:** pick which recorded series each chart shows (measures by statistics), switch
   between time series and bars, and add or remove charts.
 
-Rule and chart choices survive restarts of the model until reset. The engine side is in
+Rule and chart choices survive restarts of the model until reset. Studio puts the seed,
+parameters, rules, chart choices and arrangement in the address, so a link reproduces a run. The engine side is in
 `packages/engine/src/settings.ts` (`SettingsStore`, `readScapeSettings`, `applyScapeSettings`).
 
 ## A model in code

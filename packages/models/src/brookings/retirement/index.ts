@@ -11,6 +11,7 @@ export const family = defineFamily({
   id: 'brookings-retirement',
   name: 'Retirement',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['social norms', 'economics'],
   description:
     'Coordination in transient social networks: rational, random and imitating agents decide when to retire.',
   models: [populationSmallWorld, population, populationCoupled],

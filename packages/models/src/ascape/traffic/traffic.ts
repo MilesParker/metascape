@@ -341,6 +341,11 @@ export const trafficModel = defineModel({
         cellColor: () => colors.gray,
         occupantColor: (car) => (car.mode === 'decelerating' ? colors.red : car.color),
         occupantShape: 'square',
+        // Other cars keep a random colour of their own, so they can be followed.
+        legend: [
+          { color: colors.red, label: 'Braking car', mark: 'agent' },
+          { color: colors.gray, label: 'Road' },
+        ],
       }),
     );
     sim.addView(

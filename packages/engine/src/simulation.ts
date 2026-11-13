@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Agent } from './agent';
 import { DataRecorder } from './data/recorder';
-import { resolveParameters, type ParameterSchema, type ParameterValues } from './parameters';
+import {
+  ParameterError,
+  resolveParameters,
+  type ParameterSchema,
+  type ParameterValues,
+} from './parameters';
 import { Random } from './random';
 import type { Scape } from './scape';
 import type { ViewSpec } from './view/spec';
@@ -24,6 +29,46 @@ export interface Provenance {
 }
 
 /**
+ * How a model's steps map onto its own time, such as one year per step
+ * starting in AD 800. Tools use it to label time; ticks stay the engine's unit.
+ */
+export interface TimeScale<S extends ParameterSchema = ParameterSchema> {
+  /** One step's unit, singular, such as "year". */
+  readonly unit: string;
+  /** Plural of `unit`; default `unit` + "s". */
+  readonly plural?: string;
+  /** The time at tick 0. Default 0; see also {@link TimeScale.originOf}. */
+  readonly origin?: number;
+  /** The time at tick 0 when it depends on the parameters; takes precedence over `origin`. */
+  originOf?(parameters: ParameterValues<S>): number;
+  /** Time per step. Default 1. */
+  readonly step?: number;
+}
+
+/** A change to rules that an {@link Exploration} makes. */
+export interface ExplorationRules {
+  /** Scape name. */
+  readonly scape: string;
+  /** Rule names to switch on. */
+  readonly enable?: readonly string[];
+  /** Rule names to switch off. */
+  readonly disable?: readonly string[];
+}
+
+/**
+ * A "thing to try": a small change, applied in one action, that shows something
+ * about the model, such as switching off a rule or setting vision to 1.
+ */
+export interface Exploration<S extends ParameterSchema = ParameterSchema> {
+  readonly title: string;
+  /** What to look for once it is applied. */
+  readonly description?: string;
+  /** Parameter values to set; non-live parameters apply on restart. */
+  readonly parameters?: Partial<ParameterValues<S>>;
+  readonly rules?: readonly ExplorationRules[];
+}
+
+/**
  * A model: its declared parameters and how to build its world.
  *
  * `build` adds scapes, rules and observers to a fresh simulation. It must not
@@ -34,6 +79,16 @@ export interface Model<S extends ParameterSchema = ParameterSchema> {
   readonly description?: string;
   /** Who devised the model and where this implementation comes from. */
   readonly provenance?: Provenance;
+  /** One line for galleries and lists; defaults to the first sentence of `description`. */
+  readonly summary?: string;
+  /** Topics, such as "epidemics" or "game theory", for finding the model. */
+  readonly tags?: readonly string[];
+  /** The model's own unit of time. Default: ticks. */
+  readonly time?: TimeScale<S>;
+  /** Small changes worth trying, each applied in one action. */
+  readonly explorations?: readonly Exploration<S>[];
+  /** Readable names for agent fields shown by inspectors; `null` hides a field. */
+  readonly fields?: Readonly<Record<string, string | null>>;
   readonly parameters: S;
   build(sim: Simulation<S>): void;
   /**
@@ -78,7 +133,6 @@ export interface SimulationObserver {
 export class Simulation<S extends ParameterSchema = ParameterSchema> {
   readonly model: Model<S>;
   readonly seed: number | string;
-  readonly parameters: ParameterValues<S>;
   /** The root random stream. Scapes get their own streams forked from it. */
   readonly random: Random;
   readonly stopAt: number | undefined;
@@ -93,6 +147,7 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
   readonly #declaredViews: ViewSpec[] = [];
   readonly #setups: (() => void)[] = [];
   #views: readonly ViewSpec[] | undefined;
+  #parameters: ParameterValues<S>;
   #tick = 0;
   #nextAgentId = 0;
   #building = true;
@@ -101,7 +156,7 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
 
   constructor(model: Model<S>, options: SimulationOptions<S> = {}) {
     this.model = model;
-    this.parameters = resolveParameters(model.parameters, options.parameters);
+    this.#parameters = resolveParameters(model.parameters, options.parameters);
     // The only use of ambient entropy: choosing a seed when none is given.
     // eslint-disable-next-line no-restricted-properties
     this.seed = options.seed ?? Math.floor(Math.random() * 0x1_0000_0000);
@@ -118,6 +173,29 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
     for (const scape of this.#scapes) scape.runInitialRules();
     for (const setup of this.#setups) setup();
     this.#notify('initialized');
+  }
+
+  /** The resolved parameter values. Read them as the run goes to see live changes. */
+  get parameters(): ParameterValues<S> {
+    return this.#parameters;
+  }
+
+  /**
+   * Changes a parameter declared `live` while the simulation runs. The model
+   * sees the new value wherever it reads `sim.parameters` from now on. Throws a
+   * `ParameterError` for a parameter that is not live or a value that does not
+   * fit, changing nothing.
+   */
+  setParameter(name: string, value: number | string | boolean): void {
+    const parameter = (this.model.parameters as ParameterSchema)[name];
+    if (!parameter) throw new ParameterError(`Unknown parameter "${name}"`);
+    if (!parameter.live) {
+      throw new ParameterError(`Parameter "${name}" is not live; it applies on restart`);
+    }
+    this.#parameters = resolveParameters(this.model.parameters, {
+      ...this.#parameters,
+      [name]: value,
+    } as Partial<ParameterValues<S>>);
   }
 
   /** The number of steps executed so far. */
@@ -235,4 +313,12 @@ export class Simulation<S extends ParameterSchema = ParameterSchema> {
   #notify(event: keyof SimulationObserver): void {
     for (const observer of [...this.#observers]) observer[event]?.(this as unknown as Simulation);
   }
+}
+
+/** The model's own time at a tick, using its {@link TimeScale}; the tick itself when it has none. */
+export function timeAt(sim: Simulation, tick: number): number {
+  const scale = sim.model.time;
+  if (!scale) return tick;
+  const origin = scale.originOf ? scale.originOf(sim.parameters) : (scale.origin ?? 0);
+  return origin + tick * (scale.step ?? 1);
 }

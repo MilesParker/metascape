@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineRebellionModel } from './core';
+import { defineRebellionModel, LIVE_CALM } from './core';
 import { NEVER_RELEASED } from './agents';
 
 const MODEL_I =
@@ -36,6 +36,7 @@ export const cvModelIRun1 = defineRebellionModel(
     variant: { kind: 'rebellion', citizensMove: false },
   },
   { legitimacy: 0.89 },
+  LIVE_CALM,
 );
 
 /** `CVModelIRun2`: vision 7, legitimacy 0.82, jail term 30, 4% cops. */
@@ -67,6 +68,7 @@ export const cvModelIRun3and4and5 = defineRebellionModel(
     variant: { kind: 'rebellion', chartExtra: 'legitimacy' },
   },
   RUN_3_4_5,
+  LIVE_CALM,
 );
 
 /** `CVModelIRun3`: legitimacy falls by 0.01 every third tick. */
@@ -104,6 +106,7 @@ export const cvModelIRun4 = defineRebellionModel(
     },
   },
   RUN_3_4_5,
+  LIVE_CALM,
 );
 
 /** `CVModelIRun5`: legitimacy 0.80 and the cop target falls from 6% by 0.1 point per tick. */

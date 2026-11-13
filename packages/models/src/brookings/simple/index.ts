@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-simple',
   name: 'Simple',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['tutorial'],
   description:
     'The smallest Ascape example: one agent whose happiness doubles every tick and an environment that sometimes breaks it.',
   models: [simple],

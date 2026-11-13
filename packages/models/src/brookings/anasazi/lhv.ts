@@ -44,6 +44,15 @@ export const lhv = defineModel({
     'Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The simulated number of households is charted against the archaeological record, which grows and then collapses around AD 1300.',
   provenance: anasaziProvenance('LHV', DATA_NOTE),
   parameters: lhvParameters({ stopYear: 1350, minFertility: 0.125 }),
+  time: { unit: 'year', originOf: (p) => p.startYear },
+  explorations: [
+    {
+      title: 'Poorer harvests',
+      description:
+        'At the legacy defaults the valley holds far more households than the record (see the note). Cut yields and compare the two lines.',
+      parameters: { harvestAdjustment: 0.6 },
+    },
+  ],
   build(sim) {
     buildLongHouseValley(sim, { households: 'aggregate' });
   },
@@ -63,6 +72,7 @@ export const lhvGreedy = defineModel({
     `${DATA_NOTE} The legacy HouseholdGreedy buffer-farm code is commented out, so this behaves like LHV.`,
   ),
   parameters: lhvParameters({ stopYear: 1350, minFertility: 0.125 }),
+  time: { unit: 'year', originOf: (p) => p.startYear },
   build(sim) {
     buildLongHouseValley(sim, { households: 'greedy' });
   },

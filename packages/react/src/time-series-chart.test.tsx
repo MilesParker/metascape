@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: EPL-2.0
 import { Simulation, timeSeriesView, type TimeSeriesViewSpec } from '@metascape/engine';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { showLatest, TimeSeriesChart } from './time-series-chart';
+import { ghostOf, seriesColors, TimeSeriesChart } from './time-series-chart';
 import { demoModel } from './testing/demo-model';
 
 const created: { options: unknown; data: unknown; setData: unknown[]; destroyed: boolean }[] = [];
@@ -12,6 +12,7 @@ let failing = false;
 vi.mock('uplot', () => ({
   default: class FakePlot {
     readonly record: (typeof created)[number];
+    readonly over = { addEventListener() {}, removeEventListener() {} };
     constructor(options: unknown, data: unknown) {
       if (failing) throw new Error('no canvas');
       this.record = { options, data, setData: [], destroyed: false };
@@ -21,6 +22,11 @@ vi.mock('uplot', () => ({
       this.record.setData.push(data);
     }
     setSize(): void {}
+    redraw(): void {}
+    setCursor(): void {}
+    valToPos(): number {
+      return 0;
+    }
     destroy(): void {
       this.record.destroyed = true;
     }
@@ -47,85 +53,102 @@ function spec(): TimeSeriesViewSpec {
   }) as TimeSeriesViewSpec;
 }
 
+type Options = {
+  series: { label: string; stroke?: string }[];
+  scales: { y: { range: (u: unknown, min: number, max: number) => [number, number] } };
+  hooks: Record<string, unknown[]>;
+  legend: { show: boolean };
+  cursor: { sync?: { key: string } };
+  axes: { label?: string; values: (u: unknown, ticks: number[]) => string[] }[];
+};
+
 describe('TimeSeriesChart', () => {
-  it('registers cursor and data hooks that show latest values in the legend', async () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
-    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
-    await flush();
-    const options = created[0]!.options as {
-      hooks: { setCursor: unknown[]; setData: unknown[]; setLegend: unknown[] };
-    };
-    expect(options.hooks.setCursor).toHaveLength(1);
-    expect(options.hooks.setData).toEqual([showLatest]);
-    expect(options.hooks.setLegend).toHaveLength(1);
-
-    const root = document.createElement('div');
-    root.innerHTML = ['Tick', 'A', 'B']
-      .map((n) => `<div class="u-series"><span class="u-value">--</span>${n}</div>`)
-      .join('');
-    const fake = {
-      root,
-      series: [{}, {}, {}],
-      data: [
-        [0, 1, 2],
-        [1, 2, 3.14159265],
-        [5, 6, NaN],
-      ],
-    };
-    showLatest(fake as never);
-    const values = [...root.querySelectorAll('.u-value')].map((v) => v.textContent);
-    // The tick and each finite latest value are shown; a NaN keeps its placeholder.
-    expect(values).toEqual(['2', '3.142', '--']);
-  });
-
   it('creates the plot once, updates it on each frame and destroys it on unmount', async () => {
     const sim = new Simulation(demoModel, { seed: 1 });
-    const s = spec();
-    const view = render(<TimeSeriesChart spec={s} sim={sim} frame={0} />);
+    const chartSpec = spec();
+    const view = render(<TimeSeriesChart spec={chartSpec} sim={sim} frame={0} syncKey="k" />);
     await flush();
     expect(created).toHaveLength(1);
-    const options = created[0]!.options as {
-      series: { label?: string; stroke?: string }[];
-      scales: { y: { range: (u: unknown, min: number, max: number) => [number, number] } };
-    };
+    const options = created[0]!.options as Options;
     expect(options.series.map((x) => x.label)).toEqual(['Tick', 'Mean energy', 'Max energy']);
     expect(options.series[2]!.stroke).toBe('#ff0000');
-    expect(options.scales.y.range(null, 3, 9)).toEqual([0, 9]);
-    expect(options.scales.y.range(null, 5, 5)).toEqual([0, 5]);
-
+    expect(options.legend.show).toBe(false);
+    expect(options.cursor.sync?.key).toBe('k');
+    expect(options.scales.y.range(null, 3, 9)[0]).toBe(0);
+    expect(options.scales.y.range(null, 3, 9)[1]).toBeGreaterThanOrEqual(9);
     sim.run(4);
-    view.rerender(<TimeSeriesChart spec={s} sim={sim} frame={4} />);
+    view.rerender(<TimeSeriesChart spec={chartSpec} sim={sim} frame={1} syncKey="k" />);
     expect(created).toHaveLength(1);
     const latest = created[0]!.setData.at(-1) as Float64Array[];
-    expect(latest).toHaveLength(3);
     expect([...latest[0]!]).toEqual([0, 1, 2, 3, 4]);
-
     view.unmount();
     expect(created[0]!.destroyed).toBe(true);
   });
 
+  it('shows the latest values in its own legend, and the time only under the cursor', async () => {
+    const sim = new Simulation(demoModel, { seed: 1 });
+    sim.run(2);
+    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
+    await flush();
+    const legend = screen.getByRole('list', { name: 'Energy values' });
+    expect(legend.textContent).not.toContain('Tick');
+    expect(legend.textContent).toContain('Mean energy');
+    expect(legend.textContent).toContain(
+      String(Number(sim.data.latest('energy.max').toPrecision(4))),
+    );
+  });
+
+  it('labels the time axis with the model time and allows for a ghost run in the range', async () => {
+    const sim = new Simulation(demoModel, { seed: 1 });
+    sim.run(3);
+    const ghost = ghostOf(sim);
+    ghost.values['energy.max']![1] = 1e6;
+    const fresh = new Simulation(demoModel, { seed: 2 });
+    render(
+      <TimeSeriesChart
+        spec={spec()}
+        sim={fresh}
+        frame={0}
+        ghost={ghost}
+        marks={[{ tick: 1, label: 'x' }]}
+      />,
+    );
+    await flush();
+    const options = created[0]!.options as Options;
+    expect(options.scales.y.range(null, 0, 10)[1]).toBeGreaterThanOrEqual(1e6);
+    expect(options.hooks['draw']).toHaveLength(1);
+    expect(options.axes[0]!.values(null, [0, 5])).toEqual(['0', '5']);
+    expect(screen.getByText('Previous run')).toBeTruthy();
+  });
+
   it('decimates long runs but keeps the data fresh when buffers grow', async () => {
     const sim = new Simulation(demoModel, { seed: 1 });
-    const s = spec();
-    const view = render(<TimeSeriesChart spec={s} sim={sim} frame={0} />);
+    const chartSpec = spec();
+    const view = render(<TimeSeriesChart spec={chartSpec} sim={sim} frame={0} />);
     await flush();
     sim.run(6000);
-    view.rerender(<TimeSeriesChart spec={s} sim={sim} frame={1} />);
+    view.rerender(<TimeSeriesChart spec={chartSpec} sim={sim} frame={1} />);
     const data = created[0]!.setData.at(-1) as Float64Array[];
     expect(data[0]!.length).toBeLessThanOrEqual(2002);
     expect(data[0]!.at(-1)).toBe(6000);
   });
 
-  it('leaves an empty container when the plot cannot be created', async () => {
+  it('leaves an empty plot area when the plot cannot be created', async () => {
     failing = true;
     const sim = new Simulation(demoModel, { seed: 1 });
-    const view = render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
+    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
     await flush();
-    const box = view.container.querySelector('.ms-timeseries')!;
+    const box = screen.getByRole('img');
     expect(box.getAttribute('data-unavailable')).toBe('true');
     expect(box.childElementCount).toBe(0);
-    expect(() =>
-      view.rerender(<TimeSeriesChart spec={spec()} sim={sim} frame={1} />),
-    ).not.toThrow();
+  });
+
+  it('swaps colours that would vanish on the background for the text colour', () => {
+    const colors = seriesColors(
+      { series: ['a', 'b'], colors: { a: 0x000000, b: 0xff0000 } },
+      '#1f2228',
+      '#eee',
+    );
+    expect(colors).toEqual(['#eee', '#ff0000']);
   });
 });

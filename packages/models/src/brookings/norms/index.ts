@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'brookings-norms',
   name: 'Norms',
   collection: 'Brookings Institution models (from Ascape)',
+  tags: ['social norms'],
   description:
     'Learning to be thoughtless: a ring of agents who adopt a norm from their neighbors and adapt how many neighbors they consult.',
   models: [norms],

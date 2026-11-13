@@ -9,6 +9,7 @@ export const family = defineFamily({
   id: 'amp-wiki-example',
   name: 'Wiki Example',
   collection: 'Eclipse AMP example models',
+  tags: ['tutorial'],
   description:
     'Individuals of different ages on a city grid seek out others of their own age and settle beside them.',
   models: [wikiExample],

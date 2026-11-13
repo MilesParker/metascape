@@ -31,7 +31,11 @@ export {
 export {
   defineModel,
   Simulation,
+  timeAt,
+  type Exploration,
+  type ExplorationRules,
   type Model,
+  type TimeScale,
   type Provenance,
   type SimulationObserver,
   type SimulationOptions,

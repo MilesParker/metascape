@@ -214,6 +214,31 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     }
   }
 
+  /**
+   * Changes a live parameter of the running simulation (see
+   * `Simulation.setParameter`) and keeps the value for later restarts. Throws
+   * a `ParameterError`, changing nothing, if the parameter is not live or the
+   * value does not fit. Frame listeners are called so views can update.
+   */
+  setParameter(name: string, value: number | string | boolean): void {
+    if (this.#disposed) return;
+    this.#sim.setParameter(name, value);
+    this.#parameters = { ...this.#parameters, [name]: value } as unknown as Partial<
+      ParameterValues<S>
+    >;
+    this.#notifyFrame();
+  }
+
+  /** The parameter overrides used for the current simulation and kept for restarts. */
+  get parameterOverrides(): Partial<ParameterValues<S>> {
+    return { ...this.#parameters } as Partial<ParameterValues<S>>;
+  }
+
+  /** The seed given to the constructor or the last restart, if any. */
+  get fixedSeed(): number | string | undefined {
+    return this.#seed;
+  }
+
   /** Changes the target speed. Throws a `RangeError` unless positive or `Infinity`. */
   setSpeed(ticksPerSecond: number): void {
     checkSpeed(ticksPerSecond);

@@ -151,6 +151,10 @@ reproduced; use `sim.data.toCSV()` in a `setup` hook for that.
 
 ## Deviations
 
+- **Seasons can change while it runs.** II-7 reads the winter growback rate and the season
+  length each tick (Ascape read its bean properties when used), so both are `live`. The
+  endowment ranges stay restart-only: they apply only when an agent is created, and changing
+  one end of a range mid-run could cross the pair.
 - **`TradeT3` with exactly one neighbor**: the legacy code casts the neighbor
   list to an agent and throws `ClassCastException`, which would end the run
   almost at once; the port trades with that one neighbor (`gasIVc`, `gasIVh`).

@@ -12,6 +12,8 @@ export const family = defineFamily({
   id: 'amp-stupid-model',
   name: 'StupidModel',
   collection: 'Eclipse AMP example models',
+  tags: ['tutorial', 'ecology'],
+  path: 'tutorial',
   description:
     'Steps 1, 2, 3 and 5 of the StupidModel teaching series: bugs wander a grid, then grow, then live on habitats that produce food.',
   models: [stupidModel1, stupidModel2, stupidModel3, stupidModel5],

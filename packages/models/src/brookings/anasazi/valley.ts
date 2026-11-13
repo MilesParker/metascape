@@ -618,7 +618,6 @@ function nearlyEqual(a: number, b: number): boolean {
  */
 export class LongHouseValley {
   readonly sim: Simulation;
-  readonly parameters: ValleyParameters;
   readonly data: LongHouseValleyData;
   readonly environmentZones: readonly EnvironmentZoneState[];
   readonly yieldZones: readonly YieldZone[];
@@ -643,9 +642,13 @@ export class LongHouseValley {
   #waterRankDistance = Number.NaN;
   #settlements: Scape<Settlement> | undefined;
 
-  constructor(sim: Simulation, parameters: ValleyParameters) {
+  /** The parameters now: a change during the run takes effect where they are next read. */
+  get parameters(): ValleyParameters {
+    return this.sim.parameters as unknown as ValleyParameters;
+  }
+
+  constructor(sim: Simulation) {
     this.sim = sim;
-    this.parameters = parameters;
     this.data = longHouseValleyData();
     this.environmentZones = ENVIRONMENT_ZONES.map((info) => new EnvironmentZoneState(info));
     this.yieldZones = YIELD_ZONES.map(

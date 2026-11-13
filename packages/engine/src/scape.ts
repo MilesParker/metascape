@@ -13,6 +13,8 @@ import type { Simulation } from './simulation';
  */
 export interface Rule<A extends Agent = Agent> {
   readonly name: string;
+  /** What the rule does, in a sentence, for people reading or editing the schedule. */
+  readonly description?: string;
   execute(agent: A): void;
   update?(agent: A): void;
 }
