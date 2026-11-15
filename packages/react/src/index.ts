@@ -15,6 +15,7 @@ export {
 export {
   describeExecution,
   groupParameters,
+  isModelScape,
   needsRandomOrder,
   rangePairs,
   useParameterController,

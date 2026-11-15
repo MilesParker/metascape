@@ -65,14 +65,6 @@ second user appears.
   a scrolling history by `@metascape/react`.
 - **Java-style random helpers** (`nextGaussian` with a spare value): `brookings/anasazi/java-random.ts`.
 
-## After the restructure to Ascape's architecture
-
-The engine now follows the three abstractions of Parker (2001); see `docs/architecture.md`. Every
-model gives the numbers it gave before, checked run by run against the old engine.
-
-- **Studio counts rules of the model as a whole** (stopping, set-up) in a model's rule count and
-  lists their scapes in the rules panel.
-
 ## Gaps in the model format (`@metascape/spec`)
 
 Found by assessing the AMP models against `packages/spec/src/schema.ts`:

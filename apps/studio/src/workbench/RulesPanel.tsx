@@ -16,7 +16,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Array2D, ruleKey, type RuleSetting, type ScapeSettings } from '@metascape/engine';
-import { needsRandomOrder, type RulesController, type ScapeRules } from '@metascape/react';
+import {
+  isModelScape,
+  needsRandomOrder,
+  type RulesController,
+  type ScapeRules,
+} from '@metascape/react';
 import { ChevronDown, GripVertical, RotateCcw } from 'lucide-react';
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { cn } from '../lib/cn';
@@ -153,16 +158,17 @@ function RuleRow({
   );
 }
 
-function ScapeCard({
+/** A scape's rules in the order they run, to reorder and switch on and off. */
+function RuleList({
   entry,
   controller,
+  label,
 }: {
   readonly entry: ScapeRules;
   readonly controller: RulesController;
+  readonly label: string;
 }): ReactElement {
   const { scape, settings, defaults } = entry;
-  const [open, setOpen] = useState(false);
-  const [countText, setCountText] = useState<string | undefined>(undefined);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -180,6 +186,44 @@ function ScapeCard({
     const to = event.over ? keys.indexOf(String(event.over.id)) : -1;
     if (from >= 0 && to >= 0 && from !== to) controller.move(scape.name, from, to);
   };
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={keys} strategy={verticalListSortingStrategy}>
+        <ol className="space-y-1 px-2" aria-label={label}>
+          {settings.rules.map((rule, index) => {
+            const definition = entries.get(ruleKey(rule));
+            const original = originalKeys?.indexOf(ruleKey(rule)) ?? -1;
+            return (
+              <RuleRow
+                key={ruleKey(rule)}
+                rule={rule}
+                index={index}
+                position={positions[index]}
+                was={original >= 0 && original !== index ? original + 1 : undefined}
+                description={definition?.description}
+                twoPhase={definition?.update !== undefined}
+                noun={noun}
+                onToggle={(enabled) => controller.toggle(scape.name, index, enabled)}
+              />
+            );
+          })}
+        </ol>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function ScapeCard({
+  entry,
+  controller,
+}: {
+  readonly entry: ScapeRules;
+  readonly controller: RulesController;
+}): ReactElement {
+  const { scape, settings } = entry;
+  const [open, setOpen] = useState(false);
+  const [countText, setCountText] = useState<string | undefined>(undefined);
+  const noun = nounOf(scape);
   const count = settings.agentsPerIteration;
 
   return (
@@ -193,32 +237,11 @@ function ScapeCard({
           {scape.size} {scape.size === 1 ? noun.one : noun.many}
         </span>
       </header>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={keys} strategy={verticalListSortingStrategy}>
-          <ol
-            className="space-y-1 px-2"
-            aria-label={`Rules of ${scape.name}, in the order they run`}
-          >
-            {settings.rules.map((rule, index) => {
-              const definition = entries.get(ruleKey(rule));
-              const original = originalKeys?.indexOf(ruleKey(rule)) ?? -1;
-              return (
-                <RuleRow
-                  key={ruleKey(rule)}
-                  rule={rule}
-                  index={index}
-                  position={positions[index]}
-                  was={original >= 0 && original !== index ? original + 1 : undefined}
-                  description={definition?.description}
-                  twoPhase={definition?.update !== undefined}
-                  noun={noun}
-                  onToggle={(enabled) => controller.toggle(scape.name, index, enabled)}
-                />
-              );
-            })}
-          </ol>
-        </SortableContext>
-      </DndContext>
+      <RuleList
+        entry={entry}
+        controller={controller}
+        label={`Rules of ${scape.name}, in the order they run`}
+      />
       <button
         type="button"
         aria-expanded={open}
@@ -290,7 +313,43 @@ function ScapeCard({
 }
 
 /**
- * Every scape's rules in the order they run, with its execution settings.
+ * What the model does as a whole, such as stopping or setting up: the rules of its
+ * scapes with a singleton space, shown as the model's own rather than as scapes of
+ * agents. There is nothing to execute across, so no execution settings.
+ */
+function ModelCard({
+  entries,
+  controller,
+}: {
+  readonly entries: readonly ScapeRules[];
+  readonly controller: RulesController;
+}): ReactElement {
+  return (
+    <section className="rounded-lg border border-line bg-panel" aria-label="Rules of the model">
+      <header className="px-3 pt-2.5 pb-2">
+        <h3 className="text-[13px] font-semibold">Model</h3>
+      </header>
+      <div className="space-y-2 pb-2">
+        {entries.map((entry) => (
+          <div key={entry.scape.name}>
+            {entries.length > 1 && (
+              <h4 className="px-3 pb-1 text-2xs text-faint">{entry.scape.name}</h4>
+            )}
+            <RuleList
+              entry={entry}
+              controller={controller}
+              label={`Rules of the model${entries.length > 1 ? `, ${entry.scape.name},` : ''} in the order they run`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Every scape's rules in the order they run, with its execution settings, then the
+ * model's own rules.
  * Drag (or use the keyboard) to reorder and switch rules on and off; changes
  * apply at once and are kept for restarts until reset.
  */
@@ -298,6 +357,7 @@ export function RulesPanel({ controller }: { readonly controller: RulesControlle
   if (controller.scapes.length === 0) {
     return <p className="p-4 text-muted">No rules.</p>;
   }
+  const ofModel = controller.scapes.filter((entry) => isModelScape(entry.scape));
   return (
     <div className="flex h-full min-h-0 flex-col">
       {controller.customized && (
@@ -313,9 +373,12 @@ export function RulesPanel({ controller }: { readonly controller: RulesControlle
             {controller.error}
           </p>
         )}
-        {controller.scapes.map((entry) => (
-          <ScapeCard key={entry.scape.name} entry={entry} controller={controller} />
-        ))}
+        {controller.scapes
+          .filter((entry) => !isModelScape(entry.scape))
+          .map((entry) => (
+            <ScapeCard key={entry.scape.name} entry={entry} controller={controller} />
+          ))}
+        {ofModel.length > 0 && <ModelCard entries={ofModel} controller={controller} />}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import { RootScape, type Model } from '@metascape/engine';
 import { catalog } from '@metascape/models';
-import { latticeOf } from '@metascape/react';
+import { isModelScape, latticeOf } from '@metascape/react';
 import { compileModel, exampleSpecs } from '@metascape/spec';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -88,7 +88,11 @@ function describeModel(
   pictures: Map<string, Picture>,
 ): ManifestModel {
   const root = new RootScape(model, { seed: SEED });
-  const ruleCount = root.scapes.reduce((n, scape) => n + scape.rules.length, 0);
+  // What the agents do: the rules of the model as a whole are not counted.
+  const ruleCount = root.scapes.reduce(
+    (n, scape) => (isModelScape(scape) ? n : n + scape.rules.length),
+    0,
+  );
   let thumb: ManifestModel['thumb'] = {
     file: `thumbs/${id}.png`,
     width: 1,

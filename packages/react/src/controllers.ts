@@ -10,6 +10,7 @@ import {
   type ParameterSchema,
   type ParameterValues,
   type Runner,
+  Singleton,
   type Scape,
   type ScapeSettings,
   type SettingsStore,
@@ -245,6 +246,15 @@ export function useParameterController<S extends ParameterSchema>(
     apply,
     discard,
   };
+}
+
+/**
+ * Whether a scape's rules are the model's own, as a whole, rather than what its
+ * agents do: a scape with a `Singleton` space, such as the one that stops the model
+ * or sets something up across other scapes.
+ */
+export function isModelScape(scape: Scape): boolean {
+  return scape.space instanceof Singleton;
 }
 
 /** A scape that has rules, with its current settings. */

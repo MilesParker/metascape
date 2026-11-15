@@ -473,7 +473,7 @@
         "lattice"
       ],
       "parameterCount": 6,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "thumb": {
         "file": "thumbs/schelling-segregation.png",
         "width": 40,
@@ -540,7 +540,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 4,
+      "ruleCount": 3,
       "thumb": {
         "file": "thumbs/wolf-sheep-predation.png",
         "width": 40,
@@ -562,7 +562,7 @@
         "lattice"
       ],
       "parameterCount": 13,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "thumb": {
         "file": "thumbs/demographic-prisoner-s-dilemma.png",
         "width": 30,
@@ -606,7 +606,7 @@
         "network"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "thumb": {
         "file": "thumbs/epidemic-sir-on-a-small-world-network.png",
         "width": 192,
@@ -755,7 +755,7 @@
         "lattice"
       ],
       "parameterCount": 10,
-      "ruleCount": 7,
+      "ruleCount": 6,
       "authors": "Joshua M. Epstein and Robert Axtell",
       "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_6",
       "thumb": {
@@ -1205,7 +1205,7 @@
         "lattice"
       ],
       "parameterCount": 24,
-      "ruleCount": 6,
+      "ruleCount": 5,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHV",
       "thumb": {
@@ -1230,7 +1230,7 @@
         "lattice"
       ],
       "parameterCount": 24,
-      "ruleCount": 6,
+      "ruleCount": 5,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVGreedy",
       "thumb": {
@@ -1255,7 +1255,7 @@
         "lattice"
       ],
       "parameterCount": 26,
-      "ruleCount": 12,
+      "ruleCount": 11,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVDisaggregate",
       "thumb": {
@@ -1280,7 +1280,7 @@
         "lattice"
       ],
       "parameterCount": 26,
-      "ruleCount": 12,
+      "ruleCount": 11,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVClan",
       "thumb": {
@@ -1721,7 +1721,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelOne",
       "thumb": {
@@ -1745,7 +1745,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure2",
       "thumb": {
@@ -1769,7 +1769,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure3",
       "thumb": {
@@ -1793,7 +1793,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelTwo",
       "thumb": {
@@ -1817,7 +1817,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure6",
       "thumb": {
@@ -1841,7 +1841,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure7",
       "thumb": {
@@ -1865,7 +1865,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure8",
       "thumb": {
@@ -1889,7 +1889,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure9",
       "thumb": {
@@ -1913,7 +1913,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 2,
+      "ruleCount": 1,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelPeyton",
       "thumb": {
@@ -2224,7 +2224,7 @@
         "lattice"
       ],
       "parameterCount": 17,
-      "ruleCount": 11,
+      "ruleCount": 10,
       "authors": "Miles T. Parker",
       "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGAMultipleTo",
       "thumb": {
@@ -2919,7 +2919,7 @@
         "plane"
       ],
       "parameterCount": 6,
-      "ruleCount": 1,
+      "ruleCount": 0,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_Q",
       "thumb": {
         "file": "thumbs/bionland-step-q.png",
@@ -3011,7 +3011,7 @@
         "strip"
       ],
       "parameterCount": 9,
-      "ruleCount": 22,
+      "ruleCount": 21,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData",
       "thumb": {
         "file": "thumbs/bionland-data-run-full-model.png",
@@ -3034,7 +3034,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 28,
+      "ruleCount": 27,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_N",
       "thumb": {
         "file": "thumbs/bionland-data-run-n.png",
@@ -3057,7 +3057,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 28,
+      "ruleCount": 27,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_O",
       "thumb": {
         "file": "thumbs/bionland-data-run-o.png",
@@ -3381,7 +3381,7 @@
         "lattice"
       ],
       "parameterCount": 18,
-      "ruleCount": 401,
+      "ruleCount": 400,
       "authors": "Miles Parker",
       "portedFrom": "Eclipse AMP, EpidemicPeriods.java (subclass of the generated Region of EpidemicRegional.metaabm)",
       "thumb": {
@@ -3472,7 +3472,7 @@
         "lattice"
       ],
       "parameterCount": 4,
-      "ruleCount": 3,
+      "ruleCount": 2,
       "thumb": {
         "file": "thumbs/data-schelling.png",
         "width": 30,
@@ -3493,7 +3493,7 @@
         "network"
       ],
       "parameterCount": 8,
-      "ruleCount": 5,
+      "ruleCount": 4,
       "thumb": {
         "file": "thumbs/data-epidemic.png",
         "width": 192,
@@ -3514,7 +3514,7 @@
         "lattice"
       ],
       "parameterCount": 8,
-      "ruleCount": 4,
+      "ruleCount": 3,
       "thumb": {
         "file": "thumbs/data-forager.png",
         "width": 40,
@@ -3535,7 +3535,7 @@
         "plane"
       ],
       "parameterCount": 8,
-      "ruleCount": 7,
+      "ruleCount": 6,
       "thumb": {
         "file": "thumbs/data-pursuit.png",
         "width": 192,

@@ -8,6 +8,7 @@ import {
   Runner,
   Scape,
   SettingsStore,
+  Singleton,
   Agent,
   ManualScheduler,
   type RootScape,
@@ -17,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeExecution,
   groupParameters,
+  isModelScape,
   rangePairs,
   useParameterController,
   useRulesController,
@@ -114,5 +116,23 @@ describe('useRulesController', () => {
     expect(result.current.customized).toBe(true);
     act(() => result.current.reset());
     expect(readScapeSettings(runner.root.findScape('things')).rules[0]!.name).toBe('first');
+  });
+});
+
+describe('isModelScape', () => {
+  it("is true only for scapes with a singleton space, whose rules are the model's own", () => {
+    const whole = defineModel({
+      name: 'whole',
+      parameters: {},
+      build(root) {
+        root.add(new Scape({ name: 'things', size: 2, prototypeAgent: () => new Agent() }));
+        root.add(new Scape({ name: 'stopping', space: new Singleton() })).addRule('stop', () => {});
+      },
+    });
+    const runner = new Runner(whole, { scheduler: new ManualScheduler(), seed: 1 });
+    expect(runner.root.scapes.map((scape) => [scape.name, isModelScape(scape)])).toEqual([
+      ['things', false],
+      ['stopping', true],
+    ]);
   });
 });
