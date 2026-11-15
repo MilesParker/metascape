@@ -6,6 +6,7 @@ import {
   type Action,
   type Expression,
   type ModelSpec,
+  type RuleSpec,
   type Selection,
 } from './schema';
 
@@ -58,7 +59,7 @@ const rule =
 
 const walker = (...actions: Action[]) => rule('walker', actions);
 const at = (agent: string, rest: string): string => `agents.${agent}.rules[0].do${rest}`;
-const aggregate = (kind: 'count' | 'sum', over: Selection, of?: Expression): Expression =>
+const aggregate = (kind: 'count' | 'sum' | 'any', over: Selection, of?: Expression): Expression =>
   of === undefined ? { aggregate: kind, over } : { aggregate: kind, over, of };
 
 interface Case {
@@ -261,9 +262,9 @@ const cases: Case[] = [
   },
   {
     name: 'a space size that is not constant',
-    change: (m) => (m.spaces!.land = { kind: 'grid', width: 'tick', height: 10 }),
+    change: (m) => (m.spaces!.land = { kind: 'grid', width: 'period', height: 10 }),
     path: 'spaces.land.width',
-    mentions: ['"tick"', 'parameters'],
+    mentions: ['"period"', 'parameters'],
   },
   {
     name: 'a random space size',
@@ -532,7 +533,7 @@ const cases: Case[] = [
     path: at('walker', '[0].do[0].set'),
     mentions: ['"other.energy"', 'synchronous'],
   },
-  // ── Initial values, styles, charts, stopWhen
+  // ── Initial values, styles, charts, scapes of the model as a whole
   {
     name: 'an initial value reading a later attribute',
     change: (m) => (m.agents.walker!.attributes!.energy!.initial = 'steps'),
@@ -583,30 +584,79 @@ const cases: Case[] = [
     mentions: ['walker.energy.stdDev', 'records only'],
   },
   {
-    name: 'stopWhen reading self',
-    change: (m) => (m.stopWhen = 'self.sick'),
-    path: 'stopWhen',
-    mentions: ['self', 'stopWhen'],
+    name: 'a scape-wide rule reading self',
+    change: (m) => wholeRule(m, { when: 'self.sick' }),
+    path: 'scapes.whole.rules[0].when',
+    mentions: ['self', 'rule "check" of scape "whole"'],
   },
   {
-    name: 'stopWhen with a bare attribute name',
-    change: (m) => (m.stopWhen = 'sick'),
-    path: 'stopWhen',
+    name: 'a scape-wide rule with a bare attribute name',
+    change: (m) => wholeRule(m, { when: 'sick' }),
+    path: 'scapes.whole.rules[0].when',
     mentions: ['"sick"', 'no acting agent'],
   },
   {
-    name: 'stopWhen with a selection that needs an origin',
-    change: (m) => (m.stopWhen = aggregate('count', { type: 'walker', from: 'neighbors' })),
-    path: 'stopWhen.over',
-    mentions: ['"neighbors"', 'stopWhen'],
+    name: 'a scape-wide rule with a selection that needs an origin',
+    change: (m) => wholeRule(m, { when: aggregate('any', { type: 'walker', from: 'neighbors' }) }),
+    path: 'scapes.whole.rules[0].when.over',
+    mentions: ['"neighbors"', 'scape "whole"'],
   },
   {
-    name: 'stopWhen that is not a boolean',
-    change: (m) => (m.stopWhen = 'tick'),
-    path: 'stopWhen',
-    mentions: ['"tick"', 'boolean'],
+    name: 'a scape-wide rule whose condition is not a boolean',
+    change: (m) => wholeRule(m, { when: 'period' }),
+    path: 'scapes.whole.rules[0].when',
+    mentions: ['"period"', 'boolean'],
+  },
+  {
+    name: 'a scape-wide rule that moves',
+    change: (m) => wholeRule(m, { do: [{ moveTo: { type: 'patch', from: 'all' } }] }),
+    path: 'scapes.whole.rules[0].do[0]',
+    mentions: ['"moveTo"', 'acting agent'],
+  },
+  {
+    name: 'a scape-wide rule that removes itself',
+    change: (m) => wholeRule(m, { do: [{ die: true }] }),
+    path: 'scapes.whole.rules[0].do[0]',
+    mentions: ['"die"', '"other"'],
+  },
+  {
+    name: 'a scape-wide rule that creates agents beside itself',
+    change: (m) => wholeRule(m, { do: [{ create: 'walker', at: 'here' }] }),
+    path: 'scapes.whole.rules[0].do[0]',
+    mentions: ['"create"', 'at: "random"'],
+  },
+  {
+    name: 'a synchronous scape-wide rule',
+    change: (m) => wholeRule(m, { synchronous: true }),
+    path: 'scapes.whole.rules[0].synchronous',
+    mentions: ['synchronous', 'only member is itself'],
+  },
+  {
+    name: 'a scape named like an agent type',
+    change: (m) => (m.scapes = { walker: { rules: [] } }),
+    path: 'scapes.walker',
+    mentions: ['"walker"', 'agent type'],
+  },
+  {
+    name: 'a scape-wide rule setting an unknown attribute of a binding',
+    change: (m) =>
+      wholeRule(m, {
+        do: [
+          {
+            forEach: { type: 'walker', from: 'all' },
+            do: [{ set: 'other.wealth', to: 1 }],
+          },
+        ],
+      }),
+    path: 'scapes.whole.rules[0].do[0].do[0].set',
+    mentions: ['"wealth"'],
   },
 ];
+
+/** Gives the model a scape "whole" with one rule, "check", changed as given. */
+function wholeRule(m: ModelSpec, rule: Partial<RuleSpec>): void {
+  m.scapes = { whole: { rules: [{ name: 'check', do: [], ...rule }] } };
+}
 
 describe('checkModel', () => {
   it('accepts the base model', () => {
@@ -650,14 +700,35 @@ describe('checkModel', () => {
         },
       ];
       m.agents.bird!.attributes!.height!.initial = 'self.x';
-      m.stopWhen = {
-        op: 'ge',
-        args: [aggregate('count', { type: 'walker', from: 'all' }, 'other.energy'), 'tick'],
+      m.scapes = {
+        whole: {
+          rules: [
+            {
+              name: 'tidy',
+              when: {
+                op: 'ge',
+                args: [
+                  aggregate('count', { type: 'walker', from: 'all' }, 'other.energy'),
+                  'period',
+                ],
+              },
+              do: [
+                { let: 'n', value: aggregate('count', { type: 'walker', from: 'all' }) },
+                {
+                  forEach: { type: 'walker', from: 'all' },
+                  do: [{ set: 'other.energy', to: 'n' }, { die: 'other' }],
+                },
+                { create: 'walker', count: 2 },
+                { stop: 'done' },
+              ],
+            },
+          ],
+        },
       };
     });
     const diagnostics = checkModel(allowed);
-    // The stopWhen above is deliberately wrong (a numeric count condition); only it should fail.
-    expect(diagnostics.map((d) => d.path)).toEqual(['stopWhen.args[0].of']);
+    // The condition above is deliberately wrong (a numeric count condition); only it should fail.
+    expect(diagnostics.map((d) => d.path)).toEqual(['scapes.whole.rules[0].when.args[0].of']);
   });
 
   it('reports structural problems before meaning', () => {

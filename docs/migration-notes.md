@@ -291,8 +291,25 @@ the value to change; the Runner test that expects the refusal is unchanged.
 scapes appear in `root.scapes`, in `readModelSettings` and in Studio's rule editor. Their names
 are visible to users.
 
+## The model format
+
+The format in `@metascape/spec` now says what the engine says. There is no reader for the old
+field names; a model that uses them fails to parse.
+
+| Old                                    | New                                                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| agent type `order: 'shuffled'`         | the default: rules have `randomExecution` true                                                                                    |
+| agent type `order: 'sequential'`       | `randomExecution: false` on each of the type's rules; `initialize` always runs in a random order                                  |
+| agent type `schedule`                  | `executionOrder` (`'byAgent' \| 'byRule'`)                                                                                        |
+| the `tick` variable                    | `period`                                                                                                                          |
+| model `stopWhen: condition`            | a rule of a scape of the model as a whole: `scapes: { stopping: { rules: [{ name, when: condition, do: [{ stop: reason }] }] } }` |
+| stop reason `'stopWhen condition met'` | the rule's own `stop` reason                                                                                                      |
+| scape `"<model name> as a whole"`      | the scape's own name, the key in `scapes`                                                                                         |
+
+The five examples give the numbers they gave before (`packages/spec/src/examples/numbers.test.ts`
+pins them).
+
 ## Not done
 
-- The model format's schema still says `order`, `schedule` and `tick`; see `docs/roadmap.md`.
 - Addresses that Studio wrote before the change hold the old rule settings (`schedule`,
   `order`, `sampling`); Studio drops them, so such a link starts with the model's own settings.

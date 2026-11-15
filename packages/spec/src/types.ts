@@ -68,7 +68,7 @@ export const RESERVED_ATTRIBUTES = [
   'self',
   'param',
   'space',
-  'tick',
+  'period',
   'x',
   'y',
   'id',
@@ -76,7 +76,7 @@ export const RESERVED_ATTRIBUTES = [
   'count',
 ] as const;
 /** Names a local variable or selection binding may not have. */
-export const RESERVED_VARIABLES = ['self', 'param', 'space', 'tick'] as const;
+export const RESERVED_VARIABLES = ['self', 'param', 'space', 'period'] as const;
 
 export interface AttributeInfo {
   readonly name: string;
@@ -250,7 +250,7 @@ export class ScopeRoot {
   refs = 0;
 
   constructor(
-    /** How the context is named in messages, such as `stopWhen` or `the size of grid "land"`. */
+    /** How the context is named in messages, such as `rule "stop" of scape "stopping"` or `the size of grid "land"`. */
     readonly label: string,
     /** The acting agent's type, if there is one. */
     readonly self: AgentInfo | undefined,
@@ -309,7 +309,7 @@ export type Step =
 
 /** What a reference denotes. */
 export type Resolved =
-  | { readonly kind: 'tick'; readonly type: Type }
+  | { readonly kind: 'period'; readonly type: Type }
   | { readonly kind: 'param'; readonly parameter: ParameterInfo; readonly type: Type }
   | {
       readonly kind: 'spaceSize';
@@ -351,9 +351,9 @@ export function resolveReference(info: ModelInfo, reference: string, scope: Scop
       `${capitalize(root.label)} may use only literals, operators and parameters; found "${reference}"`,
     );
   }
-  if (head === 'tick') {
-    if (parts.length > 1) return fail(`"tick" is an int and has no "${parts[1]}"`);
-    return { ok: true, value: { kind: 'tick', type: INT } };
+  if (head === 'period') {
+    if (parts.length > 1) return fail(`"period" is an int and has no "${parts[1]}"`);
+    return { ok: true, value: { kind: 'period', type: INT } };
   }
   if (head === 'param') {
     const name = parts[1];
@@ -422,7 +422,7 @@ export function resolveReference(info: ModelInfo, reference: string, scope: Scop
   }
 
   if (!root.self) {
-    const known = [...scope.names(), 'param', 'tick', 'space'];
+    const known = [...scope.names(), 'param', 'period', 'space'];
     return fail(
       head === 'self'
         ? `There is no acting agent (self) in ${root.label}`

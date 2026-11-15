@@ -2,7 +2,7 @@
 import type { ModelSpec } from '../schema';
 
 /**
- * Foragers on a landscape whose sites regrow food. Each tick a forager moves
+ * Foragers on a landscape whose sites regrow food. Each period a forager moves
  * to the free neighbouring site with the most food if that beats its own,
  * eats everything there, pays its metabolism, splits its energy with a child
  * on a free neighbouring site once it has enough, and dies with no energy
@@ -16,7 +16,7 @@ export const forager = {
     size: { type: 'int', default: 40, min: 5, max: 200, label: 'Size' },
     foragers: { type: 'int', default: 120, min: 0, label: 'Initial foragers' },
     maxFood: { type: 'real', default: 5, min: 0.1, label: 'Food capacity' },
-    regrow: { type: 'real', default: 0.25, min: 0, label: 'Regrowth per tick' },
+    regrow: { type: 'real', default: 0.25, min: 0, label: 'Regrowth per period' },
     metabolism: { type: 'real', default: 1, min: 0, label: 'Metabolism' },
     birthEnergy: { type: 'real', default: 20, min: 1, label: 'Energy to reproduce' },
     immigration: { type: 'real', default: 0.0002, min: 0, max: 1, label: 'Immigration' },
@@ -138,8 +138,18 @@ export const forager = {
     { kind: 'timeSeries', title: 'Food', series: ['patch.food.mean'] },
     { kind: 'bars', title: 'Age', series: ['forager.age.mean', 'forager.age.max'] },
   ],
-  stopWhen: {
-    op: 'eq',
-    args: [{ aggregate: 'count', over: { type: 'forager', from: 'all' } }, 0],
+  scapes: {
+    stopping: {
+      rules: [
+        {
+          name: 'stop when no forager is left',
+          when: {
+            op: 'eq',
+            args: [{ aggregate: 'count', over: { type: 'forager', from: 'all' } }, 0],
+          },
+          do: [{ stop: 'No forager is left' }],
+        },
+      ],
+    },
   },
 } satisfies ModelSpec;

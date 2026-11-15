@@ -10,9 +10,14 @@ import { z } from 'zod';
  * Checking that references resolve and that expressions are well typed is a
  * separate step (see `checkModel`).
  *
- * Shape of the format:
- * - A model has parameters, spaces, agent types and views.
- * - Structure follows nesting: an agent type owns its attributes and rules.
+ * Shape of the format, which follows Ascape's: a model is the root scape,
+ * built from scapes, and behaves only through rules iterated across the
+ * members of a scape; one iteration of the model is a period.
+ * - A model has parameters, spaces, agent types, scapes of the model as a
+ *   whole, and views.
+ * - Each agent type is a scape whose members are the agents of that type.
+ * - Structure follows nesting: a scape owns its rules, and an agent type its
+ *   attributes.
  * - Everything is referred to by name. Names are keys of the records below.
  * - Behaviour is a list of actions per rule. Actions read values through
  *   expressions and find other agents through selections, which bind the
@@ -42,7 +47,7 @@ interface Labelled {
  * - `self.x`, `self.y`: position; `self.id`: the agent's id
  * - `param.density`: a model parameter
  * - `space.land.width`, `space.land.height`: the size of a space
- * - `tick`: the current tick
+ * - `period`: the current period of the model
  */
 export type Reference = string;
 const reference = z
@@ -177,7 +182,7 @@ export type Action =
   | { connect: Reference; network: Name }
   /** Removes the link between the acting agent and another. */
   | { disconnect: Reference; network: Name }
-  /** Ends the run. */
+  /** Stops the model once the current period is complete, giving the reason. */
   | { stop: string };
 
 // Recursive schemas. Each is annotated with its type above, so the compiler
@@ -280,7 +285,7 @@ const statistic = z.enum(['count', 'sum', 'mean', 'min', 'max', 'variance', 'std
  * A piece of an agent's state.
  *
  * `initial` is evaluated when the agent is created (default 0, false, or the
- * first state). `record` asks for data to be collected every tick: statistics
+ * first state). `record` asks for data to be collected every period: statistics
  * for numbers (`true` means count, sum, mean, min and max), the number of
  * agents for which a boolean is true, and the number of agents in each state.
  */
@@ -323,16 +328,23 @@ const attribute: z.ZodType<AttributeSpec> = z.union([
 
 // ─────────────────────────── Agents and spaces ─────────────────────────
 
-/** Behaviour an agent type follows every tick. */
+/** A behaviour iterated across the members of a scape every period. */
 export interface RuleSpec {
   name: string;
   /** The rule applies only to agents for which this is true. */
   when?: Expression | undefined;
   do: Action[];
   /**
+   * Whether the rule needs the scape's members in a fresh random order each
+   * period. Default true. The scape visits its members in a random order
+   * when any of its rules needs one, and otherwise in order of joining.
+   */
+  randomExecution?: boolean | undefined;
+  /**
    * When true, every agent first works out its changes from the state at the
-   * start of the tick, and only then do all `set` actions take effect, so the
-   * outcome does not depend on the order agents act in. Default false.
+   * start of the period, and only then do all `set` actions take effect, so
+   * the outcome does not depend on the order agents act in: the rule is
+   * executed, then updated. Default false.
    */
   synchronous?: boolean | undefined;
 }
@@ -340,8 +352,17 @@ const rule: z.ZodType<RuleSpec> = z.strictObject({
   name: z.string().min(1),
   when: expression.optional(),
   do: actions,
+  randomExecution: z.boolean().optional(),
   synchronous: z.boolean().optional(),
 });
+
+/**
+ * How a scape interleaves its rules and members within a period:
+ * - `byAgent`: each agent executes all rules before the next agent starts
+ * - `byRule`: each rule is executed by all agents before the next rule starts
+ */
+export type ExecutionOrder = 'byAgent' | 'byRule';
+const executionOrder = z.enum(['byAgent', 'byRule']);
 
 /** How agents of a type are drawn. */
 export interface StyleSpec {
@@ -357,7 +378,11 @@ const style: z.ZodType<StyleSpec> = z.strictObject({
   hidden: expression.optional(),
 });
 
-/** A kind of agent: its state, behaviour, where it lives and how it looks. */
+/**
+ * A kind of agent: its state, behaviour, where it lives and how it looks. The
+ * agents of a type are the members of a scape named after it, which executes
+ * the type's rules across them.
+ */
 export interface AgentSpec extends Labelled {
   /** The grid or continuous space agents of this type live in, if any. */
   space?: Name | undefined;
@@ -366,13 +391,16 @@ export interface AgentSpec extends Labelled {
   /** Initial population. Not allowed for cells, whose number is the grid's size. */
   count?: Expression | undefined;
   attributes?: Record<Name, AttributeSpec> | undefined;
-  /** Actions run once when an agent is created, after its attributes have their initial values. */
+  /**
+   * Actions run once when an agent is created, after its attributes have
+   * their initial values: an initial rule of the type's scape. At the start
+   * the agents run them in a random order, once every agent exists.
+   */
   initialize?: Action[] | undefined;
+  /** Executed every period, in this order. */
   rules?: RuleSpec[] | undefined;
-  /** The order agents act in each tick. Default `shuffled`. */
-  order?: 'shuffled' | 'sequential' | undefined;
   /** Default `byAgent`. */
-  schedule?: 'byAgent' | 'byRule' | undefined;
+  executionOrder?: ExecutionOrder | undefined;
   style?: StyleSpec | undefined;
 }
 const agent: z.ZodType<AgentSpec> = z.strictObject({
@@ -382,8 +410,7 @@ const agent: z.ZodType<AgentSpec> = z.strictObject({
   attributes: z.record(name, attribute).optional(),
   initialize: actions.optional(),
   rules: z.array(rule).optional(),
-  order: z.enum(['shuffled', 'sequential']).optional(),
-  schedule: z.enum(['byAgent', 'byRule']).optional(),
+  executionOrder: executionOrder.optional(),
   style: style.optional(),
   ...label,
 });
@@ -419,6 +446,8 @@ export type SpaceSpec = Labelled &
          * The links to start with. `ring` joins each agent to `k` on each
          * side; `random` joins each pair with `probability`; `smallWorld` is
          * a ring with each link rewired with `probability`. Default `none`.
+         * The links are made by an initial rule of the root scape, once every
+         * agent's `initialize` actions have run.
          */
         initial?:
           | { topology: 'none' }
@@ -483,6 +512,23 @@ const chart: z.ZodType<ChartSpec> = z.strictObject({
   series: z.array(z.string()).min(1),
 });
 
+// ─────────────────────── Scapes of the model as a whole ─────────────────
+
+/**
+ * A scape for what the model does as a whole, such as stopping once a
+ * condition holds. Its only member is itself, so each of its rules executes
+ * once per period, with no acting agent: its rules read parameters, the
+ * period and agents found with `from: "all"`, and cannot use `self`.
+ */
+export interface ScapeSpec extends Labelled {
+  /** Executed every period, in this order. */
+  rules: RuleSpec[];
+}
+const scape: z.ZodType<ScapeSpec> = z.strictObject({
+  rules: z.array(rule),
+  ...label,
+});
+
 // ──────────────────────────────── Model ────────────────────────────────
 
 /** The version of the format this package reads and writes. */
@@ -495,11 +541,15 @@ export interface ModelSpec {
   description?: string | undefined;
   parameters?: Record<Name, ParameterSpec> | undefined;
   spaces?: Record<Name, SpaceSpec> | undefined;
-  /** Agent types. They step in the order listed here. */
+  /** Agent types. Their scapes iterate in the order listed here. */
   agents: Record<Name, AgentSpec>;
+  /**
+   * Scapes of the model as a whole. They iterate after the agent types' scapes,
+   * in the order listed here. Their names must differ from those of agent types
+   * and networks.
+   */
+  scapes?: Record<Name, ScapeSpec> | undefined;
   charts?: ChartSpec[] | undefined;
-  /** The run ends when this becomes true, checked after every tick. */
-  stopWhen?: Expression | undefined;
 }
 
 /** Validates the structure of a model. Use `parseModel` for friendlier errors. */
@@ -510,8 +560,8 @@ export const modelSchema: z.ZodType<ModelSpec> = z.strictObject({
   parameters: z.record(name, parameter).optional(),
   spaces: z.record(name, space).optional(),
   agents: z.record(name, agent),
+  scapes: z.record(name, scape).optional(),
   charts: z.array(chart).optional(),
-  stopWhen: expression.optional(),
 });
 
 /** A problem found in a model, with the path of the offending part. */

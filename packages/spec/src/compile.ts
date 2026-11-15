@@ -50,6 +50,7 @@ import type {
   ModelSpec,
   Operator,
   ParameterSpec,
+  RuleSpec,
   Selection,
 } from './schema';
 import {
@@ -144,6 +145,7 @@ interface CompiledRule {
   readonly name: string;
   readonly execute: (agent: SpecAgent) => void;
   readonly synchronous: boolean;
+  readonly randomExecution: boolean;
 }
 
 interface CompiledType {
@@ -181,7 +183,9 @@ function inFrame<T>(root: ScopeRoot, body: (f: Frame) => T): (agent: SpecAgent) 
  * `Continuous2D` space; an occupant type has a list space that stands its
  * members on cells. A network is a further scape with a `Graph` space, whose
  * members are the agents it links; its initial wiring is an initial rule of
- * a scape with a `Singleton` space, as is `stopWhen`. Recorded attributes and
+ * the root. Each scape of the model as a whole is a scape of the root with a
+ * `Singleton` space, after the others, whose rules act with no acting agent
+ * (`self` is undefined in their frames). Recorded attributes and
  * populations become stat collectors of the type's scape, and the spaces and
  * charts become views of the scapes they show.
  */
@@ -231,10 +235,13 @@ class Compiler {
         height: asNum(this.#expr(spec.height, constant('height'), INT)),
       };
     });
-    const stopWhen =
-      this.spec.stopWhen === undefined
-        ? undefined
-        : this.#stopWhen(this.spec.stopWhen, new ScopeRoot('stopWhen', undefined));
+    const wholeScapes = Object.entries(this.spec.scapes ?? {}).map(([name, scape]) => ({
+      name,
+      rules: scape.rules.map((rule) => ({
+        name: rule.name,
+        execute: this.#wholeRule(rule, name),
+      })),
+    }));
     const constantPool = new FramePool(constantRoot);
     const parameters = toEngineParameters(this.spec.parameters ?? {});
     const spec = this.spec;
@@ -263,9 +270,8 @@ class Compiler {
         });
         types.forEach((type) => {
           const scape = this.#scape(type, context, type.count ? type.count(frame) : 0);
-          // A sequential order visits members in order of joining: its rules need no random tour.
-          const randomExecution = type.info.spec.order !== 'sequential';
           for (const rule of type.rules) {
+            const randomExecution = rule.randomExecution;
             const execute = rule.execute as (agent: Agent) => void;
             const engineRule: Rule<Agent> = rule.synchronous
               ? {
@@ -279,9 +285,7 @@ class Compiler {
           }
           const initialize = type.initialize;
           if (initialize) {
-            scape.addInitialRule('initialize', (agent) => initialize(agent as SpecAgent), {
-              randomExecution,
-            });
+            scape.addInitialRule('initialize', (agent) => initialize(agent as SpecAgent));
           }
           context.scapes[type.info.index] = root.add(scape);
         });
@@ -334,16 +338,16 @@ class Compiler {
       this.#record(context);
       this.#views(root, context, types);
 
-      // The model as a whole, last of the root's scapes: the condition for stopping, checked
-      // once every scape has iterated.
-      if (stopWhen) {
-        root.add(new Scape({ name: `${spec.name} as a whole`, space: new Singleton() })).addRule(
-          'stop when',
-          () => {
-            if (stopWhen(context)) root.stop('stopWhen condition met');
-          },
-          { randomExecution: false, causesRemoval: false },
-        );
+      // The scapes of the model as a whole, last of the root's scapes, so their rules are
+      // executed once every other scape has iterated.
+      for (const whole of wholeScapes) {
+        const scape = root.add(new Scape({ name: whole.name, space: new Singleton() }));
+        for (const rule of whole.rules) {
+          scape.addRule(rule.name, () => rule.execute(context), {
+            randomExecution: false,
+            causesRemoval: false,
+          });
+        }
       }
     };
 
@@ -412,6 +416,7 @@ class Compiler {
       return {
         name: rule.name,
         synchronous,
+        randomExecution: rule.randomExecution !== false,
         execute: inFrame(root, when ? (f) => void (when(f) && body(f)) : body),
       };
     });
@@ -460,7 +465,7 @@ class Compiler {
     const kind = type.kind;
     const base = {
       name: info.name,
-      ...(spec.schedule !== undefined ? { executionOrder: spec.schedule } : {}),
+      ...(spec.executionOrder !== undefined ? { executionOrder: spec.executionOrder } : {}),
     };
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError(
@@ -531,13 +536,18 @@ class Compiler {
     return scape;
   }
 
-  #stopWhen(e: Expression, root: ScopeRoot): (context: ModelContext) => boolean {
-    const condition = asBool(this.#expr(e, new Scope(root), BOOLEAN));
+  /** A rule of a scape of the model as a whole: it runs with no acting agent. */
+  #wholeRule(rule: RuleSpec, scape: string): (context: ModelContext) => void {
+    const root = new ScopeRoot(`rule "${rule.name}" of scape "${scape}"`, undefined);
+    const scope = new Scope(root);
+    const when =
+      rule.when === undefined ? undefined : asBool(this.#expr(rule.when, scope, BOOLEAN));
+    const body = this.#actions(rule.do, scope, false);
     const pool = new FramePool(root);
     return (context) => {
       const frame = pool.enter(undefined, context, context.root.random);
       try {
-        return condition(frame);
+        if (!when || when(frame)) body(frame);
       } finally {
         pool.exit();
       }
@@ -653,6 +663,11 @@ class Compiler {
     const acts = (list ?? []).map((action) => this.#action(action, inner, sync));
     if (acts.length === 0) return () => {};
     if (acts.length === 1) return acts[0]!;
+    if (!scope.root.self) {
+      return (f) => {
+        for (let i = 0; i < acts.length; i++) acts[i]!(f);
+      };
+    }
     return (f) => {
       for (let i = 0; i < acts.length; i++) {
         acts[i]!(f);
@@ -662,7 +677,7 @@ class Compiler {
   }
 
   #action(action: Action, scope: Scope, sync: boolean): Act {
-    const self = scope.root.self!;
+    const self = scope.root.self;
     if ('to' in action) return this.#set(action.set, action.to, scope, sync);
     if ('let' in action) {
       const code = this.#expr(action.value, scope);
@@ -723,12 +738,12 @@ class Compiler {
           if (!agent.alive) continue;
           f.refs[slot] = agent;
           body(f);
-          if (!f.self!.alive) return;
+          if (f.self !== undefined && !f.self.alive) return;
         }
       };
     }
     if ('moveTo' in action) {
-      const grid = self.space!;
+      const grid = self!.space!;
       const toCell = this.#info.agents.get(action.moveTo.type) === grid.cellType;
       const multi = grid.spec.kind === 'grid' && grid.spec.multiOccupancy === true;
       const { choose } = this.#choice(action.moveTo, scope, toCell && !multi);
@@ -750,7 +765,7 @@ class Compiler {
     if ('moveToward' in action) {
       const target = asRef(this.#reference(action.moveToward, scope));
       const distance = asNum(this.#expr(action.distance, scope, REAL));
-      const index = self.index;
+      const index = self!.index;
       return (f) => {
         const other = target(f) as SpecPoint | undefined;
         if (!other || !other.alive) return;
@@ -819,7 +834,11 @@ class Compiler {
     };
   }
 
-  #create(action: Extract<Action, { create: string }>, self: AgentInfo, scope: Scope): Act {
+  #create(
+    action: Extract<Action, { create: string }>,
+    self: AgentInfo | undefined,
+    scope: Scope,
+  ): Act {
     const type = this.#info.agents.get(action.create)!;
     const kind = this.#kinds[type.index]!;
     const count =
@@ -833,7 +852,7 @@ class Compiler {
     const at = action.at ?? 'random';
     const typeIndex = type.index;
     const space = type.space;
-    const creatorIsCell = self.role === 'cell';
+    const creatorIsCell = self?.role === 'cell';
 
     let make: (f: Frame) => SpecAgent | undefined;
     if (type.role === 'occupant') {
@@ -1161,7 +1180,7 @@ class Compiler {
     if (!resolution.ok) throw new Error(`Internal error: ${resolution.message}`);
     const resolved = resolution.value;
     switch (resolved.kind) {
-      case 'tick':
+      case 'period':
         return numCode(INT, (f) => f.context.root.period);
       case 'param': {
         const index = resolved.parameter.index;

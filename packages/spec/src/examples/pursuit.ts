@@ -184,8 +184,18 @@ export const pursuit = {
     { kind: 'timeSeries', title: 'Fear', series: ['prey.fear.mean', 'prey.fear.max'] },
     { kind: 'bars', title: 'Catches', series: ['hunter.catches.sum', 'hunter.catches.max'] },
   ],
-  stopWhen: {
-    op: 'eq',
-    args: [{ aggregate: 'count', over: { type: 'prey', from: 'all' } }, 0],
+  scapes: {
+    stopping: {
+      rules: [
+        {
+          name: 'stop when no prey is left',
+          when: {
+            op: 'eq',
+            args: [{ aggregate: 'count', over: { type: 'prey', from: 'all' } }, 0],
+          },
+          do: [{ stop: 'No prey is left' }],
+        },
+      ],
+    },
   },
 } satisfies ModelSpec;

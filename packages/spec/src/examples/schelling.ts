@@ -34,7 +34,7 @@ export const schelling = {
         op: 'floor',
         args: [{ op: 'mul', args: ['param.density', 'param.size', 'param.size'] }],
       },
-      schedule: 'byRule',
+      executionOrder: 'byRule',
       attributes: {
         group: {
           type: 'state',
@@ -100,5 +100,15 @@ export const schelling = {
     { kind: 'timeSeries', title: 'Similar neighbours', series: ['resident.similar.mean'] },
     { kind: 'bars', title: 'Groups', series: ['resident.group.red', 'resident.group.blue'] },
   ],
-  stopWhen: { aggregate: 'all', over: { type: 'resident', from: 'all' }, of: 'other.happy' },
+  scapes: {
+    stopping: {
+      rules: [
+        {
+          name: 'stop when everyone is happy',
+          when: { aggregate: 'all', over: { type: 'resident', from: 'all' }, of: 'other.happy' },
+          do: [{ stop: 'Everyone is happy' }],
+        },
+      ],
+    },
+  },
 } satisfies ModelSpec;

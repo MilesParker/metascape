@@ -96,7 +96,23 @@ describe('model format', () => {
     const schema = modelJsonSchema();
     expect(schema.type).toBe('object');
     expect(Object.keys(schema.properties as object)).toEqual(
-      expect.arrayContaining(['schemaVersion', 'name', 'parameters', 'spaces', 'agents']),
+      expect.arrayContaining(['schemaVersion', 'name', 'parameters', 'spaces', 'agents', 'scapes']),
     );
+    const text = JSON.stringify(schema);
+    for (const word of ['executionOrder', 'randomExecution']) expect(text).toContain(`"${word}"`);
+    for (const word of ['order', 'schedule', 'stopWhen']) expect(text).not.toContain(`"${word}"`);
+  });
+
+  it('describes execution only in Ascape terms', () => {
+    const withField = (extra: (model: ModelSpec) => object, at?: 'cell') => {
+      const copy = JSON.parse(JSON.stringify(life)) as ModelSpec;
+      Object.assign(at ? copy.agents[at]! : copy, extra(copy));
+      return () => parseModel(copy);
+    };
+    expect(withField(() => ({ order: 'sequential' }), 'cell')).toThrow(ModelFormatError);
+    expect(withField(() => ({ schedule: 'byRule' }), 'cell')).toThrow(ModelFormatError);
+    expect(withField(() => ({ stopWhen: true }))).toThrow(ModelFormatError);
+    expect(withField(() => ({ executionOrder: 'byRule' }), 'cell')).not.toThrow();
+    expect(withField(() => ({ scapes: { whole: { rules: [] } } }))).not.toThrow();
   });
 });

@@ -7,6 +7,7 @@ import {
   ManualScheduler,
   runExperiment,
   RootScape,
+  Singleton,
   type HostCell,
   type CellOccupant,
   type LocatedAgent,
@@ -42,7 +43,12 @@ describe('compileModel', () => {
         web: { kind: 'network', nodes: 'node', initial: { topology: 'ring', k: 1 } },
       },
       agents: {
-        walker: { space: 'land', count: 2, order: 'sequential', schedule: 'byRule' },
+        walker: {
+          space: 'land',
+          count: 2,
+          executionOrder: 'byRule',
+          rules: [{ name: 'rest', randomExecution: false, do: [] }],
+        },
         patch: { space: 'land', as: 'cell' },
         bird: { space: 'room', count: 3 },
         node: { count: 5 },
@@ -60,10 +66,9 @@ describe('compileModel', () => {
     const grid = root.findScape('patch').space as unknown as Array2D;
     expect(grid).toBeInstanceOf(Array2D);
     expect([grid.width, grid.height, grid.wrap]).toEqual([6, 3, false]);
-    // A sequential order is rules that need no random tour.
-    expect(
-      root.findScape('walker').rules.filter((entry) => entry.rule.randomExecution !== false),
-    ).toEqual([]);
+    expect(root.findScape('walker').rules.map((entry) => entry.rule.randomExecution)).toEqual([
+      false,
+    ]);
     expect(root.findScape('walker').executionOrder).toBe('byRule');
     expect(root.findScape('bird').space).toBeInstanceOf(Continuous2D);
     expect(root.findScape('node').size).toBe(5);
@@ -121,7 +126,7 @@ describe('compileModel', () => {
           rules: [
             {
               name: 'spawn',
-              when: { op: 'eq', args: ['tick', 1] },
+              when: { op: 'eq', args: ['period', 1] },
               do: [{ create: 'child', count: 2, set: { a: 5 } }],
             },
           ],
@@ -295,7 +300,7 @@ describe('compileModel', () => {
           rules: [
             {
               name: 'birth',
-              when: { op: 'eq', args: ['tick', 1] },
+              when: { op: 'eq', args: ['period', 1] },
               do: [
                 { create: 'baby', at: 'here' },
                 { create: 'baby', count: 3 },
@@ -321,12 +326,12 @@ describe('compileModel', () => {
       agents: {
         node: {
           count: 4,
-          schedule: 'byRule',
+          executionOrder: 'byRule',
           attributes: { degree: { type: 'int', record: ['sum'] } },
           rules: [
             {
               name: 'link',
-              when: { op: 'eq', args: ['tick', 1] },
+              when: { op: 'eq', args: ['period', 1] },
               do: [
                 {
                   forEach: { type: 'node', from: 'all' },
@@ -339,7 +344,7 @@ describe('compileModel', () => {
               when: {
                 op: 'and',
                 args: [
-                  { op: 'eq', args: ['tick', 2] },
+                  { op: 'eq', args: ['period', 2] },
                   { op: 'eq', args: ['self.id', 0] },
                 ],
               },
@@ -373,14 +378,43 @@ describe('compileModel', () => {
     expect(root.data.latest('node.degree.sum')).toBe(6);
   });
 
-  it('evaluates stopWhen after every iteration', () => {
+  it('executes the rules of a scape of the model as a whole once per period, after the others', () => {
     const spec = model({
-      agents: { a: { count: 1 } },
-      stopWhen: { op: 'ge', args: ['tick', 3] },
+      agents: {
+        a: {
+          count: 3,
+          attributes: { v: { type: 'int', record: ['sum'] } },
+          rules: [{ name: 'grow', do: [{ set: 'v', to: { op: 'add', args: ['v', 1] } }] }],
+        },
+      },
+      scapes: {
+        stopping: {
+          rules: [
+            {
+              name: 'reset',
+              do: [
+                {
+                  forEach: { type: 'a', from: 'all', where: { op: 'eq', args: ['other.v', 2] } },
+                  do: [{ set: 'other.v', to: 10 }],
+                },
+              ],
+            },
+            {
+              name: 'stop',
+              when: { op: 'ge', args: ['period', 3] },
+              do: [{ stop: 'Third period' }],
+            },
+          ],
+        },
+      },
     });
     const root = new RootScape(compileModel(spec), { seed: 1 });
+    expect(root.scapes.map((scape) => scape.name)).toEqual(['a', 'stopping']);
+    expect(root.findScape('stopping').space).toBeInstanceOf(Singleton);
     expect(root.run(10)).toBe(3);
-    expect(root.stopReason).toBe('stopWhen condition met');
+    expect(root.stopReason).toBe('Third period');
+    // 1, then 2 reset to 10 in the same period, then 11.
+    expect([...root.data.values('a.v.sum')]).toEqual([0, 3, 30, 33]);
   });
 
   it('hides occupants whose style says so', () => {

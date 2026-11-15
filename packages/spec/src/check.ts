@@ -139,6 +139,15 @@ export function actionKind(action: Action): string {
   return 'stop';
 }
 
+/** Whether an action acts on or from the acting agent, so that it needs one. */
+function needsActingAgent(action: Action): boolean {
+  if ('moveTo' in action || 'moveBy' in action || 'moveToward' in action) return true;
+  if ('connect' in action || 'disconnect' in action) return true;
+  if ('die' in action) return action.die === true;
+  if ('create' in action) return action.at === 'here' || action.at === 'neighbor';
+  return false;
+}
+
 interface Found {
   readonly target: AgentInfo | undefined;
   /** The scope with the selection's binding. */
@@ -157,11 +166,8 @@ class Checker {
     this.#parameters();
     this.#spaces();
     this.#agents();
+    this.#scapes();
     this.#charts();
-    const stopWhen = this.#info.spec.stopWhen;
-    if (stopWhen !== undefined) {
-      this.#condition(stopWhen, new Scope(new ScopeRoot('stopWhen', undefined)), 'stopWhen');
-    }
     return this.#diagnostics;
   }
 
@@ -359,6 +365,32 @@ class Checker {
     }
   }
 
+  #scapes(): void {
+    for (const [name, scape] of Object.entries(this.#info.spec.scapes ?? {})) {
+      const path = `scapes.${name}`;
+      if (this.#info.agents.has(name)) {
+        this.#report(
+          path,
+          `Scape "${name}" has the name of an agent type, whose scape it would be`,
+        );
+      } else if (this.#info.spaces.get(name)?.spec.kind === 'network') {
+        this.#report(path, `Scape "${name}" has the name of a network, whose scape it would be`);
+      }
+      scape.rules.forEach((rule, index) => {
+        const rulePath = `${path}.rules[${index}]`;
+        const scope = new Scope(new ScopeRoot(`rule "${rule.name}" of scape "${name}"`, undefined));
+        if (rule.synchronous === true) {
+          this.#report(
+            `${rulePath}.synchronous`,
+            `Rule "${rule.name}" of scape "${name}" cannot be synchronous: the scape's only member is itself, which has no attributes to set`,
+          );
+        }
+        if (rule.when !== undefined) this.#condition(rule.when, scope, `${rulePath}.when`);
+        this.#actions(rule.do, scope, `${rulePath}.do`, false);
+      });
+    }
+  }
+
   #charts(): void {
     const ids = seriesIds(this.#info);
     const known = new Set(ids);
@@ -407,7 +439,19 @@ class Checker {
       );
       return;
     }
-    if (!self) return;
+    if (!self && needsActingAgent(action)) {
+      const hint =
+        kind === 'die'
+          ? '; name the agent to remove, such as "other"'
+          : kind === 'create'
+            ? '; use at: "random"'
+            : '';
+      this.#report(
+        path,
+        `"${kind}" needs an acting agent, and ${scope.root.label} has none${hint}`,
+      );
+      return;
+    }
 
     if ('to' in action) {
       this.#set(action.set, action.to, scope, path, sync);
@@ -437,6 +481,12 @@ class Checker {
     } else if ('forEach' in action) {
       const found = this.#selection(action.forEach, scope, `${path}.forEach`);
       this.#actions(action.do, found.scope, `${path}.do`, sync);
+    } else if (!self) {
+      if ('die' in action && action.die !== true) {
+        this.#agentReference(action.die, scope, `${path}.die`);
+      } else if ('create' in action) {
+        this.#create(action, undefined, scope, path);
+      }
     } else if ('moveTo' in action) {
       this.#moveTo(action.moveTo, self, scope, `${path}.moveTo`);
     } else if ('moveBy' in action) {
@@ -551,7 +601,7 @@ class Checker {
 
   #create(
     action: Extract<Action, { create: string }>,
-    self: AgentInfo,
+    self: AgentInfo | undefined,
     scope: Scope,
     path: string,
   ): void {
@@ -568,7 +618,7 @@ class Checker {
       );
     }
     if (action.count !== undefined) this.#integer(action.count, scope, `${path}.count`);
-    if (type && (action.at === 'here' || action.at === 'neighbor')) {
+    if (type && self && (action.at === 'here' || action.at === 'neighbor')) {
       if (!type.space || type.space !== self.space) {
         this.#report(
           `${path}.at`,

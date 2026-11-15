@@ -86,6 +86,16 @@ The run-time control of the paper's Figure 4 is kept per scape (`settings.ts`): 
 the rules, the execution order (`byAgent` or `byRule`), the execution style (`completeTour` or
 `repeatedDraw`) and the agents per iteration.
 
+## The model format
+
+A model written as data in `@metascape/spec` has the same structure. Each agent type is a scape of
+the root named after it, whose members are the agents of that type, with an `executionOrder`; each
+of its rules says whether it needs `randomExecution`, and expressions read the current `period`.
+What the model does as a whole, such as stopping once a condition holds, is a rule of a scape
+declared under `scapes`: the interpreter gives each a `Singleton` space and adds it after the
+agent types' scapes, so its rules execute once per period with no acting agent. Network wiring is
+an initial rule of the root.
+
 ## Outside the model
 
 `Runner` drives a model interactively and `runExperiment` runs it in batches. They are run-time

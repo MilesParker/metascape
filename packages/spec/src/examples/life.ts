@@ -3,7 +3,7 @@ import type { ModelSpec } from '../schema';
 
 /**
  * Conway's Game of Life. Every cell counts its live neighbours from the state
- * at the start of the tick (a synchronous rule), so the outcome does not
+ * at the start of the period (a synchronous rule), so the outcome does not
  * depend on the order cells act in.
  */
 export const life = {
@@ -28,13 +28,13 @@ export const life = {
     cell: {
       space: 'world',
       as: 'cell',
-      order: 'sequential',
       attributes: {
         on: { type: 'boolean', initial: { op: 'chance', args: ['param.density'] }, record: true },
       },
       rules: [
         {
           name: 'life',
+          randomExecution: false,
           synchronous: true,
           do: [
             {

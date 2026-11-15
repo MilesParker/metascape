@@ -72,9 +72,6 @@ second user appears.
 The engine now follows the three abstractions of Parker (2001); see `docs/architecture.md`. Every
 model gives the numbers it gave before, checked run by run against the old engine.
 
-- **The model format** still says `order` (shuffled or sequential), `schedule` and `tick`; the
-  interpreter maps them onto `randomExecution`, `executionOrder` and the period. Its schema
-  should use Ascape's terms and say which scape a rule of the model as a whole belongs to.
 - **End-of-period work after statistics.** Civil Violence and Retirement adjust state once each
   period's statistics are collected, as their legacy models did in `scapeIterated`; they use a
   root scape listener for it. A rule cannot run at that moment.

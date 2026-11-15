@@ -99,7 +99,7 @@ export const epidemic = {
         },
         {
           name: 'calendar',
-          when: { op: 'ge', args: ['tick', 'param.lastDay'] },
+          when: { op: 'ge', args: ['period', 'param.lastDay'] },
           do: [{ stop: 'Reached the last day' }],
         },
       ],
@@ -130,14 +130,24 @@ export const epidemic = {
     },
     { kind: 'timeSeries', title: 'Days infected', series: ['person.sick.mean', 'person.sick.max'] },
   ],
-  stopWhen: {
-    op: 'not',
-    args: [
-      {
-        aggregate: 'any',
-        over: { type: 'person', from: 'all' },
-        of: { op: 'eq', args: ['other.health', { state: 'infected' }] },
-      },
-    ],
+  scapes: {
+    stopping: {
+      rules: [
+        {
+          name: 'stop when nobody is infected',
+          when: {
+            op: 'not',
+            args: [
+              {
+                aggregate: 'any',
+                over: { type: 'person', from: 'all' },
+                of: { op: 'eq', args: ['other.health', { state: 'infected' }] },
+              },
+            ],
+          },
+          do: [{ stop: 'Nobody is infected' }],
+        },
+      ],
+    },
   },
 } satisfies ModelSpec;

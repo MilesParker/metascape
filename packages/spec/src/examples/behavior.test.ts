@@ -55,7 +55,7 @@ describe('life', () => {
     expect(live(root)).toEqual(set(horizontal));
   });
 
-  it('moves a glider one cell diagonally every four ticks, around the torus', () => {
+  it('moves a glider one cell diagonally every four periods, around the torus', () => {
     const glider = [
       [1, 0],
       [2, 1],
@@ -72,21 +72,21 @@ describe('life', () => {
   });
 
   it('gives the same result whatever order cells act in', () => {
-    const run = (order: 'sequential' | 'shuffled'): string[] => {
+    const run = (randomExecution: boolean): string[] => {
       const spec: ModelSpec = clone(life);
-      spec.agents.cell!.order = order;
+      spec.agents.cell!.rules![0]!.randomExecution = randomExecution;
       const root = new RootScape(compileModel(spec), { seed: 11, parameters: { size: 24 } });
       root.run(30);
       return live(root);
     };
-    const sequential = run('sequential');
-    expect(sequential.length).toBeGreaterThan(0);
-    expect(run('shuffled')).toEqual(sequential);
+    const inOrder = run(false);
+    expect(inOrder.length).toBeGreaterThan(0);
+    expect(run(true)).toEqual(inOrder);
   });
 });
 
 describe('schelling', () => {
-  it('conserves residents, keeps one per site and reaches stopWhen', () => {
+  it('conserves residents, keeps one per site and stops once everyone is happy', () => {
     const root = new RootScape(compileModel(schelling), { seed: 2 });
     const residents = root.findScape('resident');
     const sites = root.findScape('site').members as readonly HostCell[];
@@ -99,7 +99,7 @@ describe('schelling', () => {
       expect(sites.filter((site) => !site.isAvailable)).toHaveLength(total);
     }
     expect(root.stopped).toBe(true);
-    expect(root.stopReason).toMatch(/stopWhen/);
+    expect(root.stopReason).toBe('Everyone is happy');
     expect(root.data.latest('resident.happy')).toBe(total);
     expect(root.data.values('resident.similar.mean')[0]).toBe(0);
     expect(root.data.latest('resident.similar.mean')).toBeGreaterThan(0.6);
@@ -122,7 +122,7 @@ describe('epidemic', () => {
     const states = new Set(people.members.map((person) => readAttribute(person, 'health')));
     for (const state of states) expect(['susceptible', 'infected', 'recovered']).toContain(state);
     expect(root.data.values('person.health.recovered').at(-1)).toBeGreaterThan(0);
-    expect(root.stopReason).toMatch(/stopWhen/);
+    expect(root.stopReason).toBe('Nobody is infected');
   });
 
   it('stops on the last day with the stop action', () => {
@@ -154,7 +154,7 @@ describe('forager', () => {
     check(root);
     let births = 0;
     let deaths = 0;
-    for (let tick = 0; tick < 200 && !root.stopped; tick++) {
+    for (let period = 0; period < 200 && !root.stopped; period++) {
       const before = new Set(root.findScape('forager').members);
       root.iterate();
       const after = new Set(root.findScape('forager').members);
