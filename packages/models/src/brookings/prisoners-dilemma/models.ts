@@ -35,7 +35,7 @@ export const pd2d = defineModel({
     'The statistics of the legacy chart are recorded on the live population.',
   ),
   parameters,
-  build: (sim) => buildDemographicPd(sim, { lattice: 'vonNeumann', ageStats: true }),
+  build: (root) => buildDemographicPd(root, { lattice: 'vonNeumann', ageStats: true }),
 });
 
 /**
@@ -50,7 +50,7 @@ export const pd2dSmallWorld = defineModel({
     'The legacy small-world lattice is commented out, so the rules and lattice equal PD2D.',
   ),
   parameters,
-  build: (sim) => buildDemographicPd(sim, { lattice: 'vonNeumann', ageStats: true }),
+  build: (root) => buildDemographicPd(root, { lattice: 'vonNeumann', ageStats: true }),
 });
 
 /**
@@ -65,7 +65,7 @@ export const pd2dCellular = defineModel({
     'Neighbors follow Array2DSmallWorld with its defaults: Moore radius 1, no random edges, non-periodic edges.',
   ),
   parameters,
-  build: (sim) => buildDemographicPd(sim, { lattice: 'smallWorld', ageStats: true }),
+  build: (root) => buildDemographicPd(root, { lattice: 'smallWorld', ageStats: true }),
 });
 
 /**
@@ -81,5 +81,5 @@ export const pd2dDemo = defineModel({
     'The legacy class throws a ClassCastException when run (Player casts its root to PD2D); ported as intended, on a 30 x 30 lattice.',
   ),
   parameters: pdParameters({ latticeWidth: 30, latticeHeight: 30 }),
-  build: (sim) => buildDemographicPd(sim, { lattice: 'vonNeumann', ageStats: false }),
+  build: (root) => buildDemographicPd(root, { lattice: 'vonNeumann', ageStats: false }),
 });

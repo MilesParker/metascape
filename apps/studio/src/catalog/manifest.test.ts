@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, type Model } from '@metascape/engine';
+import { RootScape, type Model } from '@metascape/engine';
 import { catalog } from '@metascape/models';
+import { latticeOf } from '@metascape/react';
 import { compileModel, exampleSpecs } from '@metascape/spec';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -32,10 +33,10 @@ export function firstSentence(text: string): string {
   return sentence.length <= 170 ? sentence : `${sentence.slice(0, 160).replace(/\s+\S*$/, '')}…`;
 }
 
-function spacesOf(sim: Simulation): SpaceKind[] {
+function spacesOf(root: RootScape): SpaceKind[] {
   const kinds = new Set<SpaceKind>();
-  for (const view of sim.views) {
-    if (view.type === 'grid') kinds.add(view.grid.height === 1 ? 'strip' : 'lattice');
+  for (const view of root.allViews) {
+    if (view.type === 'grid') kinds.add(latticeOf(view).height === 1 ? 'strip' : 'lattice');
     else if (view.type === 'continuous') kinds.add('plane');
     else if (view.type === 'network') kinds.add('network');
   }
@@ -86,15 +87,15 @@ function describeModel(
   withPictures: boolean,
   pictures: Map<string, Picture>,
 ): ManifestModel {
-  const sim = new Simulation(model, { seed: SEED });
-  const ruleCount = sim.scapes.reduce((n, scape) => n + scape.rules.length, 0);
+  const root = new RootScape(model, { seed: SEED });
+  const ruleCount = root.scapes.reduce((n, scape) => n + scape.rules.length, 0);
   let thumb: ManifestModel['thumb'] = {
     file: `thumbs/${id}.png`,
     width: 1,
     height: 1,
     pixelated: false,
   };
-  const picture = renderThumbnail(sim, THUMB_TICKS);
+  const picture = renderThumbnail(root, THUMB_TICKS);
   if (picture) {
     thumb = {
       ...thumb,
@@ -112,7 +113,7 @@ function describeModel(
     summary: model.summary ?? firstSentence(model.description ?? model.name),
     description: model.description ?? '',
     tags: [...new Set([...familyTags, ...(model.tags ?? [])])],
-    spaces: spacesOf(sim),
+    spaces: spacesOf(root),
     parameterCount: Object.keys(model.parameters).length,
     ruleCount,
     ...(provenance?.authors && { authors: provenance.authors }),

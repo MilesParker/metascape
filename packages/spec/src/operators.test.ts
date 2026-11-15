@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Random, Simulation, type GridViewSpec } from '@metascape/engine';
+import { Random, RootScape, type GridViewSpec } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { checkModel } from './check';
 import { compileModel } from './compile';
@@ -30,13 +30,13 @@ function evaluate(expression: Expression, type: ValueType, seed = 1): number | b
     },
   };
   expect(checkModel(spec)).toEqual([]);
-  const sim = new Simulation(compileModel(spec), { seed });
-  return readAttribute(sim.scape('probe').members[0]!, 'out');
+  const root = new RootScape(compileModel(spec), { seed });
+  return readAttribute(root.findScape('probe').members[0]!, 'out');
 }
 
 const op = (name: Operator, ...args: Expression[]): Expression => ({ op: name, args });
 
-/** The probe agent's random stream: the first scape's fork of the simulation's stream. */
+/** The probe agent's random stream: the first scape's fork of the root's stream. */
 const stream = (seed = 1): Random => new Random(seed).fork();
 
 const cases: [string, Expression, ValueType, number | boolean][] = [
@@ -174,8 +174,8 @@ describe('operators', () => {
           },
         },
       };
-      const sim = new Simulation(compileModel(spec), { seed: 1 });
-      return readAttribute(sim.scape('patch').members[0]!, 'far') as number;
+      const root = new RootScape(compileModel(spec), { seed: 1 });
+      return readAttribute(root.findScape('patch').members[0]!, 'far') as number;
     };
     expect(grid(false, 'moore')).toBe(4);
     expect(grid(false, 'vonNeumann')).toBe(8);
@@ -211,12 +211,12 @@ describe('operators', () => {
         },
       },
     };
-    const sim = new Simulation(compileModel(continuous), { seed: 4 });
-    sim.step();
-    const [a, b] = sim.scape('dot').members as unknown as { x: number; y: number }[];
+    const root = new RootScape(compileModel(continuous), { seed: 4 });
+    root.iterate();
+    const [a, b] = root.findScape('dot').members as unknown as { x: number; y: number }[];
     const expected = Math.hypot(a!.x - b!.x, a!.y - b!.y);
-    expect(readAttribute(sim.scape('dot').members[0]!, 'gap')).toBeCloseTo(expected, 12);
-    expect(readAttribute(sim.scape('dot').members[0]!, 'dx')).toBeCloseTo(b!.x - a!.x, 12);
+    expect(readAttribute(root.findScape('dot').members[0]!, 'gap')).toBeCloseTo(expected, 12);
+    expect(readAttribute(root.findScape('dot').members[0]!, 'dx')).toBeCloseTo(b!.x - a!.x, 12);
   });
 
   it('evaluates colours in views', () => {
@@ -234,9 +234,9 @@ describe('operators', () => {
         },
       },
     };
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    const view = sim.views[0] as GridViewSpec;
-    const cells = sim.scape('patch').members as GridViewSpec['grid']['members'];
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    const view = root.allViews[0] as GridViewSpec;
+    const cells = root.findScape('patch').members as GridViewSpec['scape']['members'];
     expect(cells.map((cell) => view.cellColor!(cell))).toEqual([0x000000, 0x643200, 0xc86400]);
   });
 });

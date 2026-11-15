@@ -3,7 +3,7 @@ import {
   toCss,
   type BarsViewSpec,
   type HistogramViewSpec,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { seriesLabel } from './labels';
@@ -49,7 +49,7 @@ function shorten(text: string, max: number): string {
 /** Props of {@link BarsChart}. */
 export interface BarsChartProps {
   readonly spec: BarsViewSpec;
-  readonly sim: Simulation;
+  readonly root: RootScape;
   /** Changes on each frame to trigger a redraw. */
   readonly frame: number;
 }
@@ -62,16 +62,16 @@ const BAR_ROW = 26;
 const BAR_AXIS = 22;
 
 /** Horizontal bars showing the latest value of each series, with values as text. */
-export function BarsChart({ spec, sim, frame }: BarsChartProps): ReactElement {
+export function BarsChart({ spec, root, frame }: BarsChartProps): ReactElement {
   const { ref: boxRef, box } = useBox({ width: BAR_WIDTH, height: 0 });
   const chartWidth = box.width;
-  const root = typeof document === 'undefined' ? undefined : document.documentElement;
-  const surface = root ? themeColor(root, '--ms-surface', '#fff') : '#fff';
-  const text = root ? themeColor(root, '--ms-text', '#222') : '#222';
+  const page = typeof document === 'undefined' ? undefined : document.documentElement;
+  const surface = page ? themeColor(page, '--ms-surface', '#fff') : '#fff';
+  const text = page ? themeColor(page, '--ms-text', '#222') : '#222';
   const rows = spec.series.map((id, i) => ({
     id,
-    label: seriesLabel(sim, id, spec),
-    value: sim.data.latest(id),
+    label: seriesLabel(root, id, spec),
+    value: root.data.latest(id),
     color: readableOn(
       spec.colors?.[id] ?? DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]!,
       surface,
@@ -139,7 +139,7 @@ export function BarsChart({ spec, sim, frame }: BarsChartProps): ReactElement {
 /** Props of {@link HistogramChart}. */
 export interface HistogramChartProps {
   readonly spec: HistogramViewSpec;
-  readonly sim: Simulation;
+  readonly root: RootScape;
   /** Changes on each frame to trigger a redraw. */
   readonly frame: number;
 }
@@ -167,11 +167,11 @@ export function edgeTickIndexes(bins: number, count = 5): number[] {
  * Bars of the latest bin counts of a recorded distribution, with the x axis
  * labelled by value (bin edges from the distribution's range).
  */
-export function HistogramChart({ spec, sim, frame }: HistogramChartProps): ReactElement {
+export function HistogramChart({ spec, root, frame }: HistogramChartProps): ReactElement {
   const { ref: boxRef, box } = useBox({ width: HIST_WIDTH, height: HIST_HEIGHT });
   const { width: chartWidth, height: chartHeight } = box;
-  const counts = sim.data.distributionCounts(spec.distribution);
-  const info = sim.data.distributionInfo(spec.distribution);
+  const counts = root.data.distributionCounts(spec.distribution);
+  const info = root.data.distributionInfo(spec.distribution);
   const bins = counts.length;
   const width = (info.max - info.min) / Math.max(1, bins);
   const edge = (i: number): number => info.min + i * width;

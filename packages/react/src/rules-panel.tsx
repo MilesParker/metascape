@@ -2,18 +2,17 @@
 import {
   readScapeSettings,
   ruleKey,
-  type Sampling,
+  type ExecutionOrder,
+  type ExecutionStyle,
+  type RootScape,
   type ScapeSettings,
-  type Schedule,
   type SettingsStore,
-  type Simulation,
-  type VisitOrder,
 } from '@metascape/engine';
 import { useEffect, useId, useRef, useState, type ReactElement } from 'react';
 
 /** Props of {@link RulesPanel}. */
 export interface RulesPanelProps {
-  readonly sim: Simulation;
+  readonly root: RootScape;
   /** Remembers the changes so they apply again after a restart. */
   readonly store: SettingsStore;
   /** Changes on each frame; the panel reads the live scapes, so this only prompts a redraw. */
@@ -25,17 +24,13 @@ interface Choice<T extends string> {
   readonly label: string;
 }
 
-const SCHEDULES: readonly Choice<Schedule>[] = [
+const EXECUTION_ORDERS: readonly Choice<ExecutionOrder>[] = [
   { value: 'byAgent', label: 'By agent' },
   { value: 'byRule', label: 'By rule' },
 ];
-const ORDERS: readonly Choice<VisitOrder>[] = [
-  { value: 'shuffled', label: 'Shuffled' },
-  { value: 'sequential', label: 'Sequential' },
-];
-const SAMPLINGS: readonly Choice<Sampling>[] = [
-  { value: 'tour', label: 'Complete tour' },
-  { value: 'draw', label: 'Repeated draw' },
+const EXECUTION_STYLES: readonly Choice<ExecutionStyle>[] = [
+  { value: 'completeTour', label: 'Complete tour' },
+  { value: 'repeatedDraw', label: 'Repeated draw' },
 ];
 
 function Radios<T extends string>({
@@ -72,14 +67,14 @@ function Radios<T extends string>({
 }
 
 /**
- * Edits how a simulation's scapes run, live: which rules are on, the order
- * they execute in, whether agents or rules go first, the order agents are
- * visited in, and how many act each step. Changes apply to the running
- * simulation at once and are kept for restarts until reset.
+ * Edits how a model's scapes execute, live: which rules are selected, the
+ * order they execute in, the execution order (by agent or by rule), the
+ * execution style and the agents per iteration. Changes apply to the running
+ * model at once and are kept for restarts until reset.
  */
-export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
+export function RulesPanel({ root, store }: RulesPanelProps): ReactElement {
   const id = useId();
-  const scapes = sim.scapes.filter((scape) => scape.rules.length > 0);
+  const scapes = root.scapes.filter((scape) => scape.rules.length > 0);
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const scape = scapes.find((s) => s.name === selected) ?? scapes[0];
   const [, redraw] = useState(0);
@@ -108,7 +103,7 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
   const settings = readScapeSettings(scape);
   const change = (patch: Partial<ScapeSettings>): void => {
     try {
-      store.set(sim, scape.name, { ...readScapeSettings(scape), ...patch });
+      store.set(root, scape.name, { ...readScapeSettings(scape), ...patch });
       setError(undefined);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : String(problem));
@@ -125,13 +120,13 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
     pendingFocus.current = { key: ruleKey(moved), direction: by < 0 ? 'up' : 'down' };
     change({ rules });
   };
-  const all = settings.activations === null;
+  const all = settings.agentsPerIteration === null;
   const activationsValue =
-    activationsText ?? String(settings.activations ?? Math.max(1, scape.size));
+    activationsText ?? String(settings.agentsPerIteration ?? Math.max(1, scape.size));
   const setActivations = (text: string): void => {
     setActivationsText(text);
     const n = Number(text);
-    if (text.trim() !== '' && Number.isInteger(n) && n >= 1) change({ activations: n });
+    if (text.trim() !== '' && Number.isInteger(n) && n >= 1) change({ agentsPerIteration: n });
   };
 
   return (
@@ -203,28 +198,21 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
       <Radios
         legend="Execution order"
         name={`${id}-schedule`}
-        choices={SCHEDULES}
-        value={settings.schedule}
-        onChange={(schedule) => change({ schedule })}
+        choices={EXECUTION_ORDERS}
+        value={settings.executionOrder}
+        onChange={(executionOrder) => change({ executionOrder })}
         hint="By agent: each agent runs all rules before the next agent. By rule: each rule runs for all agents before the next rule."
-      />
-      <Radios
-        legend="Visit order"
-        name={`${id}-order`}
-        choices={ORDERS}
-        value={settings.order}
-        onChange={(order) => change({ order })}
       />
       <Radios
         legend="Execution style"
         name={`${id}-sampling`}
-        choices={SAMPLINGS}
-        value={settings.sampling}
-        onChange={(sampling) => change({ sampling })}
+        choices={EXECUTION_STYLES}
+        value={settings.executionStyle}
+        onChange={(executionStyle) => change({ executionStyle })}
         hint="Complete tour: each agent acts once. Repeated draw: agents are drawn at random, so one may act several times."
       />
       <fieldset className="ms-fieldset">
-        <legend>Agents per step</legend>
+        <legend>Agents per iteration</legend>
         <label className="ms-inline-label">
           <input
             type="radio"
@@ -232,7 +220,7 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
             checked={all}
             onChange={() => {
               setActivationsText(undefined);
-              change({ activations: null });
+              change({ agentsPerIteration: null });
             }}
           />
           All
@@ -242,7 +230,7 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
             type="radio"
             name={`${id}-count`}
             checked={!all}
-            onChange={() => change({ activations: Number(activationsValue) || 1 })}
+            onChange={() => change({ agentsPerIteration: Number(activationsValue) || 1 })}
           />
           Only
         </label>
@@ -251,7 +239,7 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
           className="ms-number"
           min={1}
           step={1}
-          aria-label="Number of agents per step"
+          aria-label="Number of agents per iteration"
           disabled={all}
           value={activationsValue}
           onChange={(event) => setActivations(event.target.value)}
@@ -267,7 +255,7 @@ export function RulesPanel({ sim, store }: RulesPanelProps): ReactElement {
         className="ms-button"
         disabled={!store.customized}
         onClick={() => {
-          store.reset(sim);
+          store.reset(root);
           setActivationsText(undefined);
           setError(undefined);
           redraw((n) => n + 1);

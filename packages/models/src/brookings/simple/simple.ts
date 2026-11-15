@@ -6,12 +6,14 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   Agent,
+  Array2DVonNeumann,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  type HostCell,
   int,
   Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
@@ -22,8 +24,8 @@ export const MAXIMUM_HAPPINESS = 1000;
 
 /**
  * An agent of the Simple model. The first agent created (behaviour 0) doubles
- * its happiness every tick; every other agent is "the environment" and, with
- * probability one in ten per tick, resets the first agent's happiness.
+ * its happiness every period; every other agent is "the environment" and, with
+ * probability one in ten per period, resets the first agent's happiness.
  */
 export class SimpleAgent extends Agent {
   happiness = INITIAL_HAPPINESS;
@@ -71,7 +73,7 @@ export class SimpleAgent extends Agent {
 export const simple = defineModel({
   name: 'Simple',
   description:
-    'The smallest Ascape tutorial model: one agent whose happiness doubles every tick up to a ceiling, and any other agents, which each have a one in ten chance per tick of resetting that happiness. The lattice is part of the model but stays empty.',
+    'The smallest Ascape tutorial model: one agent whose happiness doubles every period up to a ceiling, and any other agents, which each have a one in ten chance per period of resetting that happiness. The lattice is part of the model but stays empty.',
   provenance: {
     portedFrom: 'Ascape 5.6.1, edu.brook.Simple.Simple',
     copyright:
@@ -86,26 +88,24 @@ export const simple = defineModel({
       description: 'Agents in the model: the first one grows, the rest reset it.',
     }),
   } as const,
-  build(sim) {
-    const p = sim.parameters;
-    const lattice = sim.addScape(
-      new GridScape({
+  build(root) {
+    const p = root.parameters;
+    const lattice = root.add(
+      new Scape<HostCell>({
         name: 'lattice',
-        width: 30,
-        height: 30,
-        wrap: true,
-        neighborhood: 'vonNeumann',
+        space: new Array2DVonNeumann<HostCell>(),
+        extent: [30, 30],
+        periodic: true,
       }),
     );
     let counter = 0;
     let first: SimpleAgent | undefined;
-    const agents: Scape<SimpleAgent> = sim.addScape(
+    const agents: Scape<SimpleAgent> = root.add(
       new Scape<SimpleAgent>({
         name: 'Agents',
         size: p.numberOfAgents,
-        schedule: 'byRule',
-        order: 'sequential',
-        create: () =>
+        executionOrder: 'byRule',
+        prototypeAgent: () =>
           new SimpleAgent(
             () => counter++,
             () => first,
@@ -115,18 +115,18 @@ export const simple = defineModel({
           ),
       }),
     );
-    agents.addRule('Update', (agent) => agent.update());
+    agents.addRule('Update', (agent) => agent.update(), { randomExecution: false });
 
-    sim.data.measure(agents, 'Happiness', (agent) => agent.reportedHappiness);
+    agents.addStatCollector(stat.measure('Happiness', (agent) => agent.reportedHappiness));
 
-    sim.addView(
+    root.addView(
       gridView({
         title: 'Lattice',
-        grid: lattice,
+        scape: lattice,
         background: 0x3fa45b,
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Happiness',
         series: ['Happiness.max'],

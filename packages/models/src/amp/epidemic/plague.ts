@@ -3,7 +3,7 @@
 // Ported to Metascape from the Eclipse Agent Modeling Platform example model EpidemicPlague.metaabm.
 // Original: Copyright 2009, Miles Parker. Released under Eclipse Public License. All uses should be attributed.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { colors, defineModel, int, Scape, type Color } from '@metascape/engine';
+import { type Array2D, type Color, colors, defineModel, int, Scape, stat } from '@metascape/engine';
 import { epidemicCopyright, epidemicDescription } from './constants';
 import { Creature } from './disease';
 import { buildCity, cityParameters, type Place } from './single-city';
@@ -27,13 +27,13 @@ export class Flea extends Creature {
    * broken at random), then moves one cell toward it if that cell is free.
    */
   move(range: number): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
-    const grid = cell.grid;
+    const grid = cell.scape.space as unknown as Array2D<Place>;
     const limit = Math.trunc(range);
     let best = Infinity;
     let nearest: Place[] = [];
-    for (const other of grid.within(cell as Place, limit)) {
+    for (const other of grid.findWithin(cell as Place, limit)) {
       if (!(other.occupant instanceof Rat)) continue;
       const d = Math.round(Math.hypot(other.x - cell.x, other.y - cell.y));
       if (d > limit || d === 0) continue;
@@ -89,35 +89,35 @@ export const epidemicPlague = defineModel({
       description: 'How far a flea can see a rat, in cells.',
     }),
   },
-  build(sim) {
-    const p = sim.parameters;
-    buildCity(sim, p, {
+  build(root) {
+    const p = root.parameters;
+    buildCity(root, p, {
       addCreatures(city) {
-        const fleas = sim.addScape(
+        const fleas = root.add(
           new Scape<Flea>({
             name: 'fleas',
             size: p.fleaCount,
-            schedule: 'byRule',
-            create: () => new Flea(),
+            executionOrder: 'byRule',
+            prototypeAgent: () => new Flea(),
           }),
         );
-        const rats = sim.addScape(
+        const rats = root.add(
           new Scape<Rat>({
             name: 'rats',
             size: p.ratCount,
-            schedule: 'byRule',
-            create: () => new Rat(),
+            executionOrder: 'byRule',
+            prototypeAgent: () => new Rat(),
           }),
         );
         const place = (creature: Creature): void => {
-          const cell = city.randomAvailableCell();
+          const cell = city.findRandomAvailable();
           if (cell) creature.moveTo(cell);
         };
         fleas.addInitialRule('initialize', place);
         rats.addInitialRule('initialize', place);
         fleas.addRule('flea movement', (flea) => flea.move(p.fleaRange));
-        sim.data.count(fleas, 'fleas');
-        sim.data.count(rats, 'rats');
+        fleas.addStatCollector(stat.count('fleas'));
+        rats.addStatCollector(stat.count('rats'));
       },
     });
   },

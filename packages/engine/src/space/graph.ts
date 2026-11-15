@@ -1,28 +1,55 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Agent } from '../../agent';
+import type { Agent } from '../agent';
+import { memberCount, Space, type FindOptions, type Geometry, type SpaceSetup } from './space';
 
-export interface NetworkOptions {
+export interface GraphOptions {
   /** True if a link from `a` to `b` is not also a link from `b` to `a`. Default false. */
   readonly directed?: boolean;
 }
 
 /**
- * A graph of links between agents. The agents live in ordinary scapes; the
- * network only records who is linked to whom.
+ * A graph of links between the members of a scape. An agent's neighbors are
+ * the agents it links to, and distance is the fewest links between two agents.
  *
+ * Linking an agent that lives in another scape makes it a member of the
+ * graph's scape as well, so a graph can connect agents wherever they live.
  * Links to or from an agent that is no longer alive are never reported and
  * are pruned the next time they are met. Neighbors come back in the order the
  * links were created, so iteration is deterministic.
  */
-export class Network<A extends Agent = Agent> {
+export class Graph<A extends Agent = Agent> extends Space<A> {
+  readonly geometry: Geometry = 'graph';
   readonly directed: boolean;
 
   readonly #out = new Map<A, Set<A>>();
   readonly #in = new Map<A, Set<A>>();
   readonly #cache = new Map<A, readonly A[]>();
+  #count = 0;
 
-  constructor(options: NetworkOptions = {}) {
+  constructor(options: GraphOptions = {}) {
+    super();
     this.directed = options.directed ?? false;
+  }
+
+  protected override configure(setup: SpaceSetup): void {
+    const count = memberCount(setup);
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError(`Scape "${this.scape.name}": size must be a non-negative integer`);
+    }
+    this.#count = count;
+  }
+
+  /** How many members the space creates when the model is created. */
+  get initialSize(): number {
+    return this.#count;
+  }
+
+  populate(): void {
+    for (let i = 0; i < this.#count; i++) this.scape.newAgent();
+  }
+
+  override removed(agent: A): void {
+    this.disconnectAll(agent);
   }
 
   /**
@@ -32,6 +59,8 @@ export class Network<A extends Agent = Agent> {
   connect(a: A, b: A): boolean {
     if (a === b || !a.alive || !b.alive) return false;
     if (this.#out.get(a)?.has(b)) return false;
+    this.#enrol(a);
+    this.#enrol(b);
     this.#add(a, b);
     if (!this.directed) this.#add(b, a);
     return true;
@@ -73,7 +102,7 @@ export class Network<A extends Agent = Agent> {
     return [...(this.#in.get(a) ?? [])];
   }
 
-  /** The number of agents `a` links to. For a directed network this is the out-degree. */
+  /** The number of agents `a` links to. For a directed graph this is the out-degree. */
   degree(a: A): number {
     this.#sweep(a);
     return this.#out.get(a)?.size ?? 0;
@@ -115,9 +144,11 @@ export class Network<A extends Agent = Agent> {
     this.#cache.clear();
   }
 
-  /** Agents reachable from `a` in at most `hops` links, in breadth-first order, excluding `a`. */
-  within(a: A, hops: number): A[] {
+  /** Agents reachable from `a` in at most `hops` links, in breadth-first order. */
+  findWithin(a: A, hops: number, options: FindOptions<A> = {}): A[] {
+    const { condition, includeSelf } = options;
     const result: A[] = [];
+    if (includeSelf && a.alive && (!condition || condition(a))) result.push(a);
     if (!a.alive) return result;
     const seen = new Set<A>([a]);
     let frontier = [a];
@@ -127,7 +158,7 @@ export class Network<A extends Agent = Agent> {
         for (const other of this.neighbors(node)) {
           if (seen.has(other)) continue;
           seen.add(other);
-          result.push(other);
+          if (!condition || condition(other)) result.push(other);
           next.push(other);
         }
       }
@@ -170,6 +201,12 @@ export class Network<A extends Agent = Agent> {
       frontier = next;
     }
     return undefined;
+  }
+
+  /** Makes an agent that lives elsewhere a member of the graph's scape. */
+  #enrol(agent: A): void {
+    const scape = this.scape;
+    if (agent.scape !== (scape as unknown)) scape.add(agent, false);
   }
 
   #add(from: A, to: A): void {

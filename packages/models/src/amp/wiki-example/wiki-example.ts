@@ -4,29 +4,31 @@
 // Original: Copyright (c) Metascape LLC and others, made available under the Eclipse Public License
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  type Array2D,
+  Array2DMoore,
+  CellOccupant,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
   real,
   rgb,
   Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
 /** A block of the city: one cell of the grid. */
-export class Block extends Cell {}
+export class Block extends HostCell {}
 
 /** An individual: it has an age and wealth, and moves next to someone of its own age. */
-export class Individual extends Occupant<Block> {
+export class Individual extends CellOccupant<Block> {
   age = 0;
   readonly vision = 5;
   wealth = 0;
 
   constructor(
-    private readonly city: GridScape<Block>,
+    private readonly city: Array2D<Block>,
     private readonly maximumAge: number,
   ) {
     super();
@@ -40,7 +42,7 @@ export class Individual extends Occupant<Block> {
 
   /** The "Initial Movement" initial rule: a random available block. */
   initialMovement(): void {
-    const block = this.city.randomAvailableCell();
+    const block = this.city.findRandomAvailable();
     if (block) this.moveTo(block);
   }
 
@@ -49,16 +51,16 @@ export class Individual extends Occupant<Block> {
    * and move to a random free block next to that partner.
    */
   findPartner(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const partners: Individual[] = [];
-    for (const block of this.city.within(here, this.vision)) {
+    for (const block of this.city.findWithin(here, this.vision)) {
       const other = block.occupant;
       if (other instanceof Individual && other.age === this.age) partners.push(other);
     }
     if (partners.length === 0) return;
     const partner = this.random.pick(partners);
-    const partnerBlock = partner.cell;
+    const partnerBlock = partner.hostCell;
     if (!partnerBlock) return;
     const free = partnerBlock.neighbors.filter((block) => block.isAvailable);
     if (free.length > 0) this.moveTo(this.random.pick(free));
@@ -74,7 +76,7 @@ function hasSameAgeNeighbor(individual: Individual): boolean {
 export const wikiExample = defineModel({
   name: 'Wiki Example',
   description:
-    'Individuals of random ages scattered over a bounded city grid each tick move next to a randomly chosen individual of the same age within their vision, so same-aged individuals gradually cluster together.',
+    'Individuals of random ages scattered over a bounded city grid each period move next to a randomly chosen individual of the same age within their vision, so same-aged individuals gradually cluster together.',
   provenance: {
     portedFrom: 'Eclipse AMP, WikiExample.metaabm',
     copyright:
@@ -115,42 +117,41 @@ export const wikiExample = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
-    const city = sim.addScape(
-      new GridScape<Block>({
+  build(root) {
+    const p = root.parameters;
+    const city = root.add(
+      new Scape<Block>({
         name: 'City',
-        width: p.width,
-        height: p.height,
-        wrap: false,
-        neighborhood: 'moore',
-        schedule: 'byRule',
-        order: 'sequential',
-        create: () => new Block(),
+        space: new Array2DMoore<Block>(),
+        extent: [p.width, p.height],
+        periodic: false,
+        prototypeAgent: () => new Block(),
+        executionOrder: 'byRule',
       }),
     );
-    const people = sim.addScape(
+    const people = root.add(
       new Scape<Individual>({
         name: 'Individuals',
         size: p.individualCount,
-        schedule: 'byRule',
-        order: 'shuffled',
-        create: () => new Individual(city, p.maximumAge),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new Individual(city.space as Array2D<Block>, p.maximumAge),
       }),
     );
     people.addInitialRule('Initial State', (i) => i.initialState());
     people.addInitialRule('Initial Movement', (i) => i.initialMovement());
     people.addRule('Find Partner', (i) => i.findPartner());
 
-    sim.data.count(people, 'Individuals Population');
-    sim.data.measure(people, 'Same-age neighbour', (i) => (hasSameAgeNeighbor(i) ? 1 : 0), {
-      statistics: ['mean'],
-    });
+    people.addStatCollector(stat.count('Individuals Population'));
+    people.addStatCollector(
+      stat.measure('Same-age neighbour', (i) => (hasSameAgeNeighbor(i) ? 1 : 0), {
+        statistics: ['mean'],
+      }),
+    );
 
-    sim.addView(
+    root.addView(
       gridView<Block, Individual>({
         title: 'City',
-        grid: city,
+        scape: city,
         cellColor: () => rgb(235, 235, 235),
         occupantColor: (i) => rgb(Math.floor(i.wealth * 255), 255, 255),
         occupantShape: 'circle',
@@ -161,7 +162,7 @@ export const wikiExample = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Individuals with a same-age neighbour',
         series: ['Same-age neighbour.mean'],
@@ -169,7 +170,7 @@ export const wikiExample = defineModel({
         yMax: 1,
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({ title: 'Population', series: ['Individuals Population'], yMin: 0 }),
     );
   },

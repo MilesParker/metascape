@@ -69,7 +69,7 @@ interface Task {
  * {@link runNext} to run the earliest scheduled callback.
  *
  * If constructed with a {@link ManualClock}, running a task first advances that
- * clock by the task's delay, which simulates real time passing between frames.
+ * clock by the task's delay, as if real time had passed between frames.
  */
 export class ManualScheduler implements Scheduler {
   readonly #clock: ManualClock | undefined;

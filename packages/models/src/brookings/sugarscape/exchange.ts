@@ -142,7 +142,7 @@ export class Exchange2 extends Exchange {
     return (mr * agent.spice.stock - agent.sugar.stock) / (1.0 + this.price * mr);
   }
 
-  /** The largest beneficial quantities at the price that leave both a tick's metabolism. */
+  /** The largest beneficial quantities at the price that leave both a period's metabolism. */
   private calculateQuantities(): void {
     const { self, partner, price } = this;
     const selfSpiceReqd = self.spice.stock - self.spiceMetabolism;

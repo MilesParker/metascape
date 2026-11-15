@@ -21,7 +21,7 @@ check the paper's parameter values against the AMP ones.
 
 ## Models
 
-| Model         | Rules per tick (in order)                                                                                                      |
+| Model         | Rules per period (in order)                                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | StupidModel 1 | Habitats: none. Bugs: Random Movement. Bugs are red, habitats green.                                                           |
 | StupidModel 2 | Bugs: Random Movement, Grow (size + 1, integer). Bug colour fades white to red as size goes 0 to 10.                           |

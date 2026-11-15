@@ -7,16 +7,18 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   colors,
-  ContinuousScape,
+  Continuous2D,
   continuousView,
   defineModel,
   int,
-  PointAgent,
-  real,
-  timeSeriesView,
+  LocatedAgent,
   type Point,
+  real,
+  type RootScape,
   type Rule,
-  type Simulation,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 
 /** Side length of the wrapped square world (the legacy `world.setExtent(50, 50)`). */
@@ -33,7 +35,7 @@ function nearlyEqual(a: number, b: number): boolean {
 
 /**
  * Ascape's `Continuous2D.calculateDistance` for a periodic space, formula for
- * formula. Unlike the engine's `ContinuousScape.distance` it is also defined
+ * formula. Unlike the engine's `Continuous2D.distance` it is also defined
  * (if odd) for points outside the world, which the cohesion rule produces.
  */
 export function periodicDistance(origin: Point, target: Point): number {
@@ -78,27 +80,27 @@ export interface BoidSettings {
 }
 
 /** A fixed obstacle that boids steer away from. Legacy `Obstacle`. */
-export class Obstacle extends PointAgent {}
+export class Obstacle extends LocatedAgent {}
 
 /**
  * A boid. Legacy `Boid`: its steering methods are the ones the rules call, in
  * the order the model applies them, each yielding to those before it.
  */
-export class Boid extends PointAgent {
-  /** Distance moved per tick. */
+export class Boid extends LocatedAgent {
+  /** Distance moved per period. */
   velocity = 0;
   /** Direction in radians. Not normalized to one turn, as in the original. */
   heading = 0;
-  /** Set once a higher-priority steering rule has acted this tick. */
+  /** Set once a higher-priority steering rule has acted this period. */
   prioritySet = false;
 
   #settings: BoidSettings;
-  readonly #world: () => ContinuousScape<Boid | Obstacle>;
+  readonly #world: () => Scape<Boid | Obstacle>;
 
   constructor(
     readonly team: Team,
     settings: BoidSettings,
-    world: () => ContinuousScape<Boid | Obstacle>,
+    world: () => Scape<Boid | Obstacle>,
   ) {
     super();
     this.#settings = settings;
@@ -132,7 +134,7 @@ export class Boid extends PointAgent {
    * Ascape's `findNearest`: the closest candidate, ties (within tolerance)
    * broken at random.
    */
-  #nearest<T extends PointAgent>(candidates: readonly T[]): T | undefined {
+  #nearest<T extends LocatedAgent>(candidates: readonly T[]): T | undefined {
     let minValue = Number.MAX_VALUE;
     let minObject: T | undefined;
     let ties: T[] | undefined;
@@ -269,7 +271,7 @@ export const parameters = {
     min: 0,
     max: 10,
     label: 'Initial velocity',
-    description: 'Distance each boid moves per tick.',
+    description: 'Distance each boid moves per period.',
   }),
   initialHeadingRange: real(3.5, {
     min: 0,
@@ -309,8 +311,8 @@ export const parameters = {
   }),
 } as const;
 
-/** The world scape of a boids simulation. */
-export type BoidsWorld = ContinuousScape<Boid | Obstacle>;
+/** The world scape of a boids model. */
+export type BoidsWorld = Scape<Boid | Obstacle>;
 
 /** Mean pairwise heading agreement of a team: 0 scattered, 1 all parallel. */
 function polarization(world: BoidsWorld, team: Team): number {
@@ -347,10 +349,10 @@ function nearestMate(world: BoidsWorld, team: Team): number {
 
 /**
  * Places an obstacle, as shift-clicking the legacy overhead view did.
- * Returns the new obstacle. Works once the simulation is built.
+ * Returns the new obstacle. Works once the model is built.
  */
-export function placeObstacle(sim: Simulation, x: number, y: number): Obstacle {
-  const world = sim.scape(WORLD) as unknown as BoidsWorld;
+export function placeObstacle(root: RootScape, x: number, y: number): Obstacle {
+  const world = root.findScape(WORLD) as unknown as BoidsWorld;
   return world.add(new Obstacle(x, y)) as Obstacle;
 }
 
@@ -372,8 +374,8 @@ export const boidsAscape = defineModel({
     note: 'Ascape implementation by Miles Parker. The steering rules differ from the textbook ones; red boids apply only obstacle avoidance. Obstacles are placed with placeObstacle.',
   },
   parameters,
-  build(sim: Simulation<typeof parameters>) {
-    const p = sim.parameters;
+  build(root: RootScape<typeof parameters>) {
+    const p = root.parameters;
     const settings: BoidSettings = {
       velocity: p.initialVelocity,
       headingRange: p.initialHeadingRange,
@@ -382,14 +384,15 @@ export const boidsAscape = defineModel({
       clumpingRange: p.initialClumpingRange,
       collisionRange: p.initialCollisionRange,
     };
-    const world: BoidsWorld = sim.addScape(
-      new ContinuousScape<Boid | Obstacle>({
+    const world: BoidsWorld = root.add(
+      new Scape<Boid | Obstacle>({
         name: WORLD,
-        width: WORLD_SIZE,
-        height: WORLD_SIZE,
-        wrap: true,
+        space: new Continuous2D<Boid | Obstacle>(),
+        extent: [WORLD_SIZE, WORLD_SIZE],
+        periodic: true,
         size: p.numRedBoids + p.numBlueBoids,
-        create: (index) => new Boid(index < p.numRedBoids ? 'red' : 'blue', settings, () => world),
+        prototypeAgent: (index) =>
+          new Boid(index < p.numRedBoids ? 'red' : 'blue', settings, () => world),
       }),
     );
 
@@ -420,12 +423,12 @@ export const boidsAscape = defineModel({
     );
     world.addRule(onBoid('Movement', (b) => b.movement()));
 
-    sim.data.value('redPolarization', () => polarization(world, 'red'));
-    sim.data.value('bluePolarization', () => polarization(world, 'blue'));
-    sim.data.value('redNearestMate', () => nearestMate(world, 'red'));
-    sim.data.value('blueNearestMate', () => nearestMate(world, 'blue'));
+    root.addStatCollector(stat.value('redPolarization', () => polarization(world, 'red')));
+    root.addStatCollector(stat.value('bluePolarization', () => polarization(world, 'blue')));
+    root.addStatCollector(stat.value('redNearestMate', () => nearestMate(world, 'red')));
+    root.addStatCollector(stat.value('blueNearestMate', () => nearestMate(world, 'blue')));
 
-    sim.addView(
+    root.addView(
       continuousView<Boid | Obstacle>({
         title: 'Continuous Overhead View',
         scape: world,
@@ -445,7 +448,7 @@ export const boidsAscape = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Heading agreement',
         series: ['redPolarization', 'bluePolarization'],
@@ -454,7 +457,7 @@ export const boidsAscape = defineModel({
         colors: { redPolarization: colors.red, bluePolarization: colors.blue },
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Distance to nearest team-mate',
         series: ['redNearestMate', 'blueNearestMate'],

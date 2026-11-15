@@ -212,7 +212,7 @@ export function Switch({ className, ...props }: ComponentProps<typeof W.Root>): 
 
 /* Slider */
 
-/** A slider with one thumb, or two for a range; `marks` draws ticks (for example the default). */
+/** A slider with one thumb, or two for a range; `marks` draws periods (for example the default). */
 export function Slider({
   className,
   marks,

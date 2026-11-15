@@ -50,11 +50,11 @@ export const abcDiffusion = defineModel({
     ...matrixABCParameters,
   },
 
-  build(sim) {
-    const { span, beta, gamma } = sim.parameters;
-    buildActionModel(sim, {
+  build(root) {
+    const { span, beta, gamma } = root.parameters;
+    buildActionModel(root, {
       span,
-      settings: actionSettings(3, beta, gamma, sim.parameters),
+      settings: actionSettings(3, beta, gamma, root.parameters),
       palette: ACTION_COLORS,
       labels: ['A', 'B', 'C'],
       chartColors: ACTION_COLORS,

@@ -5,14 +5,18 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
   defineModel,
-  GridScape,
   gridView,
   int,
   real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
   timeSeriesView,
   wireSmallWorld,
-  type Simulation,
 } from '@metascape/engine';
 import { ALIVE, DEAD, lifeProvenance, LifeCell } from './life-cell';
 
@@ -20,12 +24,12 @@ const DENSITY = (description: string) =>
   real(0.1, { min: 0, max: 1, label: 'Initial alive density', description });
 
 /** Adds the shared views and the live-cell count. */
-function addLifeViews(sim: Simulation, cells: GridScape<LifeCell>): void {
-  sim.data.count(cells, 'Alive', (cell) => cell.on);
-  sim.addView(
+function addLifeViews(root: RootScape, cells: Scape<LifeCell>): void {
+  cells.addStatCollector(stat.count('Alive', (cell) => cell.on));
+  root.addView(
     gridView<LifeCell>({
       title: 'Overhead View',
-      grid: cells,
+      scape: cells,
       cellColor: (cell) => (cell.on ? ALIVE : DEAD),
       legend: [
         { color: ALIVE, label: 'Alive' },
@@ -33,7 +37,9 @@ function addLifeViews(sim: Simulation, cells: GridScape<LifeCell>): void {
       ],
     }),
   );
-  sim.addView(timeSeriesView({ title: 'Live cells', series: ['Alive'], colors: { Alive: ALIVE } }));
+  root.addView(
+    timeSeriesView({ title: 'Live cells', series: ['Alive'], colors: { Alive: ALIVE } }),
+  );
 }
 
 /** Conway's Life on a 51 by 51 torus, updated synchronously (execute, then update). */
@@ -52,22 +58,23 @@ export const conwayLife = defineModel({
     height: int(51, { min: 3, max: 400, label: 'Height', description: 'Number of rows.' }),
     initialAliveDensity: DENSITY('Probability that a cell starts alive.'),
   },
-  build(sim) {
-    const { width, height, initialAliveDensity } = sim.parameters;
-    const cells = sim.addScape(
-      new GridScape<LifeCell>({
+  build(root) {
+    const { width, height, initialAliveDensity } = root.parameters;
+    const cells = root.add(
+      new Scape<LifeCell>({
         name: 'Lattice',
-        width,
-        height,
-        wrap: true,
-        neighborhood: 'moore',
-        order: 'sequential',
-        schedule: 'byRule',
-        create: () => new LifeCell(),
+        space: new Array2DMoore<LifeCell>(),
+        extent: [width, height],
+        periodic: true,
+        prototypeAgent: () => new LifeCell(),
+        executionOrder: 'byRule',
       }),
     );
-    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity));
+    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity), {
+      randomExecution: false,
+    });
     cells.addRule({
+      randomExecution: false,
       name: 'Determine Next State',
       execute(cell) {
         cell.next = cell.calculateNext(cell.neighbors);
@@ -76,7 +83,7 @@ export const conwayLife = defineModel({
         cell.on = cell.next;
       },
     });
-    addLifeViews(sim, cells);
+    addLifeViews(root, cells);
   },
 });
 
@@ -111,23 +118,31 @@ export const conwayLifeSmallWorld = defineModel({
       description: 'Probability that each neighbor is replaced by a random cell.',
     }),
   },
-  build(sim) {
-    const { initialAliveDensity, radius, randomEdgeRatio } = sim.parameters;
-    const cells = sim.addScape(
-      new GridScape<LifeCell>({
+  build(root) {
+    const { initialAliveDensity, radius, randomEdgeRatio } = root.parameters;
+    const cells = root.add(
+      new Scape<LifeCell>({
         name: 'Lattice',
-        width: 60,
-        height: 60,
-        wrap: false,
-        neighborhood: 'moore',
-        order: 'sequential',
-        schedule: 'byRule',
-        create: () => new LifeCell(),
+        space: new Array2DMoore<LifeCell>(),
+        extent: [60, 60],
+        periodic: false,
+        prototypeAgent: () => new LifeCell(),
+        executionOrder: 'byRule',
       }),
     );
-    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity));
-    sim.setup(() => wireSmallWorld(cells, { radius, randomEdgeRatio }));
+    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity), {
+      randomExecution: false,
+    });
+    // Wired once the cells are seeded, as Ascape's Array2DSmallWorld is when the lattice is created.
+    root
+      .add(new Scape({ name: 'Small world', space: new Singleton() }))
+      .addInitialRule(
+        'Wire',
+        () => wireSmallWorld(cells.space as Array2D<LifeCell>, { radius, randomEdgeRatio }),
+        { randomExecution: false },
+      );
     cells.addRule({
+      randomExecution: false,
       name: 'Determine Next State',
       execute(cell) {
         cell.next = cell.calculateNext(cell.neighbors);
@@ -136,7 +151,7 @@ export const conwayLifeSmallWorld = defineModel({
         cell.on = cell.next;
       },
     });
-    addLifeViews(sim, cells);
+    addLifeViews(root, cells);
   },
 });
 
@@ -158,22 +173,23 @@ export const smallConwayLife = defineModel({
   parameters: {
     initialAliveDensity: DENSITY('Probability that a cell starts alive.'),
   },
-  build(sim) {
-    const { initialAliveDensity } = sim.parameters;
-    const cells = sim.addScape(
-      new GridScape<LifeCell>({
+  build(root) {
+    const { initialAliveDensity } = root.parameters;
+    const cells = root.add(
+      new Scape<LifeCell>({
         name: 'Lattice',
-        width: 60,
-        height: 60,
-        wrap: true,
-        neighborhood: 'moore',
-        order: 'sequential',
-        schedule: 'byRule',
-        create: () => new LifeCell(),
+        space: new Array2DMoore<LifeCell>(),
+        extent: [60, 60],
+        periodic: true,
+        prototypeAgent: () => new LifeCell(),
+        executionOrder: 'byRule',
       }),
     );
-    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity));
+    cells.addInitialRule('Seed', (cell) => cell.seed(initialAliveDensity), {
+      randomExecution: false,
+    });
     cells.addRule({
+      randomExecution: false,
       name: 'Iterate and Update',
       execute(cell) {
         let live = 0;
@@ -188,6 +204,6 @@ export const smallConwayLife = defineModel({
         cell.on = cell.next;
       },
     });
-    addLifeViews(sim, cells);
+    addLifeViews(root, cells);
   },
 });

@@ -5,7 +5,7 @@ torus play an iterated Prisoner's Dilemma against a neighbor. A player's strateg
 chromosome: for memory size m, 4^m response bits indexed by the last m rounds (own move
 and partner's), 2m bits of assumed history before a first meeting, and one preference bit
 (closest or furthest partner). Rich players clone onto a free neighbor with their
-chromosome; every tick each player may cross its chromosome over with a random neighbor
+chromosome; every period each player may cross its chromosome over with a random neighbor
 (probability 0.01) and flips each bit with probability 0.01.
 
 Author: Miles T. Parker. The sources and the (absent) About text state no publication, so
@@ -37,16 +37,16 @@ ported like the others and the block was not copied.
 The three batch classes only add data output and a parameter sweep to a `PD2DGA`. They are
 kept as models (same dynamics, so they can be watched) and their sweeps are experiment
 designs in `experiments.ts`, to be run with `runExperiment(model, design)`:
-`PD2DGAMultiple` is 35 runs of 1000 ticks, memory size 1, writing the final summed ratios;
+`PD2DGAMultiple` is 35 runs of 1000 periods, memory size 1, writing the final summed ratios;
 `PD2DGAMultipleTo` is 35 runs until the population dies out (the model stops itself with
-reason `extinct`; the end tick is the `ticks` column); `PD2DGAMulti` writes the eight
+reason `extinct`; the end period is the `periods` column); `PD2DGAMulti` writes the eight
 commonest genomes and their counts.
 
 ## Rules as ported
 
 Settings that `PD2DGA` applies on top of `PD2D`: payoffs C/C 3, C/D -5, D/C 6, D/D -2,
 fission wealth 20, mutation rate 0, memory size 1, mutation and crossover probability 0.01,
-`trackAll` 0, 20 x 20 lattice, and agent-order execution. Each tick every live player, in
+`trackAll` 0, 20 x 20 lattice, and agent-order execution. Each period every live player, in
 one shuffled order, runs the selected rules in the legacy list order: Random Walk, Play
 Random Neighbor, Fissioning, Update, Death, Play Closest, Play Furthest, Play Preference,
 Crossover, Mutation. A player removed by Death skips the rest. Variants:
@@ -76,7 +76,7 @@ of cooperation in its own last active turn.
   by partner only; a child starts with the parent's cooperation counts; a child's age is
   drawn uniformly 0..deathAge, not 0; the Player-level `mutationRate` and the `strategy`
   field have no lasting effect because every play overwrites `strategy`.
-- Wealth can be negative at the end of a tick: with agent order, a neighbor may play a
+- Wealth can be negative at the end of a period: with agent order, a neighbor may play a
   player after that player's own Death check.
 - The `Play All`, `Play Neighbors` and `Play Other` rules were never selected by any class
   and are omitted.

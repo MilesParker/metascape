@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { resolveParameters, Simulation, timeAt } from '@metascape/engine';
+import { resolveParameters, RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { catalog, familyLoaders, models } from './index';
 
@@ -34,8 +34,10 @@ describe('model catalogue', () => {
 
   it('builds every model and gives it a view', () => {
     for (const model of models) {
-      const sim = new Simulation(model, { seed: 1 });
-      expect(sim.views.length + (model.views?.(sim).length ?? 0), model.name).toBeGreaterThan(0);
+      const root = new RootScape(model, { seed: 1 });
+      expect(root.allViews.length + (model.views?.(root).length ?? 0), model.name).toBeGreaterThan(
+        0,
+      );
     }
   });
 });
@@ -67,14 +69,14 @@ describe('live parameters', () => {
   };
 
   // Runs every live parameter of every model a few times.
-  it('take effect when changed in a running simulation', () => {
+  it('take effect when changed in a running model', () => {
     for (const model of models) {
       for (const [name, parameter] of Object.entries(model.parameters)) {
         if (!parameter.live) continue;
-        const baseline = new Simulation(model, { seed: 7 });
+        const baseline = new RootScape(model, { seed: 7 });
         baseline.run(45);
         const effective = others(parameter).some((value) => {
-          const changed = new Simulation(model, { seed: 7 });
+          const changed = new RootScape(model, { seed: 7 });
           changed.run(5);
           changed.setParameter(name, value as number | boolean);
           changed.run(40);
@@ -86,16 +88,16 @@ describe('live parameters', () => {
   }, 120_000);
 });
 
-describe('time scales', () => {
+describe('period scales', () => {
   it('match the year a model records, where it records one', () => {
     for (const model of models) {
-      if (!model.time) continue;
-      const sim = new Simulation(model, { seed: 3 });
-      sim.run(4);
-      if (!sim.data.series.some((s) => s.id === 'year')) continue;
-      const years = sim.data.values('year');
-      for (let i = 0; i < sim.data.sampleCount; i++) {
-        expect(timeAt(sim, sim.data.ticks[i]!), model.name).toBe(years[i]);
+      if (!model.period) continue;
+      const root = new RootScape(model, { seed: 3 });
+      root.run(4);
+      if (!root.data.series.some((s) => s.id === 'year')) continue;
+      const years = root.data.values('year');
+      for (let i = 0; i < root.data.sampleCount; i++) {
+        expect(root.data.periods[i], model.name).toBe(years[i]);
       }
     }
   });
@@ -110,9 +112,9 @@ describe('things to try', () => {
           () => resolveParameters(model.parameters, exploration.parameters),
           label,
         ).not.toThrow();
-        const sim = new Simulation(model, { seed: 1 });
+        const root = new RootScape(model, { seed: 1 });
         for (const change of exploration.rules ?? []) {
-          const names = sim.scape(change.scape).rules.map((r) => r.rule.name);
+          const names = root.findScape(change.scape).rules.map((r) => r.rule.name);
           for (const rule of [...(change.enable ?? []), ...(change.disable ?? [])]) {
             expect(names, label).toContain(rule);
           }

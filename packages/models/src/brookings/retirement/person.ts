@@ -5,14 +5,17 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
   barsView,
-  Cell,
   colors,
-  GridScape,
   gridView,
   histogramView,
+  HostCell,
+  type RootScape,
+  Scape,
+  stat,
   timeSeriesView,
-  type Simulation,
 } from '@metascape/engine';
 
 /** Strategies of the legacy `Person`. */
@@ -43,7 +46,7 @@ export interface PopulationState {
   readonly minNetworkSize: number;
   readonly maxNetworkSize: number;
   readonly network: NetworkKind;
-  /** The row currently holding the youngest age; it moves up one row per tick. */
+  /** The row currently holding the youngest age; it moves up one row per period. */
   youngestRow: number;
 }
 
@@ -58,7 +61,7 @@ export function ageForRow(state: PopulationState, row: number): number {
  * A person of the retirement model, living in a fixed cell of a wrapped grid
  * of age rows. Persons are "reborn" (re-initialized) when they pass the oldest age.
  */
-export class Person extends Cell {
+export class Person extends HostCell {
   strategy = IMITATOR;
   status = WORKING;
   eligible = false;
@@ -85,7 +88,9 @@ export class Person extends Cell {
     if (s.network === 'random-by-age') this.#calculateNetwork();
     else if (this.network.length === 0) {
       // Neighbors of the small-world version never change: computed once.
-      this.network = (this.grid as GridScape<Person>).within(this, 2, { metric: 'chebyshev' });
+      this.network = (this.scape.space as unknown as Array2D<Person>).findWithin(this, 2, {
+        metric: 'chebyshev',
+      });
     }
     if (this.age >= this.deathAge) this.status = DEAD;
     if (this.age >= s.retirementEligibilityAge) this.eligible = true;
@@ -94,7 +99,7 @@ export class Person extends Cell {
   /** Picks 10 to 25 people (with replacement) from rows within a random age difference. */
   #calculateNetwork(): void {
     const s = this.#state;
-    const grid = this.grid as GridScape<Person>;
+    const grid = this.scape.space as unknown as Array2D<Person>;
     const size = this.random.int(s.minNetworkSize, s.maxNetworkSize + 1);
     const r = this.random.int(0, MAX_NETWORK_AGE_DIFFERENCE + 1);
     const network: Person[] = [];
@@ -177,10 +182,10 @@ export interface RetirementParameters {
  * youngest row, data and views.
  */
 export function buildPopulation(
-  sim: Simulation,
+  root: RootScape,
   p: RetirementParameters,
   network: NetworkKind,
-): GridScape<Person> {
+): Scape<Person> {
   if (p.fractionRational + p.fractionRandom > 1.0) {
     throw new Error('Fraction random and fraction rational are greater than 1.0.');
   }
@@ -198,54 +203,66 @@ export function buildPopulation(
     network,
     youngestRow: 0,
   };
-  const grid = sim.addScape(
-    new GridScape<Person>({
+  const grid = root.add(
+    new Scape<Person>({
       name: 'Population',
-      width: COHORT_SIZE,
-      height: AGE_SPAN,
-      wrap: true,
-      neighborhood: 'moore',
+      space: new Array2DMoore<Person>(),
+      extent: [COHORT_SIZE, AGE_SPAN],
+      periodic: true,
+      prototypeAgent: () => new Person(state),
       // Execution is by rule: metabolism for everyone, then iterate for everyone (see README).
-      schedule: 'byRule',
-      create: () => new Person(state),
+      executionOrder: 'byRule',
     }),
   );
   grid.addRule('Metabolism', (person) => person.metabolism());
   grid.addRule('Iterate', (person) => person.iterate());
 
-  // Legacy `scapeIterated`: the youngest row moves up by one after every tick.
-  sim.observe({
-    stepped() {
-      state.youngestRow = state.youngestRow > 0 ? state.youngestRow - 1 : grid.height - 1;
+  // Legacy `scapeIterated`: the youngest row moves up by one once each iteration's statistics
+  // are collected. The ages the statistics record depend on it, so it stays a scape listener,
+  // as in Ascape, rather than a rule executed before the statistics.
+  const height = (grid.space as Array2D<Person>).height;
+  root.addScapeListener({
+    scapeIterated() {
+      state.youngestRow = state.youngestRow > 0 ? state.youngestRow - 1 : height - 1;
     },
   });
 
-  sim.data.count(grid, 'working', (a) => a.status === WORKING);
-  sim.data.count(grid, 'retired', (a) => a.status === RETIRED);
-  sim.data.count(grid, 'dead', (a) => a.status === DEAD);
-  sim.data.count(grid, 'rationalRetired', (a) => a.status === RETIRED && a.strategy === RATIONAL);
-  sim.data.count(grid, 'imitatorRetired', (a) => a.status === RETIRED && a.strategy === IMITATOR);
-  sim.data.count(grid, 'randomRetired', (a) => a.status === RETIRED && a.strategy === RANDOM);
-  sim.data.value('retiredShareOfEligible', () => {
-    let eligible = 0;
-    let retired = 0;
-    for (const a of grid.members) {
-      if (a.eligible && a.status !== DEAD) eligible++;
-      if (a.status === RETIRED) retired++;
-    }
-    return eligible === 0 ? 0 : retired / eligible;
-  });
-  sim.data.distribution(grid, 'retiredByAge', (a) => a.age, {
-    bins: AGE_SPAN,
-    min: YOUNGEST_AGE,
-    max: OLDEST_AGE + 1,
-    when: (a) => a.status === RETIRED,
-  });
+  grid.addStatCollector(stat.count('working', (a) => a.status === WORKING));
+  grid.addStatCollector(stat.count('retired', (a) => a.status === RETIRED));
+  grid.addStatCollector(stat.count('dead', (a) => a.status === DEAD));
+  grid.addStatCollector(
+    stat.count('rationalRetired', (a) => a.status === RETIRED && a.strategy === RATIONAL),
+  );
+  grid.addStatCollector(
+    stat.count('imitatorRetired', (a) => a.status === RETIRED && a.strategy === IMITATOR),
+  );
+  grid.addStatCollector(
+    stat.count('randomRetired', (a) => a.status === RETIRED && a.strategy === RANDOM),
+  );
+  root.addStatCollector(
+    stat.value('retiredShareOfEligible', () => {
+      let eligible = 0;
+      let retired = 0;
+      for (const a of grid.members) {
+        if (a.eligible && a.status !== DEAD) eligible++;
+        if (a.status === RETIRED) retired++;
+      }
+      return eligible === 0 ? 0 : retired / eligible;
+    }),
+  );
+  grid.addStatCollector(
+    stat.distribution('retiredByAge', (a) => a.age, {
+      bins: AGE_SPAN,
+      min: YOUNGEST_AGE,
+      max: OLDEST_AGE + 1,
+      when: (a) => a.status === RETIRED,
+    }),
+  );
 
-  sim.addView(
+  root.addView(
     gridView<Person>({
-      title: 'Population (rows are ages; the youngest row moves up each tick)',
-      grid,
+      title: 'Population (rows are ages; the youngest row moves up each period)',
+      scape: grid,
       cellColor: personColor,
       legend: [
         { color: colors.blue, label: 'Working (imitator)' },
@@ -261,7 +278,7 @@ export function buildPopulation(
     retired: colors.red,
     dead: colors.gray,
   };
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Working, retired and dead',
       series: ['working', 'retired', 'dead'],
@@ -269,7 +286,7 @@ export function buildPopulation(
       yMin: 0,
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Retired share of eligible',
       series: ['retiredShareOfEligible'],
@@ -277,7 +294,7 @@ export function buildPopulation(
       yMax: 1,
     }),
   );
-  sim.addView(
+  root.addView(
     barsView({
       title: 'Retired, by strategy',
       series: ['rationalRetired', 'imitatorRetired', 'randomRetired'],
@@ -288,6 +305,6 @@ export function buildPopulation(
       },
     }),
   );
-  sim.addView(histogramView({ title: 'Ages of the retired', distribution: 'retiredByAge' }));
+  root.addView(histogramView({ title: 'Ages of the retired', distribution: 'retiredByAge' }));
   return grid;
 }

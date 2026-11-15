@@ -4,23 +4,25 @@
 // Original: Copyright (c) Metascape LLC and others, made available under the Eclipse Public License
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  type Array2D,
+  Array2DMoore,
+  CellOccupant,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
+  type Random,
   real,
   rgb,
-  Scape,
-  timeSeriesView,
-  type Random,
   type Rule,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 
 /** One site of the heat grid. */
-export class HeatCell extends Cell {
+export class HeatCell extends HostCell {
   heat = 0;
 }
 
@@ -73,12 +75,12 @@ export function pickExtreme<T>(
 }
 
 /** A heat bug. */
-export class HeatBug extends Occupant<HeatCell> {
+export class HeatBug extends CellOccupant<HeatCell> {
   idealTemperature = 0;
   outputHeat = 0;
 
   constructor(
-    private readonly world: GridScape<HeatCell>,
+    private readonly world: Array2D<HeatCell>,
     private readonly settings: HeatBugSettings,
   ) {
     super();
@@ -86,13 +88,13 @@ export class HeatBug extends Occupant<HeatCell> {
 
   /** Derived: the distance between the heat of the bug's cell and its ideal temperature. */
   get unhappiness(): number {
-    const here = this.cell;
+    const here = this.hostCell;
     return here ? Math.abs(here.heat - this.idealTemperature) : 0;
   }
 
   /** The "Initialize" initial rule: a random available cell. */
   placeRandomly(): void {
-    const home = this.world.randomAvailableCell();
+    const home = this.world.findRandomAvailable();
     if (home) this.moveTo(home);
   }
 
@@ -110,10 +112,10 @@ export class HeatBug extends Occupant<HeatCell> {
    * bug started on, which is the original's behaviour.
    */
   seekHeat(): void {
-    const origin = this.cell;
+    const origin = this.hostCell;
     if (!origin) return;
     const heated = origin.heat + this.outputHeat;
-    const open = this.world.within(origin, 1).filter((cell) => cell.isAvailable);
+    const open = this.world.findWithin(origin, 1).filter((cell) => cell.isAvailable);
     const target =
       origin.heat < this.idealTemperature
         ? pickExtreme(open, (cell) => cell.heat, 1, this.random)
@@ -174,13 +176,13 @@ export const heatbugs = defineModel({
       min: 0,
       max: 1,
       label: 'Diffusion Rate',
-      description: 'How far each cell moves toward the mean of its neighbours per tick.',
+      description: 'How far each cell moves toward the mean of its neighbours per period.',
     }),
     evaporationRate: real(0.01, {
       min: 0,
       max: 1,
       label: 'Evaporation Rate',
-      description: 'The fraction of heat each cell loses per tick.',
+      description: 'The fraction of heat each cell loses per period.',
     }),
     idealTemperatureDrawMinimum: real(135, {
       min: 0,
@@ -226,22 +228,23 @@ export const heatbugs = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     // As in the original, the heat grid is added first, so it diffuses before the bugs act.
-    const grid = sim.addScape(
-      new GridScape<HeatCell>({
+    const grid = root.add(
+      new Scape<HeatCell>({
         name: 'Heat Grids',
-        width: p.width,
-        height: p.height,
-        wrap: false,
-        neighborhood: 'moore',
-        schedule: 'byRule',
-        order: 'sequential',
-        create: () => new HeatCell(),
+        space: new Array2DMoore<HeatCell>(),
+        extent: [p.width, p.height],
+        periodic: false,
+        prototypeAgent: () => new HeatCell(),
+        executionOrder: 'byRule',
       }),
     );
-    grid.addRule(heatDiffusion(p.diffusionRate, p.evaporationRate, p.maximumHeat));
+    grid.addRule({
+      ...heatDiffusion(p.diffusionRate, p.evaporationRate, p.maximumHeat),
+      randomExecution: false,
+    });
 
     const settings: HeatBugSettings = {
       idealMin: p.idealTemperatureDrawMinimum,
@@ -250,29 +253,32 @@ export const heatbugs = defineModel({
       outputMax: p.outputHeatDrawMaximum,
       maximumHeat: p.maximumHeat,
     };
-    const bugs = sim.addScape(
+    const bugs = root.add(
       new Scape<HeatBug>({
         name: 'Heat Bugs',
         size: p.heatBugCount,
-        schedule: 'byRule',
-        order: 'shuffled',
-        create: () => new HeatBug(grid, settings),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new HeatBug(grid.space as Array2D<HeatCell>, settings),
       }),
     );
     bugs.addInitialRule('Initialize', (bug) => bug.placeRandomly());
     bugs.addInitialRule('Initialize State', (bug) => bug.initializeState());
     bugs.addRule('Seek Heat Rule', (bug) => bug.seekHeat());
 
-    sim.data.count(bugs, 'Heat Bugs Population');
-    sim.data.measure(bugs, 'Heat Bug Unhappiness', (bug) => bug.unhappiness, {
-      statistics: ['sum', 'mean', 'min', 'max'],
-    });
-    sim.data.measure(grid, 'Heat', (cell) => cell.heat, { statistics: ['sum', 'mean', 'max'] });
+    bugs.addStatCollector(stat.count('Heat Bugs Population'));
+    bugs.addStatCollector(
+      stat.measure('Heat Bug Unhappiness', (bug) => bug.unhappiness, {
+        statistics: ['sum', 'mean', 'min', 'max'],
+      }),
+    );
+    grid.addStatCollector(
+      stat.measure('Heat', (cell) => cell.heat, { statistics: ['sum', 'mean', 'max'] }),
+    );
 
-    sim.addView(
+    root.addView(
       gridView<HeatCell, HeatBug>({
         title: 'Heat grid',
-        grid,
+        scape: grid,
         // Style: the red channel is heat / maximum heat; bugs are green ovals.
         cellColor: (cell) => rgb(Math.floor(Math.min(cell.heat / p.maximumHeat, 1) * 255), 0, 0),
         occupantColor: () => colors.green,
@@ -285,7 +291,7 @@ export const heatbugs = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Heat bug unhappiness',
         series: [
@@ -295,6 +301,6 @@ export const heatbugs = defineModel({
         ],
       }),
     );
-    sim.addView(timeSeriesView({ title: 'Heat', series: ['Heat.mean', 'Heat.max'] }));
+    root.addView(timeSeriesView({ title: 'Heat', series: ['Heat.mean', 'Heat.max'] }));
   },
 });

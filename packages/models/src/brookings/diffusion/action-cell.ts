@@ -4,14 +4,14 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Cell, rgb, type Color } from '@metascape/engine';
+import { type Array2D, type Color, HostCell, rgb } from '@metascape/engine';
 
 /** The payoff-relevant type of a cell: low (L), medium (M) or high (H). */
 export type Characteristic = 'L' | 'M' | 'H';
 
 /**
  * Settings shared by every cell of an action-choice model. In Ascape these were
- * static fields of the cell class; here they belong to one simulation.
+ * static fields of the cell class; here they belong to one run.
  */
 export interface ActionSettings {
   /** Number of actions: 3 for the ABC model, 6 for ABCDEF. */
@@ -28,7 +28,7 @@ export interface ActionSettings {
  * One site of the ABC and ABCDEF diffusion models. A cell has a fixed
  * characteristic and a current action (0 is A, 1 is B and so on).
  */
-export class ActionCell extends Cell {
+export class ActionCell extends HostCell {
   characteristic: Characteristic = 'M';
   /** Index of the current action; every cell starts with action B (1). */
   action = 1;
@@ -49,7 +49,7 @@ export class ActionCell extends Cell {
 
   /** True in the upper half of the lattice: `y < height / 2` with integer division. */
   get isAbove(): boolean {
-    return this.y < Math.floor(this.grid.height / 2);
+    return this.y < Math.floor((this.scape.space as unknown as Array2D).height / 2);
   }
 
   /**

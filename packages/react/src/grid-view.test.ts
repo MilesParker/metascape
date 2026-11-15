@@ -1,28 +1,32 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
-  Cell,
+  Array2DMoore,
+  CellOccupant,
   defineModel,
-  GridScape,
-  Occupant,
+  HostCell,
+  RootScape,
   Scape,
-  Simulation,
+  type Array2D,
   type GridViewSpec,
 } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { cellAtFraction, packColor, paintGrid } from './grid-view';
 
-class Walker extends Occupant {}
+class Walker extends CellOccupant {}
 
-function world(): { grid: GridScape<Cell>; walkers: Scape<Walker> } {
-  const holder = {} as { grid: GridScape<Cell>; walkers: Scape<Walker> };
-  new Simulation(
+/** The model's lattice (the space of its scape of cells) and its walkers. */
+function lattice(): { grid: Array2D<HostCell>; walkers: Scape<Walker> } {
+  const holder = {} as { grid: Array2D<HostCell>; walkers: Scape<Walker> };
+  new RootScape(
     defineModel({
       name: 'paint',
       parameters: {},
-      build(sim) {
-        holder.grid = sim.addScape(new GridScape<Cell>({ name: 'grid', width: 3, height: 2 }));
-        holder.walkers = sim.addScape(
-          new Scape<Walker>({ name: 'walkers', size: 2, create: () => new Walker() }),
+      build(root) {
+        holder.grid = root.add(
+          new Scape<HostCell>({ name: 'grid', space: new Array2DMoore(), extent: [3, 2] }),
+        ).space as Array2D<HostCell>;
+        holder.walkers = root.add(
+          new Scape<Walker>({ name: 'walkers', size: 2, prototypeAgent: () => new Walker() }),
         );
       },
     }),
@@ -30,10 +34,10 @@ function world(): { grid: GridScape<Cell>; walkers: Scape<Walker> } {
   return holder;
 }
 
-const spec = (grid: GridScape<Cell>, extra: Partial<GridViewSpec> = {}): GridViewSpec => ({
+const spec = (grid: Array2D<HostCell>, extra: Partial<GridViewSpec> = {}): GridViewSpec => ({
   type: 'grid',
   title: 'test',
-  grid,
+  scape: grid.scape,
   ...extra,
 });
 
@@ -45,7 +49,7 @@ describe('paintGrid', () => {
   });
 
   it('paints one pixel per cell row by row, with the background where no colour function is given', () => {
-    const { grid } = world();
+    const { grid } = lattice();
     const pixels = new Uint32Array(6);
     paintGrid(
       spec(grid, {
@@ -63,12 +67,12 @@ describe('paintGrid', () => {
   });
 
   it('paints occupants over their cells, honouring hidden ones, unless asked not to', () => {
-    const { grid, walkers } = world();
+    const { grid, walkers } = lattice();
     const [first, second] = walkers.members as [Walker, Walker];
     first.moveTo(grid.at(1, 0)!);
     second.moveTo(grid.at(2, 1)!);
     const cellColor = () => 0xffffff;
-    const occupantColor = (o: Occupant) => (o === first ? 0x112233 : undefined);
+    const occupantColor = (o: CellOccupant) => (o === first ? 0x112233 : undefined);
     const pixels = new Uint32Array(6);
     paintGrid(spec(grid, { cellColor, occupantColor }), pixels);
     const white = packColor(0xffffff);
@@ -79,14 +83,14 @@ describe('paintGrid', () => {
   });
 
   it('rejects a buffer that is too small', () => {
-    const { grid } = world();
+    const { grid } = lattice();
     expect(() => paintGrid(spec(grid), new Uint32Array(5))).toThrow(RangeError);
   });
 });
 
 describe('cellAtFraction', () => {
   it('finds the cell under a point and nothing outside', () => {
-    const { grid } = world();
+    const { grid } = lattice();
     expect(cellAtFraction(grid, 0.1, 0.1)).toBe(grid.at(0, 0));
     expect(cellAtFraction(grid, 0.9, 0.9)).toBe(grid.at(2, 1));
     expect(cellAtFraction(grid, 0.5, 0.6)).toBe(grid.at(1, 1));

@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineModel, int, rgb, Scape, timeSeriesView, type Color } from '@metascape/engine';
+import { type Color, defineModel, int, rgb, Scape, stat, timeSeriesView } from '@metascape/engine';
 import { Beaver, type BeaverConfig, type BeaverType } from './beaver';
 
 const MEASURES: readonly { name: string; type: BeaverType; max: boolean; color: Color }[] = [
@@ -60,19 +60,19 @@ export const busyBeavers = defineModel({
     }),
   },
 
-  build(sim) {
-    const { numberOfAgents, states, maxTransitions, subStepsPerStep } = sim.parameters;
+  build(root) {
+    const { numberOfAgents, states, maxTransitions, subStepsPerStep } = root.parameters;
     const config: BeaverConfig = {
       tapeLength: 512,
       maxStati: states,
       maxTrans: maxTransitions,
       subStepPerStep: subStepsPerStep,
     };
-    const beavers = sim.addScape(
+    const beavers = root.add(
       new Scape<Beaver>({
         name: 'Beavers',
         size: numberOfAgents,
-        create: (index) => new Beaver(config, index),
+        prototypeAgent: (index) => new Beaver(config, index),
       }),
     );
     beavers.addInitialRule('Step', (beaver) => beaver.step());
@@ -81,12 +81,14 @@ export const busyBeavers = defineModel({
     const series: string[] = [];
     const colors: Record<string, Color> = {};
     for (const m of MEASURES) {
-      sim.data.measure(beavers, m.name, (b) => (m.max ? b.maxOnes : b.meanOnes), {
-        when: (b) => b.type === m.type,
-      });
+      beavers.addStatCollector(
+        stat.measure(m.name, (b) => (m.max ? b.maxOnes : b.meanOnes), {
+          when: (b) => b.type === m.type,
+        }),
+      );
       series.push(`${m.name}.max`);
       colors[`${m.name}.max`] = m.color;
     }
-    sim.addView(timeSeriesView({ title: 'Maximum ones', series, colors }));
+    root.addView(timeSeriesView({ title: 'Maximum ones', series, colors }));
   },
 });

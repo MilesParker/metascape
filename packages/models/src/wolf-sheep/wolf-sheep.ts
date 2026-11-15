@@ -1,62 +1,64 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
-  Cell,
+  Array2DMoore,
+  CellOccupant,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
   real,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
 /** A cell of grass, either grown or regrowing. */
-export class Patch extends Cell {
+export class Patch extends HostCell {
   grown = true;
-  /** Ticks left until the grass has regrown. */
+  /** Periods left until the grass has regrown. */
   regrowth = 0;
 }
 
 /** Common behavior of sheep and wolves. */
-export abstract class Animal extends Occupant<Patch> {
+export abstract class Animal extends CellOccupant<Patch> {
   energy: number;
   /** Where a newborn starts; unset for the initial population, which starts anywhere. */
   birthCell: Patch | undefined;
 
-  protected constructor(energy: number, birthCell?: Patch) {
+  protected constructor(energy: number, meadow: Scape<Patch>, birthCell?: Patch) {
     super();
     this.energy = energy;
+    this.hostScape = meadow;
     this.birthCell = birthCell;
   }
 
   override initialize(): void {
-    const cell = this.birthCell ?? (this.sim.scape('grass') as GridScape<Patch>).randomCell();
+    const cell = this.birthCell ?? this.hostScape?.findRandom();
     this.birthCell = undefined;
     if (cell) this.moveTo(cell);
   }
 
   /** Moves to a random neighboring cell and pays one unit of energy for it. */
   move(): void {
-    const here = this.cell;
-    if (!here) return;
-    this.moveTo(this.random.pick(here.neighbors));
+    if (!this.hostCell) return;
+    this.randomWalk();
     this.energy -= 1;
   }
 }
 
 /** Grazes on grass. */
 export class Sheep extends Animal {
-  constructor(energy: number, birthCell?: Patch) {
-    super(energy, birthCell);
+  constructor(energy: number, meadow: Scape<Patch>, birthCell?: Patch) {
+    super(energy, meadow, birthCell);
   }
 }
 
 /** Hunts sheep. */
 export class Wolf extends Animal {
-  constructor(energy: number, birthCell?: Patch) {
-    super(energy, birthCell);
+  constructor(energy: number, meadow: Scape<Patch>, birthCell?: Patch) {
+    super(energy, meadow, birthCell);
   }
 }
 
@@ -94,21 +96,21 @@ const parameters = {
     min: 0,
     max: 1,
     label: 'Sheep reproduction',
-    description: 'Chance per tick that a sheep reproduces.',
+    description: 'Chance per period that a sheep reproduces.',
   }),
   wolfReproduce: real(0.05, {
     live: true,
     min: 0,
     max: 1,
     label: 'Wolf reproduction',
-    description: 'Chance per tick that a wolf reproduces.',
+    description: 'Chance per period that a wolf reproduces.',
   }),
   grassRegrowth: int(30, {
     live: true,
     min: 1,
     max: 1000,
     label: 'Grass regrowth time',
-    description: 'Ticks for eaten grass to grow back.',
+    description: 'Periods for eaten grass to grow back.',
   }),
 } as const;
 
@@ -131,73 +133,77 @@ export const wolfSheep = defineModel({
     },
   ],
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const grass = sim.addScape(
-      new GridScape<Patch>({
+  build(root) {
+    const p = root.parameters;
+    const grass = root.add(
+      new Scape<Patch>({
         name: 'grass',
-        width: p.width,
-        height: p.height,
-        wrap: true,
-        multiOccupancy: true,
-        create: () => new Patch(),
+        space: new Array2DMoore<Patch>({ multiOccupancy: true }),
+        extent: [p.width, p.height],
+        periodic: true,
+        prototypeAgent: () => new Patch(),
       }),
     );
-    // Cells are created while the simulation is populated; give them their initial grass then.
+    // Cells are created when the model is populated; give them their initial grass then.
     grass.addInitialRule({
       name: 'seed grass',
+      randomExecution: false,
+      causesRemoval: false,
       execute(patch) {
         patch.grown = patch.random.chance(0.5);
         patch.regrowth = patch.grown ? 0 : patch.random.int(1, p.grassRegrowth + 1);
       },
     });
-    grass.addRule('grow', (patch) => {
-      if (patch.grown) return;
-      if (--patch.regrowth <= 0) patch.grown = true;
-    });
-    grass.order = 'sequential';
+    grass.addRule(
+      'grow',
+      (patch) => {
+        if (patch.grown) return;
+        if (--patch.regrowth <= 0) patch.grown = true;
+      },
+      { randomExecution: false, causesRemoval: false },
+    );
 
-    const sheep: Scape<Sheep> = sim.addScape(
+    const sheep: Scape<Sheep> = root.add(
       new Scape<Sheep>({
         name: 'sheep',
         size: p.initialSheep,
-        create: () => new Sheep(sheep.random.float() * 2 * p.sheepGain),
+        prototypeAgent: () => new Sheep(sheep.random.float() * 2 * p.sheepGain, grass),
       }),
     );
-    const wolves: Scape<Wolf> = sim.addScape(
+    const wolves: Scape<Wolf> = root.add(
       new Scape<Wolf>({
         name: 'wolves',
         size: p.initialWolves,
-        create: () => new Wolf(wolves.random.float() * 2 * p.wolfGain),
+        prototypeAgent: () => new Wolf(wolves.random.float() * 2 * p.wolfGain, grass),
       }),
     );
 
     sheep.addRule('sheep', (animal) => {
       animal.move();
-      const cell = animal.cell;
+      const cell = animal.hostCell;
       if (cell?.grown) {
         cell.grown = false;
-        cell.regrowth = sim.parameters.grassRegrowth;
-        animal.energy += sim.parameters.sheepGain;
+        cell.regrowth = root.parameters.grassRegrowth;
+        animal.energy += root.parameters.sheepGain;
       }
       if (animal.energy < 0) {
         animal.die();
         return;
       }
-      if (cell && sheep.random.chance(sim.parameters.sheepReproduce)) {
+      if (cell && sheep.random.chance(root.parameters.sheepReproduce)) {
         animal.energy /= 2;
-        sheep.add(new Sheep(animal.energy, cell));
+        sheep.add(new Sheep(animal.energy, grass, cell));
       }
     });
 
     wolves.addRule('wolf', (animal) => {
       animal.move();
-      const cell = animal.cell;
+      const cell = animal.hostCell;
       if (cell) {
         for (const occupant of cell.occupants) {
           if (occupant instanceof Sheep) {
             occupant.die();
-            animal.energy += sim.parameters.wolfGain;
+            animal.energy += root.parameters.wolfGain;
             break;
           }
         }
@@ -206,28 +212,30 @@ export const wolfSheep = defineModel({
         animal.die();
         return;
       }
-      if (cell && wolves.random.chance(sim.parameters.wolfReproduce)) {
+      if (cell && wolves.random.chance(root.parameters.wolfReproduce)) {
         animal.energy /= 2;
-        wolves.add(new Wolf(animal.energy, cell));
+        wolves.add(new Wolf(animal.energy, grass, cell));
       }
     });
 
-    sim.data.count(sheep, 'sheep');
-    sim.data.count(wolves, 'wolves');
-    sim.data.count(grass, 'grass', (patch) => patch.grown);
+    sheep.addStatCollector(stat.count('sheep'));
+    wolves.addStatCollector(stat.count('wolves'));
+    grass.addStatCollector(stat.count('grass', (patch) => patch.grown));
 
-    sim.observe({
-      stepped(s) {
-        if (sheep.size === 0 && wolves.size === 0) s.stop('all animals are gone');
+    root.add(new Scape({ name: 'meadow', space: new Singleton() })).addRule(
+      'stop when empty',
+      () => {
+        if (sheep.size === 0 && wolves.size === 0) root.stop('all animals are gone');
       },
-    });
+      { randomExecution: false, causesRemoval: false },
+    );
 
     const grown = colors.green;
     const bare = colors.brown;
-    sim.addView(
+    grass.addView(
       gridView<Patch, Animal>({
         title: 'Meadow',
-        grid: grass,
+        scape: grass,
         legend: [
           { color: colors.white, label: 'Sheep', mark: 'agent' },
           { color: colors.black, label: 'Wolf', mark: 'agent' },
@@ -238,13 +246,13 @@ export const wolfSheep = defineModel({
         // Where a cell holds both kinds, only the wolf is drawn.
         occupantColor: (animal) => {
           if (animal instanceof Wolf) return colors.black;
-          const cell = animal.cell;
+          const cell = animal.hostCell;
           if (cell?.occupants.some((other) => other instanceof Wolf)) return undefined;
           return colors.white;
         },
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Populations',
         series: ['sheep', 'wolves', 'grass'],

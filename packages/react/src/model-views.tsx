@@ -6,7 +6,7 @@ import type {
   GridViewSpec,
   HistogramViewSpec,
   NetworkViewSpec,
-  Simulation,
+  RootScape,
   TimeSeriesViewSpec,
   ViewSpec,
 } from '@metascape/engine';
@@ -45,14 +45,14 @@ export interface ChartViewOptions {
   readonly syncKey?: string | undefined;
   readonly ghost?: GhostRun | undefined;
   readonly marks?: readonly TimeMark[] | undefined;
-  readonly cursorTick?: number | undefined;
-  readonly onCursorTick?: ((tick: number | undefined) => void) | undefined;
+  readonly cursorPeriod?: number | undefined;
+  readonly onCursorPeriod?: ((period: number | undefined) => void) | undefined;
 }
 
 /** What every view renderer is given. */
 export interface ViewRendererProps {
   readonly spec: ViewSpec;
-  readonly sim: Simulation;
+  readonly root: RootScape;
   /** Changes on each frame to trigger redraws. */
   readonly frame: number;
   /** Called when the user clicks an agent or cell (a cell's occupant is preferred). */
@@ -112,7 +112,7 @@ registerView('grid', (props) => {
   return (
     <GridView
       spec={spec}
-      sim={props.sim}
+      root={props.root}
       {...surface(props)}
       onPick={onPick && ((cell, occupant) => onPick(occupant ?? cell))}
       onHover={onHover && ((cell, occupant) => onHover(occupant ?? cell))}
@@ -138,21 +138,21 @@ registerView('network', (props) => (
 registerView('timeSeries', (props) => (
   <TimeSeriesChart
     spec={props.spec as TimeSeriesViewSpec}
-    sim={props.sim}
+    root={props.root}
     frame={props.frame}
     fill={props.chart?.fill}
     syncKey={props.chart?.syncKey}
     ghost={props.chart?.ghost}
     marks={props.chart?.marks}
-    cursorTick={props.chart?.cursorTick}
-    onCursorTick={props.chart?.onCursorTick}
+    cursorPeriod={props.chart?.cursorPeriod}
+    onCursorPeriod={props.chart?.onCursorPeriod}
   />
 ));
 registerView('bars', (props) => (
-  <BarsChart spec={props.spec as BarsViewSpec} sim={props.sim} frame={props.frame} />
+  <BarsChart spec={props.spec as BarsViewSpec} root={props.root} frame={props.frame} />
 ));
 registerView('histogram', (props) => (
-  <HistogramChart spec={props.spec as HistogramViewSpec} sim={props.sim} frame={props.frame} />
+  <HistogramChart spec={props.spec as HistogramViewSpec} root={props.root} frame={props.frame} />
 ));
 
 /** Props of {@link ViewPanel}. */
@@ -161,9 +161,9 @@ export interface ViewPanelProps extends ViewRendererProps {
   readonly controls?: ReactNode;
 }
 
-/** Props of {@link SimulationViews}. */
-export interface SimulationViewsProps {
-  readonly sim: Simulation;
+/** Props of {@link ModelViews}. */
+export interface ModelViewsProps {
+  readonly root: RootScape;
   /** Changes on each frame to trigger redraws. */
   readonly frame: number;
   readonly onPick?: ((agent: Agent) => void) | undefined;
@@ -232,27 +232,30 @@ export function ViewPanel(props: ViewPanelProps): ReactElement {
 }
 
 /**
- * Asks the model for its views once per simulation and shows them in a
+ * Asks the model for its views once per run and shows them in a
  * responsive grid of titled panels. With `customizations`, time-series and bar
  * charts get a Customize control, and charts can be added and removed.
  */
-export function SimulationViews({
-  sim,
+export function ModelViews({
+  root,
   frame,
   onPick,
   customizations,
   onCustomizationsChange,
-}: SimulationViewsProps): ReactElement {
+}: ModelViewsProps): ReactElement {
   const result = useMemo(() => {
     try {
-      return { specs: sim.views, error: undefined };
+      return { specs: root.allViews, error: undefined };
     } catch (error) {
       return { specs: [], error: error instanceof Error ? error.message : String(error) };
     }
-  }, [sim]);
+  }, [root]);
   const editable = onCustomizationsChange !== undefined;
   const current = customizations ?? NO_CUSTOMIZATIONS;
-  const shown = useMemo(() => shownViews(result.specs, current, sim), [result.specs, current, sim]);
+  const shown = useMemo(
+    () => shownViews(result.specs, current, root),
+    [result.specs, current, root],
+  );
   const update = (next: ChartCustomizations): void => onCustomizationsChange?.(next);
 
   if (result.error !== undefined) {
@@ -262,7 +265,7 @@ export function SimulationViews({
       </p>
     );
   }
-  const recorded = sim.data.series;
+  const recorded = root.data.series;
   const addChart = editable && recorded.length > 0 && (
     <label className="ms-add-chart">
       <span className="ms-visually-hidden">Add chart from series</span>
@@ -328,7 +331,7 @@ export function SimulationViews({
             <ViewPanel
               key={key}
               spec={spec}
-              sim={sim}
+              root={root}
               frame={frame}
               onPick={onPick}
               controls={controls}

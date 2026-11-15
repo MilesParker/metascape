@@ -71,12 +71,12 @@ export const cvModelIRun3and4and5 = defineRebellionModel(
   LIVE_CALM,
 );
 
-/** `CVModelIRun3`: legitimacy falls by 0.01 every third tick. */
+/** `CVModelIRun3`: legitimacy falls by 0.01 every third period. */
 export const cvModelIRun3 = defineRebellionModel(
   {
     name: 'Civil Violence: Model I, Run 3',
     description:
-      MODEL_I + ' Legitimacy erodes by 0.01 every third tick while jailed citizens stay jailed.',
+      MODEL_I + ' Legitimacy erodes by 0.01 every third period while jailed citizens stay jailed.',
     legacyClass: 'edu.brook.cv.paper.CVModelIRun3',
     variant: {
       kind: 'rebellion',
@@ -91,11 +91,11 @@ export const cvModelIRun3 = defineRebellionModel(
   RUN_3_4_5,
 );
 
-/** `CVModelIRun4`: legitimacy drops to 0.65 after tick 75. */
+/** `CVModelIRun4`: legitimacy drops to 0.65 after period 75. */
 export const cvModelIRun4 = defineRebellionModel(
   {
     name: 'Civil Violence: Model I, Run 4',
-    description: MODEL_I + ' Legitimacy is cut from 0.90 to 0.65 after tick 75.',
+    description: MODEL_I + ' Legitimacy is cut from 0.90 to 0.65 after period 75.',
     legacyClass: 'edu.brook.cv.paper.CVModelIRun4',
     variant: {
       kind: 'rebellion',
@@ -109,7 +109,7 @@ export const cvModelIRun4 = defineRebellionModel(
   LIVE_CALM,
 );
 
-/** `CVModelIRun5`: legitimacy 0.80 and the cop target falls from 6% by 0.1 point per tick. */
+/** `CVModelIRun5`: legitimacy 0.80 and the cop target falls from 6% by 0.1 point per period. */
 export const cvModelIRun5 = defineRebellionModel(
   {
     name: 'Civil Violence: Model I, Run 5',

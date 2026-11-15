@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { timeAt, type Simulation, type TimeSeriesViewSpec } from '@metascape/engine';
+import { type RootScape, type TimeSeriesViewSpec } from '@metascape/engine';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type uPlot from 'uplot';
 import { decimate } from './decimate';
@@ -13,30 +13,31 @@ const MAX_HEIGHT = 320;
 
 /** Recorded values of an earlier run, drawn faintly behind the current one. */
 export interface GhostRun {
-  readonly ticks: Float64Array;
+  /** The period of each sample. */
+  readonly periods: Float64Array;
   /** Values by series id; series the earlier run did not record are skipped. */
   readonly values: Readonly<Record<string, Float64Array>>;
   /** Shown in the chart's legend, such as "previous run". */
   readonly label?: string;
 }
 
-/** Copies what a simulation has recorded so far, to show later as a {@link GhostRun}. */
-export function ghostOf(sim: Simulation, label = 'Previous run'): GhostRun {
+/** Copies what a run has recorded so far, to show later as a {@link GhostRun}. */
+export function ghostOf(root: RootScape, label = 'Previous run'): GhostRun {
   const values: Record<string, Float64Array> = {};
-  for (const series of sim.data.series) values[series.id] = sim.data.values(series.id).slice();
-  return { ticks: sim.data.ticks.slice(), values, label };
+  for (const series of root.data.series) values[series.id] = root.data.values(series.id).slice();
+  return { periods: root.data.periods.slice(), values, label };
 }
 
-/** A tick to mark on the time axis, such as when a parameter was changed. */
+/** A period to mark on the time axis, such as when a parameter was changed. */
 export interface TimeMark {
-  readonly tick: number;
+  readonly period: number;
   readonly label: string;
 }
 
 /** Props of {@link TimeSeriesChart}. */
 export interface TimeSeriesChartProps {
   readonly spec: TimeSeriesViewSpec;
-  readonly sim: Simulation;
+  readonly root: RootScape;
   /** Changes on each frame to update the plot. */
   readonly frame: number;
   /** Take the height of the container instead of a height from the width. */
@@ -45,17 +46,17 @@ export interface TimeSeriesChartProps {
   readonly syncKey?: string | undefined;
   readonly ghost?: GhostRun | undefined;
   readonly marks?: readonly TimeMark[] | undefined;
-  /** Puts the cursor at this tick, as when scrubbing a timeline; undefined lets the pointer lead. */
-  readonly cursorTick?: number | undefined;
-  /** Called with the tick under the pointer, and undefined when it leaves. */
-  readonly onCursorTick?: ((tick: number | undefined) => void) | undefined;
+  /** Puts the cursor at this period, as when scrubbing a timeline; undefined lets the pointer lead. */
+  readonly cursorPeriod?: number | undefined;
+  /** Called with the period under the pointer, and undefined when it leaves. */
+  readonly onCursorPeriod?: ((period: number | undefined) => void) | undefined;
 }
 
 /** Reads the data fresh: the recorder's buffers are replaced when they grow. */
-function readData(sim: Simulation, ids: readonly string[]): uPlot.AlignedData {
+function readData(root: RootScape, ids: readonly string[]): uPlot.AlignedData {
   const { x, ys } = decimate(
-    sim.data.ticks,
-    ids.map((id) => sim.data.values(id)),
+    root.data.periods,
+    ids.map((id) => root.data.values(id)),
   );
   return [x, ...ys];
 }
@@ -96,38 +97,40 @@ function ghostExtent(ghost: GhostRun | undefined, ids: readonly string[]): [numb
  * the page's CSS variables, with readable series names, the x axis in the
  * model's own unit of time, a legend that shows values under the cursor (the
  * latest values otherwise), a cursor shared with other charts of the same
- * `syncKey`, an earlier run drawn faintly behind, and marks at chosen ticks.
+ * `syncKey`, an earlier run drawn faintly behind, and marks at chosen periods.
  * Drag across it to zoom in; double-click to zoom out. Long runs are decimated
  * to about 2,000 points per series. Where uPlot cannot run (no canvas or
  * `matchMedia`, as in jsdom) the plot area stays empty and the legend remains.
  */
 export function TimeSeriesChart({
   spec,
-  sim,
+  root,
   frame,
   fill = false,
   syncKey,
   ghost,
   marks,
-  cursorTick,
-  onCursorTick,
+  cursorPeriod,
+  onCursorPeriod,
 }: TimeSeriesChartProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
   const zoomedRef = useRef(false);
   const marksRef = useRef(marks);
-  const onCursorRef = useRef(onCursorTick);
-  const [hovered, setHovered] = useState<{ tick: number; values: (number | null)[] } | null>(null);
-  const root = typeof document === 'undefined' ? undefined : document.documentElement;
+  const onCursorRef = useRef(onCursorPeriod);
+  const [hovered, setHovered] = useState<{ period: number; values: (number | null)[] } | null>(
+    null,
+  );
+  const page = typeof document === 'undefined' ? undefined : document.documentElement;
   const colors = seriesColors(
     spec,
-    root ? themeColor(root, '--ms-surface', '#fff') : '#fff',
-    root ? themeColor(root, '--ms-text', '#222') : '#222',
+    page ? themeColor(page, '--ms-surface', '#fff') : '#fff',
+    page ? themeColor(page, '--ms-text', '#222') : '#222',
   );
   const [unavailable, setUnavailable] = useState(false);
   const theme = useThemeVersion();
-  const labels = spec.series.map((id) => seriesLabel(sim, id, spec));
-  const unit = timeUnit(sim);
+  const labels = spec.series.map((id) => seriesLabel(root, id, spec));
+  const unit = timeUnit(root);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -175,8 +178,8 @@ export function TimeSeriesChart({
       },
       axes: [
         {
-          ...axis(sim.model.time ? humanize(unit.singular) : undefined),
-          values: (_u, ticks) => ticks.map((t) => formatNumber(timeAt(sim, t))),
+          ...axis(root.model.period ? humanize(unit.singular) : undefined),
+          values: (_u, ticks) => ticks.map((t) => formatNumber(t)),
         },
         {
           ...axis(spec.yLabel),
@@ -206,13 +209,13 @@ export function TimeSeriesChart({
         setCursor: [
           (u) => {
             const index = u.cursor.idx;
-            const tick = index === null || index === undefined ? undefined : u.data[0]?.[index];
+            const period = index === null || index === undefined ? undefined : u.data[0]?.[index];
             setHovered(
-              tick === undefined || index === null || index === undefined
+              period === undefined || index === null || index === undefined
                 ? null
-                : { tick, values: u.data.slice(1).map((ys) => ys[index] ?? null) },
+                : { period, values: u.data.slice(1).map((ys) => ys[index] ?? null) },
             );
-            onCursorRef.current?.(tick);
+            onCursorRef.current?.(period);
           },
         ],
         setSelect: [
@@ -237,7 +240,7 @@ export function TimeSeriesChart({
               spec.series.forEach((id, i) => {
                 const values = ghost.values[id];
                 if (!values) return;
-                const { x, ys } = decimate(ghost.ticks, [values]);
+                const { x, ys } = decimate(ghost.periods, [values]);
                 const y = ys[0]!;
                 context.strokeStyle = colors[i] ?? strong;
                 context.beginPath();
@@ -261,7 +264,7 @@ export function TimeSeriesChart({
             }
             // Interventions, as thin vertical rules labelled at the top, as far as the next one allows.
             const shown = (marksRef.current ?? [])
-              .map((mark) => ({ mark, px: u.valToPos(mark.tick, 'x', true) }))
+              .map((mark) => ({ mark, px: u.valToPos(mark.period, 'x', true) }))
               .filter(({ px }) => px >= left && px <= left + width)
               .sort((a, b) => a.px - b.px);
             context.font = `${10 * dpr}px ${themeColor(u.root, '--ms-font', 'system-ui, sans-serif')}`;
@@ -306,7 +309,7 @@ export function TimeSeriesChart({
       .then((module) => {
         if (cancelled) return;
         const Plot = module.default;
-        plot = new Plot(options, readData(sim, spec.series), container);
+        plot = new Plot(options, readData(root, spec.series), container);
         plotRef.current = plot;
         zoomedRef.current = false;
         setUnavailable(false);
@@ -334,13 +337,13 @@ export function TimeSeriesChart({
       plot?.destroy();
       plotRef.current = null;
     };
-    // Labels and units are derived from spec and sim.
+    // Labels and units are derived from spec and root.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spec, sim, fill, syncKey, ghost, theme]);
+  }, [spec, root, fill, syncKey, ghost, theme]);
 
   useEffect(() => {
-    plotRef.current?.setData(readData(sim, spec.series), !zoomedRef.current);
-  }, [spec, sim, frame]);
+    plotRef.current?.setData(readData(root, spec.series), !zoomedRef.current);
+  }, [spec, root, frame]);
 
   useEffect(() => {
     marksRef.current = marks;
@@ -348,22 +351,22 @@ export function TimeSeriesChart({
   }, [marks]);
 
   useEffect(() => {
-    onCursorRef.current = onCursorTick;
-  }, [onCursorTick]);
+    onCursorRef.current = onCursorPeriod;
+  }, [onCursorPeriod]);
 
   useEffect(() => {
     const plot = plotRef.current;
-    if (!plot || cursorTick === undefined) return;
-    const left = plot.valToPos(cursorTick, 'x');
+    if (!plot || cursorPeriod === undefined) return;
+    const left = plot.valToPos(cursorPeriod, 'x');
     if (Number.isFinite(left))
       plot.setCursor({ left, top: plot.bbox.height / 2 / (devicePixelRatio || 1) });
-  }, [cursorTick, frame]);
+  }, [cursorPeriod, frame]);
 
-  const count = sim.data.sampleCount;
-  const shownTick = hovered ? hovered.tick : sim.data.ticks[count - 1];
+  const count = root.data.sampleCount;
+  const shownPeriod = hovered ? hovered.period : root.data.periods[count - 1];
   const valueAt = (id: string, i: number): number | undefined => {
     if (hovered) return hovered.values[i] ?? undefined;
-    return count > 0 ? sim.data.latest(id) : undefined;
+    return count > 0 ? root.data.latest(id) : undefined;
   };
 
   return (
@@ -379,9 +382,9 @@ export function TimeSeriesChart({
         data-unavailable={unavailable ? 'true' : undefined}
       />
       <ul className="ms-legend" aria-label={`${spec.title} values`}>
-        {hovered && shownTick !== undefined && (
+        {hovered && shownPeriod !== undefined && (
           <li className="ms-legend-time">
-            {`${humanize(unit.singular)} ${formatNumber(timeAt(sim, shownTick))}`}
+            {`${humanize(unit.singular)} ${formatNumber(shownPeriod)}`}
           </li>
         )}
         {spec.series.map((id, i) => {

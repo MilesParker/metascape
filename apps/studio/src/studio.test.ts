@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation } from '@metascape/engine';
+import { RootScape } from '@metascape/engine';
 import { life } from '@metascape/models';
 import { describe, expect, it } from 'vitest';
 import {
@@ -30,10 +30,9 @@ describe('the address', () => {
           { name: 'Move', occurrence: 0, enabled: true },
           { name: 'Move', occurrence: 1, enabled: false },
         ],
-        schedule: 'byRule' as const,
-        order: 'sequential' as const,
-        activations: 3,
-        sampling: 'draw' as const,
+        executionOrder: 'byRule' as const,
+        agentsPerIteration: 3,
+        executionStyle: 'repeatedDraw' as const,
       },
     };
     const encoded = encodeRules(chosen)!;
@@ -48,7 +47,7 @@ describe('the address', () => {
         seed: 12,
         p: { a: 1, b: { nested: true }, c: 'x', d: Number.NaN },
         r: {
-          s: { rules: ['x'], schedule: 'sideways', order: 'shuffled', sampling: 'tour', n: null },
+          s: { rules: ['x'], order: 'sideways', style: 'completeTour', n: null },
         },
         c: { changed: {}, added: [{ type: 'pie', series: [] }] },
         view: 'watch',
@@ -97,16 +96,16 @@ describe('the stage', () => {
   });
 
   it('puts spatial views on the stage and charts beside it, or charts on the stage when there is no space', () => {
-    const sim = new Simulation(life, { seed: 1 });
-    expect(splitViews(sim.views)).toEqual({ stage: [0], charts: [1] });
-    expect(splitViews(sim.views.slice(1))).toEqual({ stage: [0], charts: [] });
+    const root = new RootScape(life, { seed: 1 });
+    expect(splitViews(root.allViews)).toEqual({ stage: [0], charts: [1] });
+    expect(splitViews(root.allViews.slice(1))).toEqual({ stage: [0], charts: [] });
   });
 
   it('writes a chart as CSV', () => {
-    const sim = new Simulation(life, { seed: 1 });
-    sim.run(2);
-    const csv = chartCsv(sim, ['live']).trim().split('\n');
-    expect(csv[0]).toBe('tick,Count live');
+    const root = new RootScape(life, { seed: 1 });
+    root.run(2);
+    const csv = chartCsv(root, ['live']).trim().split('\n');
+    expect(csv[0]).toBe('period,Count live');
     expect(csv).toHaveLength(4);
   });
 });

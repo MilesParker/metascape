@@ -15,6 +15,7 @@ export {
 export {
   describeExecution,
   groupParameters,
+  needsRandomOrder,
   rangePairs,
   useParameterController,
   useRulesController,
@@ -37,6 +38,8 @@ export {
   GridView,
   gridPositionOf,
   historyDepth,
+  latticeOf,
+  occupantsOf,
   packColor,
   paintGrid,
   type GridViewProps,
@@ -75,17 +78,17 @@ export {
 export {
   isSpatial,
   registerView,
-  SimulationViews,
+  ModelViews,
   ViewBody,
   ViewBoundary,
   ViewPanel,
   viewRenderer,
   type ChartViewOptions,
-  type SimulationViewsProps,
+  type ModelViewsProps,
   type ViewPanelProps,
   type ViewRenderer,
   type ViewRendererProps,
-} from './simulation-views';
+} from './model-views';
 export {
   BarsChart,
   formatValue,

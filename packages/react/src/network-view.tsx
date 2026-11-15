@@ -97,9 +97,9 @@ export function NetworkView({
       context.beginPath();
       members.forEach((agent, i) => {
         const from = nodePosition(i, count);
-        for (const other of spec.network.neighbors(agent)) {
+        for (const other of spec.graph.neighbors(agent)) {
           const j = index.get(other);
-          if (j === undefined || (!spec.network.directed && j < i)) continue;
+          if (j === undefined || (!spec.graph.directed && j < i)) continue;
           const to = nodePosition(j, count);
           context.moveTo(from.x * size.width, from.y * size.height);
           context.lineTo(to.x * size.width, to.y * size.height);

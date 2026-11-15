@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
-  Cell,
+  Array2DMoore,
+  CellOccupant,
   colors,
   defineModel,
   diffusion,
   gradient,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
   real,
   rgb,
   Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
-/** One site of the Heatbugs world, holding heat. */
-export class HeatCell extends Cell {
+/** One site of the Heatbugs lattice, holding heat. */
+export class HeatCell extends HostCell {
   heat = 0;
 }
 
@@ -33,17 +34,17 @@ export interface BugSettings {
  * A heat bug: it radiates a fixed amount of heat into its cell and prefers
  * one particular temperature, moving about to reach it.
  */
-export class HeatBug extends Occupant<HeatCell> {
+export class HeatBug extends CellOccupant<HeatCell> {
   /** The temperature this bug is happiest at. */
   ideal = 0;
-  /** The heat it adds to its cell each tick. */
+  /** The heat it adds to its cell each period. */
   output = 0;
   /** The distance between its cell's heat and its ideal, as of its last turn. */
   unhappiness = 0;
 
   constructor(
     private readonly settings: BugSettings,
-    private readonly world: GridScape<HeatCell>,
+    private readonly lattice: Scape<HeatCell>,
   ) {
     super();
   }
@@ -53,7 +54,7 @@ export class HeatBug extends Occupant<HeatCell> {
     const random = this.random;
     this.ideal = s.idealMin + random.float() * (s.idealMax - s.idealMin);
     this.output = s.outputMin + random.float() * (s.outputMax - s.outputMin);
-    const home = this.world.randomAvailableCell();
+    const home = this.lattice.findRandom((cell) => cell.isAvailable);
     if (home) {
       this.moveTo(home);
       this.unhappiness = Math.abs(home.heat - this.ideal);
@@ -64,7 +65,7 @@ export class HeatBug extends Occupant<HeatCell> {
 
   /** Heat the cell, assess it, and move to the free neighbor that suits better. */
   act(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     here.heat += this.output;
     const ideal = this.ideal;
@@ -112,7 +113,7 @@ export const heatbugs = defineModel({
     'Bugs that like a certain warmth give off heat and huddle into clusters that wander and dissolve.',
   tags: ['ecology', 'emergence'],
   description:
-    'The Heatbugs model from the Swarm simulation system (Santa Fe Institute, Minar, Burkhart, ' +
+    'The Heatbugs model from the Swarm toolkit (Santa Fe Institute, Minar, Burkhart, ' +
     'Langton and Askenazi, 1996). Bugs radiate heat and try to sit at a preferred temperature, ' +
     'while the heat diffuses and evaporates across a torus. No bug is told to cluster, yet ' +
     'the swarm gathers into warm clumps that drift about as each bug seeks the right ' +
@@ -137,25 +138,25 @@ export const heatbugs = defineModel({
       min: 0,
       max: 50,
       label: 'Output min',
-      description: 'Lowest heat a bug adds per tick.',
+      description: 'Lowest heat a bug adds per period.',
     }),
     outputMax: real(10, {
       min: 0,
       max: 50,
       label: 'Output max',
-      description: 'Highest heat a bug adds per tick.',
+      description: 'Highest heat a bug adds per period.',
     }),
     diffusionRate: real(0.5, {
       min: 0,
       max: 1,
       label: 'Diffusion rate',
-      description: 'Fraction of its heat each cell shares with its neighbors per tick.',
+      description: 'Fraction of its heat each cell shares with its neighbors per period.',
     }),
     evaporationRate: real(0.03, {
       min: 0,
       max: 1,
       label: 'Evaporation rate',
-      description: 'Fraction of heat lost from each cell per tick.',
+      description: 'Fraction of heat lost from each cell per period.',
     }),
     randomMove: real(0.1, {
       min: 0,
@@ -171,24 +172,22 @@ export const heatbugs = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     if (p.idealMin > p.idealMax) throw new RangeError('Heatbugs: idealMin exceeds idealMax');
     if (p.outputMin > p.outputMax) throw new RangeError('Heatbugs: outputMin exceeds outputMax');
     if (p.bugs > p.width * p.height) throw new RangeError('Heatbugs: more bugs than cells');
 
-    const world = sim.addScape(
-      new GridScape<HeatCell>({
-        name: 'world',
-        width: p.width,
-        height: p.height,
-        wrap: true,
-        neighborhood: 'moore',
-        order: 'sequential',
-        create: () => new HeatCell(),
+    const lattice = root.add(
+      new Scape<HeatCell>({
+        name: 'lattice',
+        space: new Array2DMoore<HeatCell>(),
+        extent: [p.width, p.height],
+        periodic: true,
+        prototypeAgent: () => new HeatCell(),
       }),
     );
-    world.addRule(
+    lattice.addRule(
       diffusion<HeatCell>({
         name: 'heat',
         get: (cell) => cell.heat,
@@ -200,26 +199,26 @@ export const heatbugs = defineModel({
       }),
     );
 
-    const bugs = sim.addScape(
+    const bugs = root.add(
       new Scape<HeatBug>({
         name: 'bugs',
         size: p.bugs,
-        create: () => new HeatBug(p, world),
+        prototypeAgent: () => new HeatBug(p, lattice),
       }),
     );
     bugs.addRule('seek', (bug) => bug.act());
 
-    sim.data.measure(bugs, 'unhappiness', (bug) => bug.unhappiness, {
-      statistics: ['mean', 'max'],
-    });
-    sim.data.measure(world, 'heat', (cell) => cell.heat, { statistics: ['sum'] });
+    bugs.addStatCollector(
+      stat.measure('unhappiness', (bug) => bug.unhappiness, { statistics: ['mean', 'max'] }),
+    );
+    lattice.addStatCollector(stat.measure('heat', (cell) => cell.heat, { statistics: ['sum'] }));
 
-    const maxHeat = sim.parameters.maxHeat;
+    const maxHeat = root.parameters.maxHeat;
     const heatColor = gradient(rgb(8, 8, 16), rgb(150, 30, 20), colors.orange, rgb(255, 245, 200));
-    sim.addView(
+    lattice.addView(
       gridView<HeatCell, HeatBug>({
         title: 'Heat and bugs',
-        grid: world,
+        scape: lattice,
         legend: [
           { color: colors.green, label: 'Bug', mark: 'agent' },
           { color: heatColor(1), label: 'Hottest' },
@@ -231,7 +230,7 @@ export const heatbugs = defineModel({
         occupantShape: 'circle',
       }),
     );
-    sim.addView(
+    bugs.addView(
       timeSeriesView({
         title: 'Mean unhappiness',
         series: ['unhappiness.mean'],

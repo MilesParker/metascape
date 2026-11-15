@@ -3,7 +3,7 @@
 // Ported to Metascape from the Eclipse Agent Modeling Platform example model Epidemic.metaabm.
 // Original: Copyright 2009, Miles Parker. Released under Eclipse Public License. All uses should be attributed.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { colors, Occupant, type Color } from '@metascape/engine';
+import { CellOccupant, type Color, colors } from '@metascape/engine';
 
 /**
  * Disease states of an {@link Individual}, numbered as the options of the
@@ -76,7 +76,7 @@ export interface Epidemiology {
 }
 
 /** A creature that stands on a grid and can be drawn. */
-export class Creature extends Occupant {
+export class Creature extends CellOccupant {
   /** Colour in the overhead view. */
   color(): Color {
     return colors.gray;
@@ -172,7 +172,7 @@ export class Individual extends Creature {
       draw < p.movementProbability &&
       this.#status !== Status.symptomInfectious
     ) {
-      this.moveToRandomAvailableNeighbor();
+      this.randomWalkAvailable();
     }
   }
 

@@ -1,37 +1,37 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, type GridScape, type ParameterValues, type Scape } from '@metascape/engine';
+import { RootScape, type ParameterValues } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { heatbugs, type HeatBug, type HeatCell } from './heatbugs';
 
 type Params = Partial<ParameterValues<typeof heatbugs.parameters>>;
 
-const make = (parameters: Params = {}, seed = 1) => new Simulation(heatbugs, { seed, parameters });
+const make = (parameters: Params = {}, seed = 1) => new RootScape(heatbugs, { seed, parameters });
 
 describe('heatbugs', () => {
-  it('runs 200 ticks with default parameters', () => {
+  it('runs 200 iterations with default parameters', () => {
     expect(make().run(200)).toBe(200);
   });
 
   it('is reproducible and depends on the seed', () => {
     const csv = (seed: number) => {
-      const sim = make({}, seed);
-      sim.run(40);
-      return sim.data.toCSV();
+      const root = make({}, seed);
+      root.run(40);
+      return root.data.toCSV();
     };
     expect(csv(3)).toBe(csv(3));
     expect(csv(3)).not.toBe(csv(4));
   });
 
   it('only refers to existing series and distributions in its views', () => {
-    const sim = make();
-    const views = sim.views;
+    const root = make();
+    const views = root.allViews;
     expect(views.length).toBeGreaterThan(0);
     for (const view of views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {
-        for (const id of view.series) expect(() => sim.data.get(id)).not.toThrow();
+        for (const id of view.series) expect(() => root.data.get(id)).not.toThrow();
       }
       if (view.type === 'histogram') {
-        expect(() => sim.data.distributionCounts(view.distribution)).not.toThrow();
+        expect(() => root.data.distributionCounts(view.distribution)).not.toThrow();
       }
     }
   });
@@ -43,25 +43,25 @@ describe('heatbugs', () => {
     expect(() => make({ idealMin: 50, idealMax: 10 })).toThrow();
   });
 
-  it('reduces mean unhappiness over the first 200 ticks and never makes negative heat', () => {
-    const sim = make();
-    const cells = (sim.scape('world') as GridScape<HeatCell>).members;
-    const start = sim.data.latest('unhappiness.mean');
-    for (let tick = 0; tick < 200; tick++) {
-      sim.step();
+  it('reduces mean unhappiness over the first 200 iterations and never makes negative heat', () => {
+    const root = make();
+    const cells = root.findScape<HeatCell>('lattice').members;
+    const start = root.data.latest('unhappiness.mean');
+    for (let i = 0; i < 200; i++) {
+      root.iterate();
       for (const cell of cells) expect(cell.heat).toBeGreaterThanOrEqual(0);
     }
-    const series = sim.data.values('unhappiness.mean');
+    const series = root.data.values('unhappiness.mean');
     const late = series.slice(-20).reduce((a, b) => a + b, 0) / 20;
     expect(late).toBeLessThan(start * 0.8);
-    expect(sim.data.latest('heat.sum')).toBeGreaterThan(0);
+    expect(root.data.latest('heat.sum')).toBeGreaterThan(0);
   });
 
   it('keeps bugs on distinct cells and conserves their number', () => {
-    const sim = make();
-    sim.run(50);
-    const bugs = (sim.scape('bugs') as Scape<HeatBug>).members;
+    const root = make();
+    root.run(50);
+    const bugs = root.findScape<HeatBug>('bugs').members;
     expect(bugs).toHaveLength(200);
-    expect(new Set(bugs.map((bug) => bug.cell)).size).toBe(200);
+    expect(new Set(bugs.map((bug) => bug.hostCell)).size).toBe(200);
   });
 });

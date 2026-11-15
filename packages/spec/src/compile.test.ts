@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
-  ContinuousScape,
-  GridScape,
+  Array2D,
+  Continuous2D,
   Runner,
   ManualClock,
   ManualScheduler,
   runExperiment,
-  Simulation,
-  type Cell,
-  type Occupant,
-  type PointAgent,
+  RootScape,
+  type HostCell,
+  type CellOccupant,
+  type LocatedAgent,
 } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { compileModel } from './compile';
@@ -55,23 +55,28 @@ describe('compileModel', () => {
       mode: { type: 'choice', options: ['a', 'b'], default: 'b' },
       note: { type: 'text', default: 'hi' },
     });
-    const sim = new Simulation(compiled, { seed: 1, parameters: { size: 6 } });
-    expect(sim.scapes.map((scape) => scape.name)).toEqual(['walker', 'patch', 'bird', 'node']);
-    const grid = sim.scape('patch') as GridScape;
-    expect(grid).toBeInstanceOf(GridScape);
+    const root = new RootScape(compiled, { seed: 1, parameters: { size: 6 } });
+    expect(root.scapes.map((scape) => scape.name)).toEqual(['walker', 'patch', 'bird', 'node']);
+    const grid = root.findScape('patch').space as unknown as Array2D;
+    expect(grid).toBeInstanceOf(Array2D);
     expect([grid.width, grid.height, grid.wrap]).toEqual([6, 3, false]);
-    expect(sim.scape('walker').order).toBe('sequential');
-    expect(sim.scape('walker').schedule).toBe('byRule');
-    expect(sim.scape('bird')).toBeInstanceOf(ContinuousScape);
-    expect(sim.scape('node').size).toBe(5);
+    // A sequential order is rules that need no random tour.
+    expect(
+      root.findScape('walker').rules.filter((entry) => entry.rule.randomExecution !== false),
+    ).toEqual([]);
+    expect(root.findScape('walker').executionOrder).toBe('byRule');
+    expect(root.findScape('bird').space).toBeInstanceOf(Continuous2D);
+    expect(root.findScape('node').size).toBe(5);
     // Occupants were placed on distinct cells, even though their grid is declared after them.
-    const cells = (sim.scape('walker').members as readonly Occupant[]).map((w) => w.cell);
+    const cells = (root.findScape('walker').members as readonly CellOccupant[]).map(
+      (w) => w.hostCell,
+    );
     expect(new Set(cells).size).toBe(2);
-    expect(sim.views.map((view) => view.type)).toEqual(['grid', 'continuous', 'network']);
-    const network = sim.views[2];
+    expect(root.allViews.map((view) => view.type)).toEqual(['grid', 'continuous', 'network']);
+    const network = root.allViews[2];
     if (network?.type !== 'network') throw new Error('expected a network view');
-    expect(network.network.edgeCount).toBe(5);
-    expect(sim.data.series.map((series) => series.id)).toEqual([
+    expect(network.graph.edgeCount).toBe(5);
+    expect(root.data.series.map((series) => series.id)).toEqual([
       'walker.count',
       'patch.count',
       'bird.count',
@@ -99,11 +104,11 @@ describe('compileModel', () => {
     });
     runner.step();
     runner.step();
-    expect(runner.sim.data.latest('a.v.sum')).toBe(6);
+    expect(runner.root.data.latest('a.v.sum')).toBe(6);
     const rows = runExperiment(compiled, {
       parameters: { n: [1, 2] },
-      maxTicks: 4,
-      measure: (sim) => ({ total: sim.data.latest('a.v.sum') }),
+      maxIterations: 4,
+      measure: (root) => ({ total: root.data.latest('a.v.sum') }),
     });
     expect(rows.map((row) => row.total)).toEqual([4, 8]);
   });
@@ -135,13 +140,13 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
+    const root = new RootScape(compileModel(spec), { seed: 1 });
     const children = () =>
-      sim
-        .scape('child')
+      root
+        .findScape('child')
         .members.map((child) => ['a', 'b', 'c'].map((n) => readAttribute(child, n)));
     expect(children()).toEqual([[1, 20, 2]]);
-    sim.step();
+    root.iterate();
     expect(children()).toEqual([
       [1, 20, 2],
       [5, 20, 10],
@@ -166,8 +171,8 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    const cells = sim.scape('patch').members;
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    const cells = root.findScape('patch').members;
     expect(cells.map((cell) => readAttribute(cell, 'index'))).toEqual([0, 1, 2, 3, 4, 5]);
     expect(cells.map((cell) => readAttribute(cell, 'double'))).toEqual([0, 2, 4, 6, 8, 10]);
   });
@@ -197,13 +202,13 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    sim.step();
-    const seeker = sim.scape('seeker').members[0]!;
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    root.iterate();
+    const seeker = root.findScape('seeker').members[0]!;
     expect(readAttribute(seeker, 'found')).toBe(3);
     expect(readAttribute(seeker, 'missed')).toBe(0);
-    for (const target of sim.scape('target').members) target.die();
-    sim.step();
+    for (const target of root.findScape('target').members) target.die();
+    root.iterate();
     expect(readAttribute(seeker, 'missed')).toBe(1);
   });
 
@@ -241,9 +246,9 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 3 });
-    sim.step();
-    expect(sim.scape('slot').members.map((cell) => readAttribute(cell, 'v'))).toEqual([
+    const root = new RootScape(compileModel(spec), { seed: 3 });
+    root.iterate();
+    expect(root.findScape('slot').members.map((cell) => readAttribute(cell, 'v'))).toEqual([
       4, 0, 1, 2, 3,
     ]);
   });
@@ -268,13 +273,13 @@ describe('compileModel', () => {
           },
         },
       });
-    const single = new Simulation(compileModel(make(false)), { seed: 1 });
+    const single = new RootScape(compileModel(make(false)), { seed: 1 });
     single.run(10);
-    const cells = single.scape('patch').members as readonly Cell[];
+    const cells = single.findScape('patch').members as readonly HostCell[];
     expect(cells.filter((cell) => !cell.isAvailable)).toHaveLength(8);
-    const multi = new Simulation(compileModel(make(true)), { seed: 1 });
+    const multi = new RootScape(compileModel(make(true)), { seed: 1 });
     multi.run(30);
-    const occupied = (multi.scape('patch').members as readonly Cell[]).filter(
+    const occupied = (multi.findScape('patch').members as readonly HostCell[]).filter(
       (c) => !c.isAvailable,
     );
     expect(occupied.length).toBeLessThan(8);
@@ -301,10 +306,10 @@ describe('compileModel', () => {
         baby: { space: 'room' },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    sim.step();
-    const mother = sim.scape('mother').members[0] as PointAgent;
-    const babies = sim.scape('baby').members as readonly PointAgent[];
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    root.iterate();
+    const mother = root.findScape('mother').members[0] as LocatedAgent;
+    const babies = root.findScape('baby').members as readonly LocatedAgent[];
     expect(babies).toHaveLength(4);
     expect([babies[0]!.x, babies[0]!.y]).toEqual([mother.x, mother.y]);
     expect(new Set(babies.map((baby) => baby.x)).size).toBe(4);
@@ -361,21 +366,21 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    sim.step();
-    expect(sim.data.latest('node.degree.sum')).toBe(12);
-    sim.step();
-    expect(sim.data.latest('node.degree.sum')).toBe(6);
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    root.iterate();
+    expect(root.data.latest('node.degree.sum')).toBe(12);
+    root.iterate();
+    expect(root.data.latest('node.degree.sum')).toBe(6);
   });
 
-  it('evaluates stopWhen after every tick', () => {
+  it('evaluates stopWhen after every iteration', () => {
     const spec = model({
       agents: { a: { count: 1 } },
       stopWhen: { op: 'ge', args: ['tick', 3] },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    expect(sim.run(10)).toBe(3);
-    expect(sim.stopReason).toBe('stopWhen condition met');
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    expect(root.run(10)).toBe(3);
+    expect(root.stopReason).toBe('stopWhen condition met');
   });
 
   it('hides occupants whose style says so', () => {
@@ -391,11 +396,11 @@ describe('compileModel', () => {
         },
       },
     });
-    const sim = new Simulation(compileModel(spec), { seed: 1 });
-    const view = sim.views[0];
+    const root = new RootScape(compileModel(spec), { seed: 1 });
+    const view = root.allViews[0];
     if (view?.type !== 'grid') throw new Error('expected a grid view');
-    const ants = sim.scape('ant').members as readonly Occupant[];
-    const colors = ants.map((ant) => [ant.cell!.x, view.occupantColor!(ant)]);
+    const ants = root.findScape('ant').members as readonly CellOccupant[];
+    const colors = ants.map((ant) => [ant.hostCell!.x, view.occupantColor!(ant)]);
     expect(colors.sort()).toEqual([
       [0, undefined],
       [1, 0x123456],

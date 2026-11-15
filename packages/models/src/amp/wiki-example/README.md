@@ -2,7 +2,7 @@
 
 Ported from `WikiExample.metaabm` of the Eclipse Agent Modeling Platform example models. A bounded
 (non-periodic) 20 x 20 Moore "city" holds 50 individuals with an age (0 to `maximumAge - 1`) and a
-wealth (uniform in [0, 1)). Each tick, each individual, in shuffled order, looks within its vision (5,
+wealth (uniform in [0, 1)). Each period, each individual, in shuffled order, looks within its vision (5,
 Moore distance, itself excluded) for individuals of exactly its own age, picks one at random and moves
 to a random free block next to that partner. Same-aged individuals therefore clump.
 

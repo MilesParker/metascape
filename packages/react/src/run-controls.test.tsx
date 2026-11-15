@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: EPL-2.0
-import { defineModel, int, ManualClock, ManualScheduler, Runner } from '@metascape/engine';
+import {
+  defineModel,
+  int,
+  ManualClock,
+  ManualScheduler,
+  Runner,
+  Scape,
+  Singleton,
+} from '@metascape/engine';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { positionToSpeed, RunControls, speedToPosition } from './run-controls';
@@ -15,11 +23,9 @@ function rig(throwAt?: number) {
   const failing = defineModel({
     name: 'failing',
     parameters: {},
-    build(sim) {
-      sim.observe({
-        stepped(s) {
-          if (s.tick === throwAt) throw new Error('boom at 2');
-        },
+    build(root) {
+      root.add(new Scape({ name: 'failure', space: new Singleton() })).addRule('fail', () => {
+        if (root.period === throwAt) throw new Error('boom at 2');
       });
     },
   });
@@ -28,19 +34,19 @@ function rig(throwAt?: number) {
     clock,
     scheduler,
     frameIntervalMs: 100,
-    ticksPerSecond: 10,
+    iterationsPerSecond: 10,
   });
   return { runner, scheduler };
 }
 
-const tick = () => screen.getByTestId('ms-tick').textContent;
+const period = () => screen.getByTestId('ms-period').textContent;
 const state = () => screen.getByTestId('ms-state').textContent;
 
 describe('RunControls', () => {
-  it('starts, pauses, steps and restarts a runner and shows tick, state and seed', () => {
+  it('starts, pauses, steps and restarts a runner and shows period, state and seed', () => {
     const { runner, scheduler } = rig();
     render(<RunControls runner={runner} />);
-    expect(tick()).toBe('0');
+    expect(period()).toBe('0');
     expect(state()).toBe('ready');
     expect(screen.getByTestId('ms-seed').textContent).toBe('7');
 
@@ -50,16 +56,16 @@ describe('RunControls', () => {
     act(() => {
       scheduler.runFrames(3);
     });
-    expect(Number(tick())).toBeGreaterThanOrEqual(2);
+    expect(Number(period())).toBeGreaterThanOrEqual(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     expect(state()).toBe('paused');
-    const paused = Number(tick());
+    const paused = Number(period());
     fireEvent.click(screen.getByRole('button', { name: 'Step' }));
-    expect(Number(tick())).toBe(paused + 1);
+    expect(Number(period())).toBe(paused + 1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
-    expect(tick()).toBe('0');
+    expect(period()).toBe('0');
     expect(state()).toBe('ready');
   });
 
@@ -70,7 +76,7 @@ describe('RunControls', () => {
     expect(screen.getByTestId('ms-seed').textContent).toBe('7');
     fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
     expect(screen.getByTestId('ms-seed').textContent).toBe('42');
-    expect(runner.sim.seed).toBe(42);
+    expect(runner.root.seed).toBe(42);
   });
 
   it('changes the runner speed from the slider, with a Max position', () => {
@@ -78,11 +84,11 @@ describe('RunControls', () => {
     render(<RunControls runner={runner} />);
     const slider = screen.getByLabelText('Speed');
     fireEvent.change(slider, { target: { value: '0' } });
-    expect(runner.ticksPerSecond).toBe(1);
+    expect(runner.iterationsPerSecond).toBe(1);
     fireEvent.change(slider, { target: { value: '99' } });
-    expect(runner.ticksPerSecond).toBe(1000);
+    expect(runner.iterationsPerSecond).toBe(1000);
     fireEvent.change(slider, { target: { value: '100' } });
-    expect(runner.ticksPerSecond).toBe(Infinity);
+    expect(runner.iterationsPerSecond).toBe(Infinity);
     expect(screen.getByText('Max')).toBeTruthy();
   });
 

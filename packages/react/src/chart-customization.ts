@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Series, Simulation, ViewSpec } from '@metascape/engine';
+import type { Series, RootScape, ViewSpec } from '@metascape/engine';
 
 /** What a user has chosen to show in one chart. */
 export interface ChartChoice {
@@ -69,9 +69,9 @@ export function choiceOf(spec: Extract<ViewSpec, { type: 'timeSeries' | 'bars' }
 function applyChoice(
   spec: Extract<ViewSpec, { type: 'timeSeries' | 'bars' }>,
   choice: ChartChoice,
-  sim: Simulation,
+  root: RootScape,
 ): ViewSpec {
-  const known = new Set(sim.data.series.map((s) => s.id));
+  const known = new Set(root.data.series.map((s) => s.id));
   const series = choice.series.filter((id) => known.has(id));
   // Never leave a chart empty because a series is gone; fall back to the model's own.
   const shown = series.length > 0 ? series : spec.series;
@@ -110,7 +110,7 @@ export interface ShownView {
 export function shownViews(
   specs: readonly ViewSpec[],
   customizations: ChartCustomizations,
-  sim: Simulation,
+  root: RootScape,
 ): ShownView[] {
   const shown: ShownView[] = specs.map((spec, position) => {
     const choice = customizations.changed[position];
@@ -124,14 +124,14 @@ export function shownViews(
       };
     }
     return {
-      spec: applyChoice(spec, choice, sim),
+      spec: applyChoice(spec, choice, root),
       position,
       addedIndex: undefined,
       customizable: true,
       customized: true,
     };
   });
-  const known = new Set(sim.data.series.map((s) => s.id));
+  const known = new Set(root.data.series.map((s) => s.id));
   customizations.added.forEach((added, addedIndex) => {
     const series = added.series.filter((id) => known.has(id));
     if (series.length === 0) return;

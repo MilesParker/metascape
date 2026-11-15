@@ -23,7 +23,7 @@ export const populationSmallWorld = defineModel({
     note: 'The Ascape small-world space has a random edge ratio of 0 here, so the neighborhood is the plain Moore neighborhood of radius 2.',
   },
   parameters: commonParameters,
-  build(sim) {
-    buildPopulation(sim, sim.parameters, 'moore-radius-2');
+  build(root) {
+    buildPopulation(root, root.parameters, 'moore-radius-2');
   },
 });

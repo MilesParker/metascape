@@ -3,6 +3,7 @@ import { toCss, type Agent, type ViewSpec } from '@metascape/engine';
 import {
   continuousAspect,
   historyDepth,
+  latticeOf,
   inspectorRows,
   legendOf,
   shownViews,
@@ -24,9 +25,9 @@ import { useWorkbench } from './store';
 export function viewAspect(spec: ViewSpec): number {
   switch (spec.type) {
     case 'grid':
-      return spec.grid.height === 1
-        ? historyDepth(spec.grid.width) / spec.grid.width
-        : spec.grid.height / spec.grid.width;
+      return latticeOf(spec).height === 1
+        ? historyDepth(latticeOf(spec).width) / latticeOf(spec).width
+        : latticeOf(spec).height / latticeOf(spec).width;
     case 'continuous':
       return continuousAspect(spec);
     case 'network':
@@ -140,7 +141,7 @@ function StageTile({
   readonly focused: boolean;
   readonly canFocus: boolean;
 }): ReactElement {
-  const { sim, frame } = session;
+  const { root, frame } = session;
   const handle = useRef<CanvasSurfaceHandle>(null);
   const pointer = useRef({ x: 0, y: 0 });
   const boxRef = useRef<HTMLDivElement>(null);
@@ -151,7 +152,7 @@ function StageTile({
   const spatial = spec.type === 'grid' || spec.type === 'continuous' || spec.type === 'network';
   const hasLegend = spatial && 'legend' in spec && (spec.legend?.length ?? 0) > 0;
   const side = legendSide(spec, box);
-  const selected = selection?.sim === sim ? selection.agent : undefined;
+  const selected = selection?.root === root ? selection.agent : undefined;
 
   const relative = (): { x: number; y: number } => {
     const rect = stageRef.current?.getBoundingClientRect();
@@ -172,8 +173,8 @@ function StageTile({
       <header className="flex h-8 shrink-0 items-center gap-1 px-2">
         <h3 className="min-w-0 flex-1 truncate text-xs font-medium text-muted" title={spec.title}>
           {spec.title}
-          {spec.type === 'grid' && spec.grid.height === 1 && (
-            <span className="ml-2 text-faint">· one row per {timeUnit(sim).singular}</span>
+          {spec.type === 'grid' && latticeOf(spec).height === 1 && (
+            <span className="ml-2 text-faint">· one row per {timeUnit(root).singular}</span>
           )}
         </h3>
         {zoomed && (
@@ -208,14 +209,14 @@ function StageTile({
             {spatial ? (
               <ViewBody
                 spec={spec}
-                sim={sim}
+                root={root}
                 frame={frame}
                 fit="contain"
                 zoomable
                 handleRef={handle}
                 onCameraChange={(camera) => setZoomed(camera.zoom > 1.001)}
                 selected={selected}
-                onPick={(agent) => useWorkbench.getState().select({ sim, agent })}
+                onPick={(agent) => useWorkbench.getState().select({ root, agent })}
                 onHover={(agent) =>
                   useWorkbench.getState().setHover(agent ? { agent, ...relative() } : undefined)
                 }
@@ -312,11 +313,11 @@ export function InspectorBody({
  * (or charts, for a model with nothing spatial), with the hover read-out.
  */
 export function Stage({ session }: { readonly session: Session }): ReactElement {
-  const { sim } = session;
+  const { root } = session;
   const stageRef = useRef<HTMLDivElement>(null);
   const size = useSize(stageRef);
   const focusView = useWorkbench((state) => state.focusView);
-  const views = useMemo(() => sim.views, [sim]);
+  const views = useMemo(() => root.allViews, [root]);
   const { stage } = splitViews(views);
   const chartsOnly =
     stage.length > 0 &&
@@ -331,8 +332,8 @@ export function Stage({ session }: { readonly session: Session }): ReactElement 
     ? Math.max(1, Math.min(shown.length, Math.floor(size.width / 420) || 1))
     : bestColumns(aspects, size.width, size.height);
   const chartViews = useMemo(
-    () => (chartsOnly ? shownViews(views, session.charts, sim) : []),
-    [chartsOnly, views, session.charts, sim],
+    () => (chartsOnly ? shownViews(views, session.charts, root) : []),
+    [chartsOnly, views, session.charts, root],
   );
 
   return (

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { toCss, type Agent, type ContinuousViewSpec, type PointAgent } from '@metascape/engine';
+import { toCss, type Agent, type ContinuousViewSpec, type LocatedAgent } from '@metascape/engine';
 import { useCallback, type ReactElement, type Ref } from 'react';
 import {
   CanvasSurface,
@@ -22,9 +22,9 @@ export interface ContinuousViewProps {
   /** Changes on each frame to trigger a redraw. */
   readonly frame: number;
   /** Called when an agent is clicked. */
-  readonly onPick?: ((agent: PointAgent) => void) | undefined;
+  readonly onPick?: ((agent: LocatedAgent) => void) | undefined;
   /** Called with the agent under the pointer, and with nothing when there is none. */
-  readonly onHover?: ((agent?: PointAgent) => void) | undefined;
+  readonly onHover?: ((agent?: LocatedAgent) => void) | undefined;
   readonly selected?: Agent | undefined;
   readonly fit?: 'width' | 'contain' | undefined;
   readonly zoomable?: boolean | undefined;
@@ -33,7 +33,7 @@ export interface ContinuousViewProps {
   readonly onCameraChange?: ((camera: Camera) => void) | undefined;
 }
 
-function radiusPixels(spec: ContinuousViewSpec, agent: PointAgent, scale: number): number {
+function radiusPixels(spec: ContinuousViewSpec, agent: LocatedAgent, scale: number): number {
   return Math.max(MIN_RADIUS_PIXELS, (spec.radius?.(agent) ?? 1) * scale);
 }
 
@@ -42,8 +42,9 @@ const LABEL_MARGIN = 0.1;
 
 /** The space's extent including the margin, in space units. */
 function extent(spec: ContinuousViewSpec): { pad: number; width: number; height: number } {
-  const pad = spec.scape.width * (spec.outline?.labels ? LABEL_MARGIN : MARGIN);
-  return { pad, width: spec.scape.width + pad * 2, height: spec.scape.height + pad * 2 };
+  const [width = 1, height = 1] = spec.scape.extent;
+  const pad = width * (spec.outline?.labels ? LABEL_MARGIN : MARGIN);
+  return { pad, width: width + pad * 2, height: height + pad * 2 };
 }
 
 /** Height over width of a continuous view as drawn, margin included. */
@@ -101,12 +102,12 @@ function agentAt(
   fx: number,
   fy: number,
   cssWidth: number,
-): PointAgent | undefined {
+): LocatedAgent | undefined {
   const { pad, width, height } = extent(spec);
   const scale = cssWidth / width;
   const px = fx * width - pad;
   const py = fy * height - pad;
-  let best: PointAgent | undefined;
+  let best: LocatedAgent | undefined;
   let bestDistance = Infinity;
   for (const agent of spec.scape.members) {
     const distance = Math.hypot(agent.x - px, agent.y - py) * scale;
@@ -178,7 +179,7 @@ export function ContinuousView({
         context.fill();
       }
       if (selected && selected.alive && selected.scape === (scape as unknown)) {
-        const agent = selected as PointAgent;
+        const agent = selected as LocatedAgent;
         drawSelection(
           context,
           agent.x * scale,

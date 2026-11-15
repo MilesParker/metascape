@@ -11,7 +11,7 @@ import type {
   ExperimentValue,
   Model,
   ParameterSchema,
-  Simulation,
+  RootScape,
 } from '@metascape/engine';
 import { gasII2 } from './chapter-2';
 import {
@@ -41,9 +41,9 @@ export interface SugarscapeBatch<S extends ParameterSchema = ParameterSchema> {
 }
 
 /** The final value of every recorded series, as the last line of the legacy data file would hold. */
-export function finalValues(sim: Simulation): Record<string, ExperimentValue> {
+export function finalValues(root: RootScape): Record<string, ExperimentValue> {
   const row: Record<string, ExperimentValue> = {};
-  for (const series of sim.data.series) row[series.id] = sim.data.latest(series.id);
+  for (const series of root.data.series) row[series.id] = root.data.latest(series.id);
   return row;
 }
 
@@ -56,7 +56,7 @@ function batch<S extends ParameterSchema>(
     legacyClass,
     model,
     design: {
-      maxTicks: stopPeriod,
+      maxIterations: stopPeriod,
       replicates: 1,
       measure: finalValues,
     },

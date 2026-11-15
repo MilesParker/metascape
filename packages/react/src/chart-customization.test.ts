@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, timeSeriesView } from '@metascape/engine';
+import { RootScape, timeSeriesView } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import {
   NO_CUSTOMIZATIONS,
@@ -13,13 +13,13 @@ import {
 } from './chart-customization';
 import { demoModel } from './testing/demo-model';
 
-const sim = new Simulation(demoModel, { seed: 1 });
-const specs = sim.views;
+const root = new RootScape(demoModel, { seed: 1 });
+const specs = root.allViews;
 const position = specs.findIndex((s) => s.type === 'timeSeries');
 
 describe('seriesGrid', () => {
   it('puts measures in rows and statistics in columns, including counts', () => {
-    const grid = seriesGrid(sim.data.series);
+    const grid = seriesGrid(root.data.series);
     expect(grid.statistics).toEqual(['mean', 'max', 'count']);
     expect(grid.rows.map((r) => r.measure)).toEqual(['energy', 'walkers']);
     expect(grid.rows[0]!.byStatistic.get('max')!.id).toBe('energy.max');
@@ -30,7 +30,7 @@ describe('seriesGrid', () => {
 
 describe('shownViews', () => {
   it('leaves the model alone without customizations', () => {
-    const shown = shownViews(specs, NO_CUSTOMIZATIONS, sim);
+    const shown = shownViews(specs, NO_CUSTOMIZATIONS, root);
     expect(shown.map((v) => v.spec)).toEqual(specs);
     expect(shown.filter((v) => v.customizable)).toHaveLength(2);
     expect(shown.some((v) => v.customized)).toBe(false);
@@ -46,14 +46,14 @@ describe('shownViews', () => {
       }),
     ];
     const next = withChange(NO_CUSTOMIZATIONS, 0, { type: 'bars', series: ['walkers'] });
-    const [view] = shownViews(colored, next, sim);
+    const [view] = shownViews(colored, next, root);
     expect(view!.customized).toBe(true);
     expect(view!.spec).toMatchObject({ type: 'bars', title: 'T', series: ['walkers'] });
     expect(view!.spec).toHaveProperty('colors');
     const back = shownViews(
       colored,
       withChange(next, 0, { type: 'timeSeries', series: ['walkers'] }),
-      sim,
+      root,
     );
     expect(back[0]!.spec).toMatchObject({ type: 'timeSeries', yMin: 0 });
   });
@@ -63,14 +63,14 @@ describe('shownViews', () => {
       type: 'timeSeries',
       series: ['gone', 'walkers'],
     });
-    const view = shownViews(specs, next, sim)[position]!;
+    const view = shownViews(specs, next, root)[position]!;
     expect(view.spec).toMatchObject({ series: ['walkers'] });
-    const none = shownViews(specs, withChange(next, position, undefined), sim);
+    const none = shownViews(specs, withChange(next, position, undefined), root);
     expect(none[position]!.customized).toBe(false);
     const allGone = shownViews(
       specs,
       withChange(NO_CUSTOMIZATIONS, position, { type: 'timeSeries', series: ['gone'] }),
-      sim,
+      root,
     );
     expect(allGone[position]!.spec).toEqual(specs[position]);
   });
@@ -80,7 +80,7 @@ describe('shownViews', () => {
     const shown = shownViews(
       specs,
       withChange(NO_CUSTOMIZATIONS, grid, { type: 'bars', series: ['walkers'] }),
-      sim,
+      root,
     );
     expect(shown[grid]!.spec).toBe(specs[grid]);
   });
@@ -90,7 +90,7 @@ describe('shownViews', () => {
     c = withNewChart(c, 'energy.max');
     expect(c.added.map((a) => a.title)).toEqual(['Custom chart 1', 'Custom chart 2']);
     c = withAddedChoice(c, 1, { type: 'bars', series: ['energy.max', 'energy.mean'] });
-    const shown = shownViews(specs, c, sim);
+    const shown = shownViews(specs, c, root);
     expect(shown).toHaveLength(specs.length + 2);
     const last = shown[shown.length - 1]!;
     expect(last).toMatchObject({ position: undefined, addedIndex: 1 });

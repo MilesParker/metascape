@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation } from '@metascape/engine';
+import { RootScape } from '@metascape/engine';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AgentInspector } from './agent-inspector';
-import { SimulationViews } from './simulation-views';
+import { ModelViews } from './model-views';
 import { demoModel, Walker } from './testing/demo-model';
 
 afterEach(() => {
@@ -13,12 +13,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('SimulationViews', () => {
+describe('ModelViews', () => {
   it('renders a titled panel for each spec of the demo model', () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
-    sim.run(3);
-    render(<SimulationViews sim={sim} frame={3} />);
-    const specs = demoModel.views!(sim);
+    const root = new RootScape(demoModel, { seed: 1 });
+    root.run(3);
+    render(<ModelViews root={root} frame={3} />);
+    const specs = demoModel.views!(root);
     expect(specs.map((s) => s.type).sort()).toEqual(
       ['bars', 'continuous', 'grid', 'histogram', 'network', 'timeSeries'].sort(),
     );
@@ -29,9 +29,9 @@ describe('SimulationViews', () => {
   });
 
   it('shows bar values and histogram counts as text', () => {
-    const sim = new Simulation(demoModel, { seed: 1, parameters: { walkers: 5 } });
-    sim.run(2);
-    render(<SimulationViews sim={sim} frame={2} />);
+    const root = new RootScape(demoModel, { seed: 1, parameters: { walkers: 5 } });
+    root.run(2);
+    render(<ModelViews root={root} frame={2} />);
     const bars = screen.getByRole('img', { name: /^Latest: Count walkers 5/ });
     expect(bars.textContent).toContain('5');
     const histogram = screen.getByRole('img', { name: /^Energy spread: 5 bins/ });
@@ -45,11 +45,11 @@ describe('SimulationViews', () => {
     vi.stubGlobal('ResizeObserver', undefined);
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
-    const sim = new Simulation(demoModel, { seed: 2 });
-    const view = render(<SimulationViews sim={sim} frame={0} />);
+    const root = new RootScape(demoModel, { seed: 2 });
+    const view = render(<ModelViews root={root} frame={0} />);
     expect(() => {
-      sim.step();
-      view.rerender(<SimulationViews sim={sim} frame={1} />);
+      root.iterate();
+      view.rerender(<ModelViews root={root} frame={1} />);
     }).not.toThrow();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -68,9 +68,9 @@ describe('SimulationViews', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       context as unknown as RenderingContext,
     );
-    const sim = new Simulation(demoModel, { seed: 3 });
+    const root = new RootScape(demoModel, { seed: 3 });
     const picks: unknown[] = [];
-    render(<SimulationViews sim={sim} frame={0} onPick={(agent) => picks.push(agent)} />);
+    render(<ModelViews root={root} frame={0} onPick={(agent) => picks.push(agent)} />);
     expect(calls).toContain('drawImage');
     expect(calls).toContain('arc');
     const grid = screen.getByRole('img', { name: 'Grid' });
@@ -91,8 +91,8 @@ describe('SimulationViews', () => {
   });
 
   it('reports a model without views', () => {
-    const sim = new Simulation({ name: 'bare', parameters: {}, build() {} }, { seed: 1 });
-    render(<SimulationViews sim={sim} frame={0} />);
+    const root = new RootScape({ name: 'bare', parameters: {}, build() {} }, { seed: 1 });
+    render(<ModelViews root={root} frame={0} />);
     expect(screen.getByText(/no views/)).toBeTruthy();
   });
 });
@@ -103,8 +103,8 @@ function fakeImage(width: number, height: number): ImageData {
 
 describe('AgentInspector', () => {
   it('lists id, alive and own primitive fields', () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
-    const walker = sim.scape('walkers').members[0] as Walker;
+    const root = new RootScape(demoModel, { seed: 1 });
+    const walker = root.findScape<Walker>('walkers').members[0]!;
     const view = render(<AgentInspector agent={walker} frame={0} />);
     const table = screen.getByRole('table');
     expect(table.textContent).toContain('Energy');

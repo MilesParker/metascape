@@ -11,6 +11,8 @@ import {
   int,
   real,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
@@ -94,13 +96,13 @@ export const sir = defineModel({
     note: 'The AMP model has no description or copyright statement; the authors and citation are those given for this port. The AMP agent count (SIR Agent Count, default 0) creates agents without rules and is not ported. The model is deterministic: the seed has no effect.',
   },
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const scape = sim.addScape(
+  build(root) {
+    const p = root.parameters;
+    const scape = root.add(
       new Scape<Compartments>({
         name: 'compartments',
         size: 1,
-        create: () => new Compartments(),
+        prototypeAgent: () => new Compartments(),
       }),
     );
     const flows = (c: Compartments) => ({
@@ -114,7 +116,7 @@ export const sir = defineModel({
     });
     scape.addRule('integrate', (c) => {
       // Periods 0 and 1 both hold the initial values.
-      if (sim.tick < 2) return;
+      if (root.iteration < 2) return;
       const { infection, recovery } = flows(c);
       c.susceptible += -infection;
       c.infected += infection - recovery;
@@ -122,22 +124,24 @@ export const sir = defineModel({
     });
     const only = (): Compartments => scape.members[0]!;
 
-    sim.data.value('SucseptiblePopulation', () => only().susceptible);
-    sim.data.value('InfectedPopulation', () => only().infected);
-    sim.data.value('RecoveredPopulation', () => only().recovered);
-    sim.data.value('InfectionRate', () => flows(only()).infection);
-    sim.data.value('RecoveryRate', () => flows(only()).recovery);
-    sim.data.value('ContactRate', () => p.contactRate);
-    sim.data.value('Population', () => p.population);
-    sim.data.value('Infectivity', () => p.infectivity);
-    sim.data.value('IllnessDuration', () => p.illnessDuration);
+    root.addStatCollector(stat.value('SucseptiblePopulation', () => only().susceptible));
+    root.addStatCollector(stat.value('InfectedPopulation', () => only().infected));
+    root.addStatCollector(stat.value('RecoveredPopulation', () => only().recovered));
+    root.addStatCollector(stat.value('InfectionRate', () => flows(only()).infection));
+    root.addStatCollector(stat.value('RecoveryRate', () => flows(only()).recovery));
+    root.addStatCollector(stat.value('ContactRate', () => p.contactRate));
+    root.addStatCollector(stat.value('Population', () => p.population));
+    root.addStatCollector(stat.value('Infectivity', () => p.infectivity));
+    root.addStatCollector(stat.value('IllnessDuration', () => p.illnessDuration));
 
     if (p.periods > 0) {
-      sim.observe({
-        stepped(s) {
-          if (s.tick >= p.periods) s.stop('stop period reached');
+      root.add(new Scape({ name: 'Stop period', space: new Singleton() })).addRule(
+        'Stop at period',
+        () => {
+          if (root.iteration >= p.periods) root.stop('stop period reached');
         },
-      });
+        { randomExecution: false, causesRemoval: false },
+      );
     }
 
     const stocks = ['SucseptiblePopulation', 'InfectedPopulation', 'RecoveredPopulation'];
@@ -146,8 +150,8 @@ export const sir = defineModel({
       InfectedPopulation: colors.red,
       RecoveredPopulation: colors.green,
     };
-    sim.addView(timeSeriesView({ title: 'Stocks', series: stocks, colors: palette, yMin: 0 }));
-    sim.addView(
+    root.addView(timeSeriesView({ title: 'Stocks', series: stocks, colors: palette, yMin: 0 }));
+    root.addView(
       timeSeriesView({
         title: 'Flows',
         series: ['InfectionRate', 'RecoveryRate'],
@@ -155,6 +159,6 @@ export const sir = defineModel({
         yMin: 0,
       }),
     );
-    sim.addView(barsView({ title: 'Stocks now', series: stocks, colors: palette }));
+    root.addView(barsView({ title: 'Stocks now', series: stocks, colors: palette }));
   },
 });

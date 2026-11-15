@@ -1,12 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import {
-  Random,
-  runExperiment,
-  Simulation,
-  type Cell,
-  type GridScape,
-  type Model,
-} from '@metascape/engine';
+import { type HostCell, type Model, Random, RootScape, runExperiment } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { Chromosome } from './chromosome';
 import {
@@ -25,13 +18,15 @@ import {
 import { genomeColor, type GaPlayer } from './spatial-ipd';
 
 const make = (model: Model, seed: number, parameters: Record<string, number> = {}) =>
-  new Simulation(model as never, { seed, parameters: parameters as never });
-const csv = (model: Model, seed: number, ticks: number): string => {
-  const sim = make(model, seed);
-  sim.run(ticks);
-  return sim.data.toCSV();
+  new RootScape(model as never, { seed, parameters: parameters as never });
+const csv = (model: Model, seed: number, periods: number): string => {
+  const root = make(model, seed);
+  root.run(periods);
+  return root.data.toCSV();
 };
-const playersOf = (sim: Simulation) => [...(sim.scape('Players') as unknown as Iterable<GaPlayer>)];
+const playersOf = (root: RootScape) => [
+  ...(root.findScape('Players') as unknown as Iterable<GaPlayer>),
+];
 
 describe('Chromosome', () => {
   it('crosses over a prefix, keeping the genes between the two', () => {
@@ -71,12 +66,12 @@ describe('Spatial IPD (GA) family', () => {
 
   for (const model of family.models) {
     describe(model.name, () => {
-      it('builds with views and runs 30 ticks', () => {
-        const sim = make(model, 1);
-        expect(sim.views.some((v) => v.type === 'grid')).toBe(true);
-        expect(sim.views.some((v) => v.type === 'timeSeries')).toBe(true);
-        sim.run(30);
-        expect(sim.tick).toBeGreaterThan(0);
+      it('builds with views and runs 30 periods', () => {
+        const root = make(model, 1);
+        expect(root.allViews.some((v) => v.type === 'grid')).toBe(true);
+        expect(root.allViews.some((v) => v.type === 'timeSeries')).toBe(true);
+        root.run(30);
+        expect(root.iteration).toBeGreaterThan(0);
       });
 
       it('is deterministic by seed', () => {
@@ -87,15 +82,15 @@ describe('Spatial IPD (GA) family', () => {
   }
 
   it('starts with the legacy initial conditions', () => {
-    const sim = make(pd2dga, 1);
-    const players = playersOf(sim);
+    const root = make(pd2dga, 1);
+    const players = playersOf(root);
     expect(players).toHaveLength(100);
-    expect((sim.scape('Environment') as GridScape<Cell>).size).toBe(400);
+    expect(root.findScape<HostCell>('Environment').size).toBe(400);
     for (const p of players) {
       expect(p.strategies.encoding).toHaveLength(7);
       expect(p.wealth).toBe(6);
     }
-    expect(sim.parameters).toMatchObject({
+    expect(root.parameters).toMatchObject({
       payoffCC: 3,
       payoffCD: -5,
       payoffDC: 6,
@@ -111,14 +106,14 @@ describe('Spatial IPD (GA) family', () => {
 
   it('keeps genes binary, histories in range and cells single-occupied', () => {
     for (const memorySize of [1, 2]) {
-      const sim = make(pd2dga, 4, { memorySize });
+      const root = make(pd2dga, 4, { memorySize });
       const length = 4 ** memorySize + 2 * memorySize + 1;
       for (let t = 0; t < 40; t++) {
-        sim.step();
-        for (const p of playersOf(sim)) {
+        root.iterate();
+        for (const p of playersOf(root)) {
           expect(p.strategies.encoding).toHaveLength(length);
           expect(p.strategies.encoding.every((g) => g === 0 || g === 1)).toBe(true);
-          expect(p.cell?.occupants).toEqual([p]);
+          expect(p.hostCell?.occupants).toEqual([p]);
           if (p.playRecord) expect(p.playRecord.played).toBeLessThan(4 ** memorySize);
         }
       }
@@ -126,22 +121,22 @@ describe('Spatial IPD (GA) family', () => {
   });
 
   it('shares play records with the parent after fission (legacy clone quirk)', () => {
-    const sim = make(pd2dga, 1, { initialWealth: 30, numberOfAgents: 30 });
-    sim.run(3);
-    const players = playersOf(sim);
+    const root = make(pd2dga, 1, { initialWealth: 30, numberOfAgents: 30 });
+    root.run(3);
+    const players = playersOf(root);
     const parentsRecords = new Set(players.map((p) => p.playRecord).filter(Boolean));
     expect(parentsRecords.size).toBeLessThan(players.filter((p) => p.playRecord).length);
   });
 
   it('runs with all partners tracked in one shared table', () => {
-    const sim = make(pd2dga, 3, { trackAll: 1 });
-    sim.run(30);
-    expect(playersOf(sim).length).toBeGreaterThan(0);
+    const root = make(pd2dga, 3, { trackAll: 1 });
+    root.run(30);
+    expect(playersOf(root).length).toBeGreaterThan(0);
   });
 
   it('selects the play rules of each variant, in the legacy rule order', () => {
     const enabled = (model: Model) =>
-      (make(model, 1).scape('Players').rules as { rule: { name: string }; enabled: boolean }[])
+      (make(model, 1).findScape('Players').rules as { rule: { name: string }; enabled: boolean }[])
         .filter((r) => r.enabled)
         .map((r) => r.rule.name);
     expect(enabled(pd2dga)).toEqual([
@@ -168,8 +163,8 @@ describe('Spatial IPD (GA) family', () => {
   });
 
   it('plays the most similar neighbor when closest, the least similar when furthest', () => {
-    const sim = make(pd2dgaClosest, 2, { numberOfAgents: 200 });
-    const centre = playersOf(sim).find((p) => p.neighboringOccupants().length >= 2)!;
+    const root = make(pd2dgaClosest, 2, { numberOfAgents: 200 });
+    const centre = playersOf(root).find((p) => p.neighboringOccupants().length >= 2)!;
     const [near, far] = centre.neighboringOccupants() as GaPlayer[];
     centre.strategies.encoding.fill(0);
     near!.strategies.encoding.fill(0);
@@ -191,9 +186,9 @@ describe('Spatial IPD (GA) family', () => {
   it('closest play sustains a population that furthest play loses', () => {
     const total = (model: Model) =>
       [1, 2, 3].reduce((sum, seed) => {
-        const sim = make(model, seed);
-        sim.run(300);
-        return sum + sim.scape('Players').size;
+        const root = make(model, seed);
+        root.run(300);
+        return sum + root.findScape('Players').size;
       }, 0);
     expect(total(pd2dgaClosest)).toBeGreaterThan(total(pd2dgaFurthest));
   });
@@ -208,32 +203,32 @@ describe('batch harnesses as experiments', () => {
   it('runs the PD2DGAMultiple sweep (reduced)', () => {
     const rows = runExperiment(
       pd2dgaMultiple as never,
-      pd2dgaMultipleDesign({ replicates: 2, maxTicks: 40 }) as never,
+      pd2dgaMultipleDesign({ replicates: 2, maxIterations: 40 }) as never,
     );
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ memorySize: 1, ticks: 40 });
+    expect(rows[0]).toMatchObject({ memorySize: 1, iterations: 40 });
     expect(rows[0]).toHaveProperty('cooperateRatio');
     expect(pd2dgaMultipleDesign().replicates).toBe(35);
-    expect(pd2dgaMultipleDesign().maxTicks).toBe(1000);
+    expect(pd2dgaMultipleDesign().maxIterations).toBe(1000);
   });
 
   it('stops PD2DGAMultipleTo runs at extinction', () => {
     const rows = runExperiment(
       pd2dgaMultipleTo as never,
-      pd2dgaMultipleToDesign({ replicates: 2, maxTicks: 500 }) as never,
+      pd2dgaMultipleToDesign({ replicates: 2, maxIterations: 500 }) as never,
     );
     expect(rows.length).toBe(2);
-    const sim = make(pd2dgaMultipleTo, 1, { deathAge: 2 });
-    sim.run(500);
-    expect(sim.stopReason).toBe('extinct');
-    expect(sim.scape('Players').size).toBe(0);
-    expect(sim.tick).toBeLessThan(500);
+    const root = make(pd2dgaMultipleTo, 1, { deathAge: 2 });
+    root.run(500);
+    expect(root.stopReason).toBe('extinct');
+    expect(root.findScape('Players').size).toBe(0);
+    expect(root.iteration).toBeLessThan(500);
   });
 
   it('ranks the commonest genomes for PD2DGAMulti', () => {
     const rows = runExperiment(
       pd2dgaMulti as never,
-      pd2dgaMultiDesign({ replicates: 1, maxTicks: 20 }, 3) as never,
+      pd2dgaMultiDesign({ replicates: 1, maxIterations: 20 }, 3) as never,
     );
     const row = rows[0] as Record<string, unknown>;
     expect(typeof row.genome0).toBe('string');

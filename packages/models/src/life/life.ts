@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  Array2DMoore,
   bool,
   Cell,
   choice,
   colors,
   defineModel,
-  GridScape,
   gridView,
   int,
   real,
   rgb,
+  Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
@@ -36,7 +38,7 @@ const PATTERNS = {
   ],
 } as const satisfies Record<string, readonly (readonly [number, number])[]>;
 
-/** One site of the Life lattice. (`on`, not `alive`, which is the engine's membership flag.) */
+/** One site of the Life lattice. (`on`, not `alive`, which is every agent's membership flag.) */
 export class LifeCell extends Cell {
   on = false;
   /** The state computed in the execute phase and applied in the update phase. */
@@ -69,7 +71,7 @@ export const life = defineModel({
     },
     {
       title: 'The R-pentomino',
-      description: 'Five cells that take over a thousand ticks to settle down.',
+      description: 'Five cells that take over a thousand periods to settle down.',
       parameters: { pattern: 'r-pentomino' },
     },
     {
@@ -97,8 +99,8 @@ export const life = defineModel({
     }),
   },
 
-  build(sim) {
-    const { width, height, density, wrap, pattern } = sim.parameters;
+  build(root) {
+    const { width, height, density, wrap, pattern } = root.parameters;
     const originX = Math.floor(width / 2) - 1;
     const originY = Math.floor(height / 2) - 1;
     const initiallyAlive = new Set<number>();
@@ -108,19 +110,19 @@ export const life = defineModel({
       }
     }
 
-    const cells = sim.addScape(
-      new GridScape<LifeCell>({
+    const cells = root.add(
+      new Scape<LifeCell>({
         name: 'cells',
-        width,
-        height,
-        wrap,
-        neighborhood: 'moore',
-        order: 'sequential',
-        create: () => new LifeCell(),
+        space: new Array2DMoore<LifeCell>(),
+        extent: [width, height],
+        periodic: wrap,
+        prototypeAgent: () => new LifeCell(),
       }),
     );
     cells.addInitialRule({
       name: 'seed',
+      randomExecution: false,
+      causesRemoval: false,
       execute(cell) {
         cell.on =
           pattern === 'random'
@@ -130,6 +132,8 @@ export const life = defineModel({
     });
     cells.addRule({
       name: 'life',
+      randomExecution: false,
+      causesRemoval: false,
       execute(cell) {
         let live = 0;
         for (const neighbor of cell.neighbors) if (neighbor.on) live++;
@@ -140,12 +144,12 @@ export const life = defineModel({
       },
     });
 
-    sim.data.count(cells, 'live', (cell) => cell.on);
+    cells.addStatCollector(stat.count('live', (cell) => cell.on));
 
-    sim.addView(
+    cells.addView(
       gridView<LifeCell>({
         title: 'Cells',
-        grid: cells,
+        scape: cells,
         legend: [
           { color: colors.green, label: 'Alive' },
           { color: rgb(24, 28, 34), label: 'Dead' },
@@ -153,7 +157,7 @@ export const life = defineModel({
         cellColor: (cell) => (cell.on ? colors.green : rgb(24, 28, 34)),
       }),
     );
-    sim.addView(
+    cells.addView(
       timeSeriesView({ title: 'Live cells', series: ['live'], colors: { live: colors.green } }),
     );
   },

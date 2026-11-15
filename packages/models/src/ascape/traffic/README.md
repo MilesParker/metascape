@@ -14,7 +14,7 @@ Licence: legacy code is BSD (`LICENSES/ascape-license.txt`), Copyright 1998-2007
 
 ## Rules
 
-An 80 by 6 road; cars are 50% of tiles (240) placed on random free tiles. Each tick each car (in random order) runs Movement and then Lane Changing. A car brakes if a car is "ahead" within its safe distance, otherwise accelerates up to its desired speed; its location within a tile grows by its speed and at 160 it steps to the next tile (wrapping) if that is free, else it waits at 160. Cars change lanes by behavior: cooperators move left when blocked and right when someone is close behind; defectors, when blocked, hop to a random side. All cars are defectors by default (`portionCooperator` is 0).
+An 80 by 6 road; cars are 50% of tiles (240) placed on random free tiles. Each period each car (in random order) runs Movement and then Lane Changing. A car brakes if a car is "ahead" within its safe distance, otherwise accelerates up to its desired speed; its location within a tile grows by its speed and at 160 it steps to the next tile (wrapping) if that is free, else it waits at 160. Cars change lanes by behavior: cooperators move left when blocked and right when someone is close behind; defectors, when blocked, hop to a random side. All cars are defectors by default (`portionCooperator` is 0).
 
 ## Deviations and kept oddities
 

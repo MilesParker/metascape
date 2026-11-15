@@ -5,7 +5,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineModel, timeSeriesView, type Rule, type Simulation } from '@metascape/engine';
+import { defineModel, type RootScape, type Rule, stat, timeSeriesView } from '@metascape/engine';
 import {
   DEATH_STARVATION_OLD_AGE_SPICE_RULE,
   DEATH_STARVATION_SPICE_RULE,
@@ -34,8 +34,8 @@ import type { SpiceSettings, SugarSettings, SugarscapeWorld } from './world';
 type Settings = [SugarSettings, SpiceSettings];
 
 /** `GAS_IV_1.createScape`: unit growback of both goods; move, harvest, metabolize, starve. */
-export function createGasIV1(sim: Simulation, settings: Settings): SugarscapeWorld {
-  const world = createGasSpiceBase(sim, settings);
+export function createGasIV1(root: RootScape, settings: Settings): SugarscapeWorld {
+  const world = createGasSpiceBase(root, settings);
   world.grid.addRule(SUGAR_SPICE_GROW_BACK_1_RULE);
   world.agents.addRule(MOVEMENT_RULE);
   world.agents.addRule(HARVEST_RULE);
@@ -49,8 +49,8 @@ export function createGasIV1(sim: Simulation, settings: Settings): SugarscapeWor
  * agents; death is checked before metabolism; and no growback rule is
  * installed, so the landscape is never replenished (kept legacy behaviour).
  */
-export function createGasIVd(sim: Simulation, settings: Settings): SugarscapeWorld {
-  const world = createGasSpiceBase(sim, settings, {
+export function createGasIVd(root: RootScape, settings: Settings): SugarscapeWorld {
+  const world = createGasSpiceBase(root, settings, {
     cell: SPICE_KINDS.cell,
     agent: (w) => new NegotiatingAgent(w),
   });
@@ -65,8 +65,8 @@ export function createGasIVd(sim: Simulation, settings: Settings): SugarscapeWor
  * `GAS_IV_e.createScape`: sexual, negotiating spice agents that die of
  * starvation or old age (checked before metabolism) and reproduce.
  */
-export function createGasIVe(sim: Simulation, settings: Settings): SugarscapeWorld {
-  const world = createGasSpiceBase(sim, settings, {
+export function createGasIVe(root: RootScape, settings: Settings): SugarscapeWorld {
+  const world = createGasSpiceBase(root, settings, {
     cell: SPICE_KINDS.cell,
     agent: (w) => new SexualSpiceAgent(w),
   });
@@ -79,9 +79,9 @@ export function createGasIVe(sim: Simulation, settings: Settings): SugarscapeWor
   return world;
 }
 
-/** Adds a trade rule and its tally series (trades and mean log price per tick). */
+/** Adds a trade rule and its tally series (trades and mean log price per period). */
 function addTrade(
-  sim: Simulation,
+  root: RootScape,
   world: SugarscapeWorld,
   makeRule: (tally: TradeTally) => Rule<SpiceAgent>,
 ): void {
@@ -89,27 +89,29 @@ function addTrade(
   world.agents.addRule(makeRule(tally) as Rule<SpiceAgent>);
   let trades = 0;
   let meanLogPrice = Number.NaN;
-  // Read and reset once per sample: trades executed in the tick just completed.
-  sim.data.value('trades', () => {
-    trades = tally.trades;
-    meanLogPrice = trades > 0 ? tally.logPriceSum / trades : Number.NaN;
-    tally.trades = 0;
-    tally.logPriceSum = 0;
-    return trades;
-  });
-  sim.data.value('meanLogPrice', () => meanLogPrice);
+  // Read and reset once per sample: trades executed in the period just completed.
+  root.addStatCollector(
+    stat.value('trades', () => {
+      trades = tally.trades;
+      meanLogPrice = trades > 0 ? tally.logPriceSum / trades : Number.NaN;
+      tally.trades = 0;
+      tally.logPriceSum = 0;
+      return trades;
+    }),
+  );
+  root.addStatCollector(stat.value('meanLogPrice', () => meanLogPrice));
 }
 
-function showSpiceViews(sim: Simulation, world: SugarscapeWorld, trading: boolean): void {
+function showSpiceViews(root: RootScape, world: SugarscapeWorld, trading: boolean): void {
   const plan = gasSpiceBaseViews();
   plan.extra.push(...spiceStatisticsCharts());
   if (trading) {
     plan.extra.push(
-      timeSeriesView({ title: 'Trades per tick', series: ['trades'] }),
+      timeSeriesView({ title: 'Trades per period', series: ['trades'] }),
       timeSeriesView({ title: 'Mean log price of trades', series: ['meanLogPrice'] }),
     );
   }
-  showViews(sim, world, plan);
+  showViews(root, world, plan);
 }
 
 interface Variant {
@@ -117,7 +119,7 @@ interface Variant {
   readonly name: string;
   readonly description: string;
   readonly note?: string;
-  readonly create: (sim: Simulation, settings: Settings) => SugarscapeWorld;
+  readonly create: (root: RootScape, settings: Settings) => SugarscapeWorld;
   readonly trade?: (tally: TradeTally) => Rule<SpiceAgent>;
 }
 
@@ -127,10 +129,10 @@ function spiceModel(variant: Variant) {
     description: variant.description,
     provenance: sugarscapeProvenance(variant.legacyClass, variant.note),
     parameters: spiceParameters(),
-    build(sim) {
-      const world = variant.create(sim, spiceSettings(sim.parameters));
-      if (variant.trade) addTrade(sim, world, variant.trade);
-      showSpiceViews(sim, world, variant.trade !== undefined);
+    build(root) {
+      const world = variant.create(root, spiceSettings(root.parameters));
+      if (variant.trade) addTrade(root, world, variant.trade);
+      showSpiceViews(root, world, variant.trade !== undefined);
     },
   });
 }
@@ -142,7 +144,7 @@ export const gasIV1 = spiceModel({
   legacyClass: 'GAS_IV_1',
   name: 'Sugarscape IV-1: Sugar and spice, no trade',
   description:
-    'Agents need sugar and spice, which grow back one unit per tick on separate peaks, and ' +
+    'Agents need sugar and spice, which grow back one unit per period on separate peaks, and ' +
     'die when they run out of either. There is no trade.',
   create: createGasIV1,
 });
@@ -167,7 +169,7 @@ export const gasIVa = {
     {
       title: 'Trade before moving',
       description:
-        'Drag Trade to the top of the Spice Agents rules to change the order of each tick.',
+        'Drag Trade to the top of the Spice Agents rules to change the order of each period.',
     },
   ],
 };

@@ -1,127 +1,170 @@
 // SPDX-License-Identifier: EPL-2.0
-import { joinScape, leaveScape, type Agent } from './agent';
+import { enrol, isMember, joinScape, leaveScape, otherScapes, withdraw, type Agent } from './agent';
+import { CellOccupant } from './cell-occupant';
+import type { StatCollector } from './data/stat-collector';
 import type { Random } from './random';
-import type { Simulation } from './simulation';
-
-/**
- * A behaviour applied to the members of a scape.
- *
- * A rule with only `execute` acts immediately. A rule that also has `update`
- * is two-phase: within a step, `execute` runs for every agent before `update`
- * runs for any. Compute the next state in `execute` and apply it in `update`
- * to get synchronous updating that does not depend on agent order.
- */
-export interface Rule<A extends Agent = Agent> {
-  readonly name: string;
-  /** What the rule does, in a sentence, for people reading or editing the schedule. */
-  readonly description?: string;
-  execute(agent: A): void;
-  update?(agent: A): void;
-}
-
-/** A rule installed on a scape, which can be switched off without removing it. */
-export interface RuleEntry<A extends Agent = Agent> {
-  readonly rule: Rule<A>;
-  /**
-   * 0 for the first rule of this name added to the scape, 1 for the second, and
-   * so on. Fixed when the rule is added, so it still identifies the rule after
-   * rules are reordered.
-   */
-  readonly occurrence: number;
-  enabled: boolean;
-}
-
-/** The order in which a scape's members are visited within a step. */
-export type VisitOrder = 'shuffled' | 'sequential';
-
-/**
- * How rules and agents are interleaved within a step.
- * - `byAgent`: each agent executes all rules before the next agent starts.
- * - `byRule`: each rule is executed by all agents before the next rule starts.
- */
-export type Schedule = 'byAgent' | 'byRule';
-
-/**
- * Which members act in a step when {@link ScapeOptions.activations} is set.
- * - `tour`: distinct members, chosen without replacement.
- * - `draw`: independent random draws, so a member may act more than once.
- *   Without `activations` there are as many draws as there are members.
- */
-export type Sampling = 'tour' | 'draw';
+import type { RootScape } from './root';
+import {
+  toRule,
+  type ExecutionOrder,
+  type ExecutionStyle,
+  type Rule,
+  type RuleEntry,
+  type RuleOptions,
+} from './rule';
+import { ListSpace } from './space/list';
+import type { Extent, Space } from './space/space';
+import type { ViewSpec } from './view/spec';
 
 export interface ScapeOptions<A extends Agent> {
-  /** Unique within the simulation. */
+  /** Unique among the scapes a model is built from. */
   readonly name: string;
-  /** Creates one member. Required if `size` is greater than zero or `spawn()` is used. */
-  readonly create?: (index: number) => A;
-  /** Initial population. Default 0. */
+  /**
+   * The topology of the scape. Default: a {@link ListSpace}. Give another
+   * space to change the whole geometry; nothing else need change.
+   */
+  readonly space?: Space<A>;
+  /**
+   * The prototype agent, as a function that makes one member like it. It is
+   * given the member's index. Required if the scape creates members, at the
+   * start or with `newAgent()`; a lattice without one is made of host cells.
+   */
+  readonly prototypeAgent?: (index: number) => A;
+  /** Initial number of members, for spaces that do not fix it. Default 0. */
   readonly size?: number;
-  /** Default `shuffled`: a fresh random order every step. */
-  readonly order?: VisitOrder;
+  /** The dimensions of the space: `[width, height]` for a lattice or a continuous space. */
+  readonly extent?: Extent;
+  /** Whether the edges of the space join up. Default true. */
+  readonly periodic?: boolean;
   /** Default `byAgent`. */
-  readonly schedule?: Schedule;
-  /** How many members act per step. Default: all of them. */
-  readonly activations?: number;
-  /** Default `tour`. Only relevant when `activations` is set. */
-  readonly sampling?: Sampling;
+  readonly executionOrder?: ExecutionOrder;
+  /** Default `completeTour`. */
+  readonly executionStyle?: ExecutionStyle;
+  /** How many members act per iteration. Default: all of them. */
+  readonly agentsPerIteration?: number;
+  /**
+   * Whether the scape draws from a random stream of its own (the default,
+   * forked from its parent's when the scape is added) or from its parent's.
+   * A scape with a {@link Singleton} space always uses its parent's.
+   */
+  readonly randomStream?: 'own' | 'parent';
 }
 
 /**
- * A population of agents of one kind, together with the rules they follow.
- *
- * Subclasses add structure to the population (a lattice, a continuous space).
- * They customise behaviour through {@link populate}, {@link onAdded} and
- * {@link onRemoved}.
- *
- * Membership changes during a step are safe: an agent added mid-step first
- * acts in the next step, and a removed agent is skipped for the rest of it.
+ * Hears what happens to a scape. For the run time and for views: a model
+ * behaves through rules, never through listeners.
  */
-export class Scape<A extends Agent = Agent> implements Iterable<A> {
+export interface ScapeListener {
+  /** The initial population exists, initial rules have run and statistics are collected. */
+  scapeInitialized?(scape: Scape): void;
+  /** An iteration has completed and its statistics are collected. */
+  scapeIterated?(scape: Scape): void;
+  /** The model has stopped and will not iterate again. */
+  scapeStopped?(scape: Scape): void;
+}
+
+/**
+ * A collection of agents, the space they are arranged in and the rules they
+ * follow; and itself an agent.
+ *
+ * Because a scape is an agent, it can be a member of another scape and can
+ * stand on a host cell. A model is a hierarchy of scapes under one root (see
+ * {@link RootScape}), and everything a model has belongs to a scape of it:
+ * rules, statistics and views.
+ *
+ * An agent has one parent scape and may be a member of others (see
+ * {@link add}). Membership changes during an iteration are safe: an agent
+ * added mid-iteration first acts in the next one, and a removed agent is
+ * skipped for the rest of it.
+ */
+export class Scape<A extends Agent = Agent> extends CellOccupant implements Iterable<A> {
   readonly name: string;
-  /** Rules run every step, in this order. */
+  /** The topology of the scape: where its members are in relation to each other. */
+  readonly space: Space<A>;
+  /** Rules executed every iteration, in this order. */
   readonly rules: RuleEntry<A>[] = [];
-  /** Rules run once on each agent when it joins, after `initialize()`. */
+  /** Rules executed once on each agent when it joins, after `initialize()`. */
   readonly initialRules: Rule<A>[] = [];
+  /** What the scape collects about its members each period. */
+  readonly statCollectors: StatCollector<A>[] = [];
+  /** How the scape is shown. */
+  readonly views: ViewSpec[] = [];
 
-  order: VisitOrder;
-  schedule: Schedule;
-  activations: number | undefined;
-  sampling: Sampling;
+  executionOrder: ExecutionOrder;
+  executionStyle: ExecutionStyle;
+  agentsPerIteration: number | undefined;
 
-  protected readonly create: ((index: number) => A) | undefined;
-  protected readonly initialSize: number;
+  readonly prototypeAgent: ((index: number) => A) | undefined;
 
   #members: A[] = [];
   #dead = 0;
-  #sim: Simulation | undefined;
+  readonly #memberScapes: Scape[] = [];
+  readonly #listeners: ScapeListener[] = [];
+  readonly #single: boolean;
+  readonly #sharesRandom: boolean;
+  #root: RootScape | undefined;
   #random: Random | undefined;
+  #populating = false;
+  #populated = false;
   #initialized = false;
 
   constructor(options: ScapeOptions<A>) {
+    super();
     this.name = options.name;
-    this.create = options.create;
-    this.initialSize = options.size ?? 0;
-    this.order = options.order ?? 'shuffled';
-    this.schedule = options.schedule ?? 'byAgent';
-    this.activations = options.activations;
-    this.sampling = options.sampling ?? 'tour';
-    if (!Number.isInteger(this.initialSize) || this.initialSize < 0) {
-      throw new RangeError(`Scape "${this.name}": size must be a non-negative integer`);
-    }
-    if (this.initialSize > 0 && !this.create) {
-      throw new Error(`Scape "${this.name}": a size needs a create function`);
-    }
+    this.prototypeAgent = options.prototypeAgent;
+    this.executionOrder = options.executionOrder ?? 'byAgent';
+    this.executionStyle = options.executionStyle ?? 'completeTour';
+    this.agentsPerIteration = options.agentsPerIteration;
+    this.space = options.space ?? new ListSpace<A>();
+    this.space.attach(this, {
+      extent: options.extent,
+      periodic: options.periodic,
+      size: options.size,
+    });
+    this.#single = this.space.geometry === 'singleton';
+    this.#sharesRandom = this.#single || options.randomStream === 'parent';
+    if (this.#single) this.#members = [this as unknown as A];
   }
 
-  get sim(): Simulation {
-    if (!this.#sim) throw new Error(`Scape "${this.name}" has not been added to a simulation`);
-    return this.#sim;
+  /** The root scape of the model this scape is part of. */
+  override get root(): RootScape {
+    if (!this.#root) throw new Error(`Scape "${this.name}" has not been added to a model`);
+    return this.#root;
   }
 
-  /** This scape's own random stream, independent of other scapes'. */
-  get random(): Random {
-    if (!this.#random) throw new Error(`Scape "${this.name}" has not been added to a simulation`);
-    return this.#random;
+  /** Whether this scape is the root of its model. */
+  get isRoot(): boolean {
+    return (this.#root as Scape | undefined) === this;
+  }
+
+  /**
+   * The random stream of this scape and its members, independent of other
+   * scapes' unless the scape was made to share its parent's.
+   */
+  override get random(): Random {
+    if (this.#random) return this.#random;
+    if (this.#sharesRandom && this.#root) return this.scape.random;
+    throw new Error(`Scape "${this.name}" has not been added to a model`);
+  }
+
+  /** The current period of the model. */
+  get period(): number {
+    return this.root.period;
+  }
+
+  /** The number of iterations the model has executed. */
+  get iteration(): number {
+    return this.root.iteration;
+  }
+
+  /** The dimensions of the scape's space. */
+  get extent(): readonly number[] {
+    return this.space.extent;
+  }
+
+  /** Whether the edges of the scape's space join up. */
+  get periodic(): boolean {
+    return this.space.periodic;
   }
 
   /** The number of live members. */
@@ -134,46 +177,121 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
     if (this.#dead > 0) {
       // A new array, so that a loop over the previous one is not disturbed.
       // An agent removed here may have joined another scape since, so check where it lives.
-      this.#members = this.#members.filter(
-        (agent) => agent.alive && agent.scape === (this as Scape<Agent>),
-      );
+      const self = this as unknown as Scape<Agent>;
+      this.#members = this.#members.filter((agent) => isMember(agent, self));
       this.#dead = 0;
     }
     return this.#members;
+  }
+
+  /** The scapes among this scape's members that have it as their parent. */
+  get memberScapes(): readonly Scape[] {
+    return this.#memberScapes;
+  }
+
+  /** Whether the scape's initial population has been initialized. */
+  get initialized(): boolean {
+    return this.#initialized;
   }
 
   [Symbol.iterator](): IterableIterator<A> {
     return this.members[Symbol.iterator]();
   }
 
-  /** Adds a rule to run every step, after those already added. */
+  /** Adds a rule to execute every iteration, after those already added. */
   addRule(rule: Rule<A>): this;
-  addRule(name: string, execute: (agent: A) => void): this;
-  addRule(ruleOrName: Rule<A> | string, execute?: (agent: A) => void): this {
-    const rule = toRule(ruleOrName, execute);
+  addRule(name: string, execute: (agent: A) => void, options?: RuleOptions): this;
+  addRule(ruleOrName: Rule<A> | string, execute?: (agent: A) => void, options?: RuleOptions): this {
+    const rule = toRule(ruleOrName, execute, options);
     const occurrence = this.rules.filter((entry) => entry.rule.name === rule.name).length;
     this.rules.push({ rule, occurrence, enabled: true });
     return this;
   }
 
-  /** Adds a rule to run once on each agent when it joins. */
+  /** Adds a rule to execute once on each agent when it joins. */
   addInitialRule(rule: Rule<A>): this;
-  addInitialRule(name: string, execute: (agent: A) => void): this;
-  addInitialRule(ruleOrName: Rule<A> | string, execute?: (agent: A) => void): this {
-    this.initialRules.push(toRule(ruleOrName, execute));
+  addInitialRule(name: string, execute: (agent: A) => void, options?: RuleOptions): this;
+  addInitialRule(
+    ruleOrName: Rule<A> | string,
+    execute?: (agent: A) => void,
+    options?: RuleOptions,
+  ): this {
+    this.initialRules.push(toRule(ruleOrName, execute, options));
     return this;
   }
 
   /**
-   * Adds an existing agent. Once the simulation is initialized, the agent is
-   * initialized and given the initial rules straight away.
+   * Adds something to collect about the scape's members each period. Make
+   * collectors with the functions of `stat`. Its series appear in the
+   * model's data (`root.data`).
    */
-  add(agent: A): A {
+  addStatCollector(collector: StatCollector<A>): this {
+    this.statCollectors.push(collector);
+    this.#root?.registerStatCollector(this, collector as StatCollector);
+    return this;
+  }
+
+  /**
+   * Adds a view of this scape: a lattice, a chart and so on, typically made
+   * with the helpers `gridView`, `timeSeriesView` and friends.
+   */
+  addView(view: ViewSpec): this {
+    this.#root?.registerView(view);
+    this.views.push(view);
+    return this;
+  }
+
+  /** Registers a listener; returns a function that removes it again. */
+  addScapeListener(listener: ScapeListener): () => void {
+    this.#listeners.push(listener);
+    return () => {
+      const index = this.#listeners.indexOf(listener);
+      if (index >= 0) this.#listeners.splice(index, 1);
+    };
+  }
+
+  /** Tells this scape's listeners of an event. Called by the model. */
+  notifyListeners(event: keyof ScapeListener): void {
+    for (const listener of [...this.#listeners]) listener[event]?.(this);
+  }
+
+  /**
+   * Adds an agent, which may be another scape.
+   *
+   * By default this scape becomes the agent's parent: its behavioural
+   * context, the scape `agent.scape` names and whose random stream the agent
+   * uses. Once the scape is initialized, the agent is initialized and given
+   * the initial rules straight away.
+   *
+   * With `isParent` false, an agent that already lives in another scape also
+   * becomes a member of this one: it takes part in this scape's rules,
+   * statistics and space, and keeps its parent. It leaves when it dies or is
+   * removed from this scape.
+   */
+  add<T extends A>(agent: T, isParent = true): T {
+    if (this.space.fixedMembership && !this.#populating) {
+      throw new Error(`Scape "${this.name}" has fixed membership: members cannot be added`);
+    }
+    const self = this as unknown as Scape<Agent>;
+    if (!isParent) {
+      if (!agent.alive) throw new Error('Only a live agent can be added to a further scape');
+      if (!isMember(agent, self)) {
+        enrol(agent, self);
+        this.#members.push(agent);
+        this.space.added(agent);
+      }
+      return agent;
+    }
     if (agent.alive) throw new Error('Agent is already a member of a scape');
-    joinScape(agent, this as Scape<Agent>, this.sim.nextAgentId());
+    if (agent instanceof Scape) {
+      this.#adopt(agent as Scape);
+    } else {
+      joinScape(agent, self, this.root.nextAgentId());
+    }
     this.#members.push(agent);
-    this.onAdded(agent);
+    this.space.added(agent);
     if (this.#initialized) {
+      if (agent instanceof Scape) raise(agent as Scape);
       agent.initialize();
       for (const rule of this.initialRules) {
         if (!agent.alive) break;
@@ -183,24 +301,49 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
     return agent;
   }
 
-  /** Creates a new member with the scape's `create` function and adds it. */
-  spawn(): A {
-    if (!this.create) throw new Error(`Scape "${this.name}" has no create function`);
-    return this.add(this.create(this.#members.length));
+  /** Creates a new member like the prototype agent and adds it. */
+  newAgent(): A {
+    if (this.space.fixedMembership && !this.#populating) {
+      throw new Error(`Scape "${this.name}" has fixed membership: members cannot be created`);
+    }
+    if (!this.prototypeAgent) throw new Error(`Scape "${this.name}" has no prototype agent`);
+    return this.add(this.prototypeAgent(this.#members.length));
   }
 
-  /** Removes a member. Returns false if it was not a live member of this scape. */
+  /**
+   * Removes a member. If this scape is the agent's parent the agent leaves
+   * the model, and with it every other scape it is a member of. Returns
+   * false if the agent was not a live member of this scape.
+   */
   remove(agent: A): boolean {
-    if (!agent.alive || agent.scape !== (this as Scape<Agent>)) return false;
+    if (this.space.fixedMembership) {
+      throw new Error(`Scape "${this.name}" has fixed membership: members cannot be removed`);
+    }
+    const self = this as unknown as Scape<Agent>;
+    if (!isMember(agent, self)) return false;
+    if (agent.scape !== self) {
+      withdraw(agent, self);
+      this.#dead++;
+      this.space.removed(agent);
+      return true;
+    }
+    for (const other of otherScapes(agent)) {
+      other.#dead++;
+      other.space.removed(agent);
+    }
     leaveScape(agent);
     this.#dead++;
-    this.onRemoved(agent);
+    if (agent instanceof Scape) {
+      const index = this.#memberScapes.indexOf(agent as Scape);
+      if (index >= 0) this.#memberScapes.splice(index, 1);
+    }
+    this.space.removed(agent);
     agent.removed();
     return true;
   }
 
   /** A uniformly chosen live member, optionally among those matching a condition. */
-  randomMember(condition?: (agent: A) => boolean): A | undefined {
+  findRandom(condition?: (agent: A) => boolean): A | undefined {
     const candidates = condition ? this.members.filter(condition) : this.members;
     return candidates.length === 0 ? undefined : this.random.pick(candidates);
   }
@@ -217,91 +360,180 @@ export class Scape<A extends Agent = Agent> implements Iterable<A> {
     return total;
   }
 
-  /** Called by the simulation when the scape is added to it. */
-  attach(sim: Simulation, random: Random): void {
-    if (this.#sim) throw new Error(`Scape "${this.name}" already belongs to a simulation`);
-    this.#sim = sim;
-    this.#random = random;
+  /**
+   * Finds a scape by name among those the model was built from, at or below
+   * this one, typed by the agent class its caller expects.
+   */
+  findScape<M extends Agent = Agent>(name: string): Scape<M> {
+    const self = this as unknown as Scape;
+    const found = this.root.scapes.find((scape) => scape.name === name && scape.#isWithin(self));
+    if (!found) throw new Error(`No scape named "${name}"`);
+    return found as unknown as Scape<M>;
   }
 
-  /** Called by the simulation to create the initial population. Subclasses may override. */
+  /** Creates the initial members. Called once by the model. */
   populate(): void {
-    for (let i = 0; i < this.initialSize; i++) this.spawn();
-  }
-
-  /** Called by the simulation once every scape is populated. */
-  initializeMembers(): void {
-    for (const agent of [...this.members]) if (agent.alive) agent.initialize();
-    this.#initialized = true;
-  }
-
-  /** Called by the simulation after every scape's members are initialized. */
-  runInitialRules(): void {
-    if (this.initialRules.length === 0) return;
-    const agents = this.#visitOrder(true);
-    for (const rule of this.initialRules) {
-      for (const agent of agents) if (agent.alive) runRule(rule, agent);
+    if (this.#populated) return;
+    this.#populated = true;
+    this.#populating = true;
+    try {
+      this.space.populate();
+    } finally {
+      this.#populating = false;
     }
   }
 
-  /** Executes one step of this scape's rules. Called by the simulation. */
-  step(): void {
+  /** Initializes the members that have this scape as their parent. Called by the model once every scape is populated. */
+  initializeMembers(): void {
+    const self = this as unknown as Scape<Agent>;
+    for (const agent of [...this.members]) {
+      if (agent.alive && agent.scape === self) agent.initialize();
+    }
+    this.#initialized = true;
+  }
+
+  /** Executes the initial rules across the members. Called by the model after every scape's members are initialized. */
+  executeInitialRules(): void {
+    if (this.initialRules.length === 0) return;
+    const self = this as unknown as Scape<Agent>;
+    const agents = this.#tour(this.initialRules, true);
+    for (const rule of this.initialRules) {
+      for (const agent of agents) if (this.#single || isMember(agent, self)) runRule(rule, agent);
+    }
+  }
+
+  /** Executes the selected rules across the members: one iteration of this scape. Called by the model. */
+  executeOnMembers(): void {
     const rules = this.rules.filter((entry) => entry.enabled).map((entry) => entry.rule);
     if (rules.length === 0) return;
-    const agents = this.#visitOrder(false);
+    const agents = this.#tour(rules, false);
+    const self = this as unknown as Scape<Agent>;
+    // Only rules that may remove agents make it necessary to check membership as the tour goes.
+    const check = !this.#single && rules.some((rule) => rule.causesRemoval !== false);
 
-    if (this.schedule === 'byAgent') {
+    if (this.executionOrder === 'byAgent') {
       for (const agent of agents) {
         for (const rule of rules) {
-          if (!agent.alive) break;
+          if (check && !isMember(agent, self)) break;
           rule.execute(agent);
         }
       }
     } else {
       for (const rule of rules) {
-        for (const agent of agents) if (agent.alive) rule.execute(agent);
+        for (const agent of agents) if (!check || isMember(agent, self)) rule.execute(agent);
       }
     }
 
     for (const rule of rules) {
       if (!rule.update) continue;
-      for (const agent of agents) if (agent.alive) rule.update(agent);
+      for (const agent of agents) if (!check || isMember(agent, self)) rule.update(agent);
     }
   }
 
-  /** Hook for subclasses: an agent has joined. Runs before the agent is initialized. */
-  protected onAdded(_agent: A): void {}
+  /** Engine-internal: makes this scape the root of a model. */
+  protected enroot(root: RootScape, random: Random): void {
+    this.#root = root;
+    this.#random = random;
+  }
 
-  /** Hook for subclasses: an agent has been removed. Runs before `agent.removed()`. */
-  protected onRemoved(_agent: A): void {}
+  /** Whether `ancestor` is this scape or contains it. */
+  #isWithin(ancestor: Scape): boolean {
+    if ((this as unknown as Scape) === ancestor) return true;
+    return !this.isRoot && (this.scape as Scape).#isWithin(ancestor);
+  }
 
-  /** A snapshot of the members that act this step, in the order they act. */
-  #visitOrder(everyone: boolean): A[] {
+  /** Takes a scape as a member with this scape as its parent. */
+  #adopt(child: Scape): void {
+    const root = this.#root;
+    root?.admit(child, this);
+    joinScape(child, this as unknown as Scape<Agent>, root ? root.nextScapeId() : -1);
+    this.#memberScapes.push(child);
+    if (root) child.#attach(root);
+  }
+
+  /** Makes this scape, and the scapes already in it, part of a model. */
+  #attach(root: RootScape): void {
+    this.#root = root;
+    if (!this.#sharesRandom) this.#random = this.scape.random.fork();
+    root.registerScape(this);
+    for (const collector of this.statCollectors) {
+      root.registerStatCollector(this, collector as StatCollector);
+    }
+    for (const view of this.views) root.registerView(view);
+    for (const child of this.#memberScapes) {
+      root.admit(child, this);
+      joinScape(child, this as unknown as Scape<Agent>, root.nextScapeId());
+      child.#attach(root);
+    }
+  }
+
+  /** A snapshot of the members that act, in the order they act. */
+  #tour(rules: readonly Rule<A>[], everyone: boolean): A[] {
     const all = [...this.members];
-    const wanted = everyone ? undefined : this.activations;
+    const wanted = everyone ? undefined : this.agentsPerIteration;
 
-    // Drawing with replacement defaults to as many draws as there are members.
-    if (!everyone && this.sampling === 'draw') {
+    // Repeated draws default to as many draws as there are members.
+    if (!everyone && this.executionStyle === 'repeatedDraw') {
       if (all.length === 0) return all;
       return Array.from({ length: wanted ?? all.length }, () => this.random.pick(all));
     }
-    if (this.order === 'shuffled' || (wanted !== undefined && wanted < all.length)) {
-      this.random.shuffle(all);
-    }
-    return wanted !== undefined && wanted < all.length ? all.slice(0, wanted) : all;
+    const partial = wanted !== undefined && wanted < all.length;
+    if (partial || rules.some((rule) => rule.randomExecution !== false)) this.random.shuffle(all);
+    return partial ? all.slice(0, wanted) : all;
   }
-}
-
-function toRule<A extends Agent>(
-  ruleOrName: Rule<A> | string,
-  execute?: (agent: A) => void,
-): Rule<A> {
-  if (typeof ruleOrName !== 'string') return ruleOrName;
-  if (!execute) throw new Error(`Rule "${ruleOrName}" needs an execute function`);
-  return { name: ruleOrName, execute };
 }
 
 function runRule<A extends Agent>(rule: Rule<A>, agent: A): void {
   rule.execute(agent);
   if (agent.alive) rule.update?.(agent);
+}
+
+/**
+ * A rule that, executed on a scape, acts on it and passes itself on to the
+ * scapes among its members, so that executing it on the root reaches the
+ * whole model in a well-defined order. Everything a model does as a whole is
+ * such a rule: creating and initializing its agents, iterating, collecting
+ * statistics and telling listeners.
+ */
+export function propagate(
+  name: string,
+  act: (scape: Scape) => void,
+  order: 'scapeFirst' | 'membersFirst' = 'scapeFirst',
+): Rule<Agent> {
+  const rule: Rule<Agent> = {
+    name,
+    randomExecution: false,
+    causesRemoval: false,
+    execute(agent) {
+      if (!(agent instanceof Scape)) return;
+      const scape = agent as Scape;
+      if (order === 'scapeFirst') act(scape);
+      for (const member of [...scape.memberScapes]) rule.execute(member);
+      if (order === 'membersFirst') act(scape);
+    },
+  };
+  return rule;
+}
+
+/** Creates the initial members of every scape, each scape before the scapes in it. */
+export const POPULATE_RULE = propagate('Populate', (scape) => scape.populate());
+
+/** Calls `initialize()` on every agent, the members of each scape before those of the scapes in it. */
+export const INITIALIZE_RULE = propagate('Initialize', (scape) => scape.initializeMembers());
+
+/** Executes every scape's initial rules, those of the scapes in a scape before its own. */
+export const INITIAL_RULES_RULE = propagate(
+  'Initial Rules',
+  (scape) => scape.executeInitialRules(),
+  'membersFirst',
+);
+
+/** Executes every scape's rules across its members, each scape before the scapes in it. */
+export const EXECUTE_RULES_RULE = propagate('Iterate Scape', (scape) => scape.executeOnMembers());
+
+/** Brings a scape added to a running model to the state of the scapes around it. */
+function raise(scape: Scape): void {
+  POPULATE_RULE.execute(scape);
+  INITIALIZE_RULE.execute(scape);
+  INITIAL_RULES_RULE.execute(scape);
 }

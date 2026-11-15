@@ -1,6 +1,6 @@
 # Metascape
 
-Agent-based modelling for the web: a typed, deterministic simulation engine, a strongly typed
+Agent-based modelling for the web: a typed, deterministic modelling engine, a strongly typed
 declarative model format, and React tooling for running and exploring models.
 
 Metascape is the successor to [Ascape](https://github.com/MilesParker/ascape) and the
@@ -16,7 +16,7 @@ from Ascape and Eclipse AMP, ported with their provenance. Open work is listed i
 
 | Path              | Package             | Purpose                                                                               |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------- |
-| `packages/engine` | `@metascape/engine` | Headless engine: simulations, scapes, spaces, data, run control                       |
+| `packages/engine` | `@metascape/engine` | Headless engine: scapes and their spaces, rules, statistics, views, run control       |
 | `packages/models` | `@metascape/models` | The model catalogue: 25 families, 127 models (see below)                              |
 | `packages/spec`   | `@metascape/spec`   | Models as data: typed format, checker, interpreter and five examples                  |
 | `packages/react`  | `@metascape/react`  | Views, charts, run controls, rule and chart editing, a model runner                   |
@@ -47,10 +47,10 @@ original copyright), which Studio shows in each model's About panel, linked from
 As in Ascape, a model's behaviour can be changed in Studio without code:
 
 - **Parameters:** those a model declares `live` change while it runs (the engine's
-  `Simulation.setParameter`); the rest collect into one "restart to apply" beside the play button.
+  `RootScape.setParameter`); the rest collect into one "restart to apply" beside the play button.
 - **Rules:** for each scape, switch rules on and off, reorder them, and choose the execution
-  order (by agent or by rule), the visit order (shuffled or sequential), and complete tour or
-  repeated draw with a number of agents per step. Changes apply at once.
+  order (by agent or by rule) and the execution style (complete tour or repeated draw) with a
+  number of agents per iteration. Changes apply at once.
 - **Charts:** pick which recorded series each chart shows (measures by statistics), switch
   between time series and bars, and add or remove charts.
 
@@ -60,8 +60,21 @@ parameters, rules, chart choices and arrangement in the address, so a link repro
 
 ## A model in code
 
+A model is a hierarchy of scapes under a root. `build` is given the root and adds to it a scape
+with a lattice space and a prototype cell, then that scape's rules, statistic and views.
+
 ```ts
-import { Cell, defineModel, GridScape, gridView, int, colors, rgb } from '@metascape/engine';
+import {
+  Array2DMoore,
+  Cell,
+  colors,
+  defineModel,
+  gridView,
+  int,
+  rgb,
+  Scape,
+  stat,
+} from '@metascape/engine';
 
 class LifeCell extends Cell {
   on = false;
@@ -71,19 +84,20 @@ class LifeCell extends Cell {
 export const life = defineModel({
   name: 'Life',
   parameters: { size: int(60, { min: 3, max: 400 }) },
-  build(sim) {
-    const size = sim.parameters.size;
-    const cells = sim.addScape(
-      new GridScape<LifeCell>({
+  build(root) {
+    const size = root.parameters.size;
+    const cells = root.add(
+      new Scape<LifeCell>({
         name: 'cells',
-        width: size,
-        height: size,
-        create: () => new LifeCell(),
+        space: new Array2DMoore<LifeCell>(),
+        extent: [size, size],
+        prototypeAgent: () => new LifeCell(),
       }),
     );
     cells.addInitialRule('seed', (cell) => (cell.on = cell.random.chance(0.3)));
     cells.addRule({
       name: 'life',
+      randomExecution: false,
       execute(cell) {
         let live = 0;
         for (const neighbor of cell.neighbors) if (neighbor.on) live++;
@@ -91,17 +105,21 @@ export const life = defineModel({
       },
       update: (cell) => (cell.on = cell.next),
     });
-    sim.data.count(cells, 'live', (cell) => cell.on);
-    sim.addView(
+    cells.addStatCollector(stat.count('live', (cell) => cell.on));
+    cells.addView(
       gridView<LifeCell>({
         title: 'Cells',
-        grid: cells,
+        scape: cells,
         cellColor: (c) => (c.on ? colors.green : rgb(24, 28, 34)),
       }),
     );
   },
 });
 ```
+
+Changing `Array2DMoore` to `Array2DVonNeumann` changes the neighbourhood and nothing else. How the
+engine realises the three abstractions of Ascape is set out in
+[docs/architecture.md](docs/architecture.md).
 
 The same model can be written purely as data in the `@metascape/spec` format; see
 `packages/spec/src/examples`.

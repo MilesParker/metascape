@@ -1,7 +1,7 @@
 {
   "name": "@metascape/engine",
   "version": "0.0.0",
-  "description": "Headless, deterministic agent-based simulation engine.",
+  "description": "Headless, deterministic engine for agent-based models.",
   "license": "EPL-2.0",
   "type": "module",
   "sideEffects": false,

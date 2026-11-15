@@ -7,12 +7,13 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   barsView,
+  type Color,
   defineModel,
   rgb,
-  timeSeriesView,
-  type Color,
+  type RootScape,
   type Scape,
-  type Simulation,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import {
   CulturalSexualAgent,
@@ -61,7 +62,7 @@ export const COLOR_FOR_METABOLISM: readonly Color[] = [
  * (the legacy pie chart) and time series of the counts.
  */
 function traitViews(
-  sim: Simulation,
+  root: RootScape,
   world: SugarscapeWorld,
   plan: ViewPlan,
   trait: { key: string; label: string; colors: readonly Color[] },
@@ -71,7 +72,7 @@ function traitViews(
   const palette: Record<string, Color> = {};
   for (let v = 1; v < trait.colors.length; v++) {
     const id = `${trait.key}${v}`;
-    sim.data.count(world.agents, id, (a) => value(a) === v);
+    world.agents.addStatCollector(stat.count(id, (a) => value(a) === v));
     series.push(id);
     palette[id] = trait.colors[v]!;
   }
@@ -89,10 +90,10 @@ function traitViews(
 }
 
 /** `GAS_III_2.createViews`: agents coloured by vision, with counts per vision. */
-export function gasIII2Views(sim: Simulation, world: SugarscapeWorld): ViewPlan {
+export function gasIII2Views(root: RootScape, world: SugarscapeWorld): ViewPlan {
   const plan = gasBaseViews();
   traitViews(
-    sim,
+    root,
     world,
     plan,
     { key: 'vision', label: 'vision', colors: COLOR_FOR_VISION },
@@ -109,11 +110,11 @@ export const gasIII2 = defineModel({
     'and die of starvation or old age; agents are coloured by vision to show its evolution.',
   provenance: sugarscapeProvenance('GAS_III_2'),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasSexBase(sim, sugarSettings(sim.parameters));
-    const plan = gasIII2Views(sim, world);
+  build(root) {
+    const world = createGasSexBase(root, sugarSettings(root.parameters));
+    const plan = gasIII2Views(root, world);
     plan.extra.push(...sugarStatisticsCharts());
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });
 
@@ -125,18 +126,18 @@ export const gasIII3 = defineModel({
     'for low metabolism.',
   provenance: sugarscapeProvenance('GAS_III_3'),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasSexBase(sim, sugarSettings(sim.parameters));
+  build(root) {
+    const world = createGasSexBase(root, sugarSettings(root.parameters));
     const plan = gasBaseViews();
     traitViews(
-      sim,
+      root,
       world,
       plan,
       { key: 'metabolism', label: 'sugar metabolism', colors: COLOR_FOR_METABOLISM },
       (a) => a.sugarMetabolism,
     );
     plan.extra.push(...sugarStatisticsCharts());
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });
 
@@ -154,32 +155,34 @@ export const gasII4 = defineModel({
     'GAS_II_4 extends GAS_III_2, so reproduction and old age are part of it, as in the legacy code.',
   ),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasSexBase(sim, sugarSettings(sim.parameters));
-    const plan = gasIII2Views(sim, world);
-    sim.data.measure(world.agents, 'wealth', (a) => a.sugar.stock);
+  build(root) {
+    const world = createGasSexBase(root, sugarSettings(root.parameters));
+    const plan = gasIII2Views(root, world);
+    world.agents.addStatCollector(stat.measure('wealth', (a) => a.sugar.stock));
     const agents: Scape<SugarAgent> = world.agents;
     const series: string[] = [];
     for (let decile = 1; decile <= 10; decile++) {
       const id = `decile${decile}`;
       series.push(id);
       // StatCollectorCond: strictly between (d - 1) and d tenths of the current maximum wealth.
-      sim.data.value(id, () => {
-        let max = -Infinity;
-        for (const a of agents.members) max = Math.max(max, a.sugar.stock);
-        let count = 0;
-        for (const a of agents.members) {
-          const w = a.sugar.stock;
-          if (w > (decile - 1) * 0.1 * max && w < decile * 0.1 * max) count++;
-        }
-        return count;
-      });
+      root.addStatCollector(
+        stat.value(id, () => {
+          let max = -Infinity;
+          for (const a of agents.members) max = Math.max(max, a.sugar.stock);
+          let count = 0;
+          for (const a of agents.members) {
+            const w = a.sugar.stock;
+            if (w > (decile - 1) * 0.1 * max && w < decile * 0.1 * max) count++;
+          }
+          return count;
+        }),
+      );
     }
     plan.extra.push(
       barsView({ title: 'Count by wealth decile', series }),
       ...sugarStatisticsCharts(),
     );
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });
 
@@ -187,7 +190,7 @@ export const gasII4 = defineModel({
 export const gasIII6 = defineModel({
   name: 'Sugarscape III-6: Cultural transmission',
   description:
-    'Agents carry an 11-bit cultural tag; each tick they flip one random bit of each ' +
+    'Agents carry an 11-bit cultural tag; each period they flip one random bit of each ' +
     'neighbor to match their own, and children inherit the bits their parents share. Agents ' +
     'are blue or red by the majority of their bits.',
   provenance: sugarscapeProvenance(
@@ -196,8 +199,8 @@ export const gasIII6 = defineModel({
       'do not die of old age.',
   ),
   parameters: sugarParameters({ sugarMoundness: 0.005 }),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters), {
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters), {
       cell: SUGAR_KINDS.cell,
       agent: (w) => new CulturalSexualAgent(w),
     });
@@ -206,8 +209,8 @@ export const gasIII6 = defineModel({
     world.agents.addRule(PLAY_NEIGHBORS_RULE);
     world.agents.addRule(DEATH_STARVATION_RULE);
     const culture = (a: SugarAgent): boolean => (a as CulturalSexualAgent).getMajority();
-    sim.data.count(world.agents, 'blue', (a) => culture(a));
-    sim.data.count(world.agents, 'red', (a) => !culture(a));
+    world.agents.addStatCollector(stat.count('blue', (a) => culture(a)));
+    world.agents.addStatCollector(stat.count('red', (a) => !culture(a)));
     const plan = gasBaseViews();
     plan.agentColor = (a) => (culture(a) ? awt.blue : awt.red);
     plan.agentLegend = [
@@ -222,6 +225,6 @@ export const gasIII6 = defineModel({
       }),
       ...sugarStatisticsCharts(),
     );
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });

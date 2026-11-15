@@ -13,7 +13,7 @@ import {
   type Scape,
   type ScapeSettings,
   type SettingsStore,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import { useCallback, useMemo, useState } from 'react';
 import { useRunnerState } from './hooks';
@@ -100,10 +100,10 @@ export function rangePairs(
 /** State and actions of a parameter editor, from {@link useParameterController}. */
 export interface ParameterController {
   readonly schema: ParameterSchema;
-  /** The values shown: those of the running simulation, with edits not yet applied. */
+  /** The values shown: those of the running model, with edits not yet applied. */
   readonly values: Values;
   readonly defaults: Values;
-  /** Values the running simulation uses. */
+  /** Values the running model uses. */
   readonly applied: Values;
   /** Parameters edited but not yet applied: they need a restart. */
   readonly pending: readonly string[];
@@ -113,7 +113,7 @@ export interface ParameterController {
   readonly errors: Readonly<Record<string, string>>;
   readonly isLive: (name: string) => boolean;
   /**
-   * Sets a value. A live parameter changes in the running simulation at once;
+   * Sets a value. A live parameter changes in the running model at once;
    * any other waits for {@link apply}. Invalid values are recorded in `errors`
    * and go no further. Returns whether the value took effect now.
    */
@@ -130,8 +130,8 @@ export interface ParameterController {
 
 /** Options of {@link useParameterController}. */
 export interface ParameterControllerOptions {
-  /** Called after a live parameter changes in the running simulation. */
-  readonly onLiveChange?: (name: string, value: ParameterInput, sim: Simulation) => void;
+  /** Called after a live parameter changes in the running model. */
+  readonly onLiveChange?: (name: string, value: ParameterInput, root: RootScape) => void;
   /** Called after pending values are applied by a restart. */
   readonly onApply?: (values: Values) => void;
 }
@@ -140,7 +140,7 @@ const differs = (a: unknown, b: unknown): boolean => a !== b;
 
 /**
  * Edits a model's parameters against a runner: live parameters change the
- * running simulation immediately; the others collect as pending changes that
+ * running model immediately; the others collect as pending changes that
  * one restart applies.
  */
 export function useParameterController<S extends ParameterSchema>(
@@ -150,9 +150,9 @@ export function useParameterController<S extends ParameterSchema>(
 ): ParameterController {
   const schema = model.parameters as ParameterSchema;
   const defaults = useMemo(() => resolveParameters(schema) as unknown as Values, [schema]);
-  // What the running simulation uses: read afresh, so restarts from anywhere are seen.
-  const { sim } = useRunnerState(runner);
-  const applied = sim.parameters as unknown as Values;
+  // What the running model uses: read afresh, so restarts from anywhere are seen.
+  const { root } = useRunnerState(runner);
+  const applied = root.parameters as unknown as Values;
   const [drafts, setDrafts] = useState<Values>({});
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const { onLiveChange, onApply } = options;
@@ -185,7 +185,7 @@ export function useParameterController<S extends ParameterSchema>(
           delete next[name];
           return next;
         });
-        onLiveChange?.(name, value, runner.sim as unknown as Simulation);
+        onLiveChange?.(name, value, runner.root as unknown as RootScape);
         return true;
       }
       setDrafts((previous) => {
@@ -270,22 +270,22 @@ export interface RulesController {
 }
 
 /**
- * Edits how a simulation's scapes run: which rules are on, their order, and
- * how agents are visited. Changes apply to the running simulation at once and
+ * Edits how a model's scapes execute: which rules are selected, their order, the
+ * execution order and style, and the agents per iteration. Changes apply to the running model at once and
  * are kept by the store for restarts until reset. `frame` re-reads the scapes.
  */
 export function useRulesController(
-  sim: Simulation,
+  root: RootScape,
   store: SettingsStore,
   frame?: number,
   onChange?: (scape: string, before: ScapeSettings, after: ScapeSettings) => void,
 ): RulesController {
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | undefined>(undefined);
-  const defaults = store.defaultsOf(sim);
+  const defaults = store.defaultsOf(root);
   const scapes = useMemo(
     () =>
-      sim.scapes
+      root.scapes
         .filter((scape) => scape.rules.length > 0)
         .map((scape) => ({
           scape,
@@ -294,16 +294,16 @@ export function useRulesController(
         })),
     // `frame` and `version` mark changes to the live scapes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sim, defaults, frame, version],
+    [root, defaults, frame, version],
   );
 
   const change = useCallback(
     (name: string, patch: Partial<ScapeSettings>) => {
       try {
-        const scape = sim.scape(name);
+        const scape = root.findScape(name);
         const before = readScapeSettings(scape);
         const after = { ...before, ...patch };
-        store.set(sim, name, after);
+        store.set(root, name, after);
         setError(undefined);
         onChange?.(name, before, after);
       } catch (problem) {
@@ -311,35 +311,35 @@ export function useRulesController(
       }
       setVersion((n) => n + 1);
     },
-    [sim, store, onChange],
+    [root, store, onChange],
   );
 
   const toggle = useCallback(
     (name: string, index: number, enabled: boolean) => {
-      const current = readScapeSettings(sim.scape(name));
+      const current = readScapeSettings(root.findScape(name));
       change(name, {
         rules: current.rules.map((rule, i) => (i === index ? { ...rule, enabled } : rule)),
       });
     },
-    [sim, change],
+    [root, change],
   );
 
   const move = useCallback(
     (name: string, from: number, to: number) => {
-      const rules = [...readScapeSettings(sim.scape(name)).rules];
+      const rules = [...readScapeSettings(root.findScape(name)).rules];
       const [moved] = rules.splice(from, 1);
       if (!moved || from === to) return;
       rules.splice(Math.max(0, Math.min(rules.length, to)), 0, moved);
       change(name, { rules });
     },
-    [sim, change],
+    [root, change],
   );
 
   const reset = useCallback(() => {
-    store.reset(sim);
+    store.reset(root);
     setError(undefined);
     setVersion((n) => n + 1);
-  }, [sim, store]);
+  }, [root, store]);
 
   return { scapes, customized: store.customized, error, change, toggle, move, reset };
 }
@@ -347,35 +347,42 @@ export function useRulesController(
 /** The settings of a rule as a stable key, for lists and drag-and-drop. */
 export { ruleKey };
 
-/** Plain words for a scape's execution settings, alongside their proper terms. */
+/**
+ * Plain words for a scape's execution settings, alongside their proper terms.
+ * `randomOrder` says whether the scape's selected rules ask for a random tour.
+ */
 export function describeExecution(
   settings: ScapeSettings,
   size: number,
+  randomOrder = true,
 ): {
   readonly who: string;
   readonly order: string;
   readonly schedule: string;
 } {
-  const count = settings.activations;
+  const count = settings.agentsPerIteration;
+  const draw = settings.executionStyle === 'repeatedDraw';
   let who: string;
   if (count === null) {
-    who =
-      settings.sampling === 'draw'
-        ? `${size} random draws, so some agents act more than once and others not at all`
-        : 'every agent, once';
+    who = draw
+      ? `${size} random draws, so some agents act more than once and others not at all`
+      : 'every agent, once';
   } else {
-    who =
-      settings.sampling === 'draw'
-        ? `${count} random draws (an agent may be drawn more than once)`
-        : `${count} different agents chosen at random`;
+    who = draw
+      ? `${count} random draws (an agent may be drawn more than once)`
+      : `${count} different agents chosen at random`;
   }
-  const order =
-    settings.order === 'shuffled'
-      ? 'in a fresh random order each tick'
-      : 'in the same order every tick';
+  const order = randomOrder
+    ? 'in a fresh random order each period'
+    : 'in the same order every period';
   const schedule =
-    settings.schedule === 'byAgent'
+    settings.executionOrder === 'byAgent'
       ? 'each agent runs all its rules before the next agent starts'
       : 'each rule runs for every agent before the next rule starts';
   return { who, order, schedule };
+}
+
+/** Whether any selected rule of a scape asks for its agents in a random order. */
+export function needsRandomOrder(scape: Scape): boolean {
+  return scape.rules.some((entry) => entry.enabled && entry.rule.randomExecution !== false);
 }

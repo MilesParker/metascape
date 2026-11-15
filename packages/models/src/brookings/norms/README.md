@@ -17,8 +17,8 @@ Collection: Brookings Institution models (from Ascape). Licence: BSD (`LICENSES/
 
 ## Mapping notes
 
-- The ring is a 1 x 191 wrapped strip in a `GridScape`. Ascape's one-dimensional `findWithin` (`ListBase.findWithinImpl`) returns the cells within circular distance `d`, or the whole ring when `2d+1` covers it; `GridScape.within` with the chebyshev metric gives the same set. Radius 0 (for the `radius - 1` sample) is the agent itself.
-- The scape runs with `REPEATED_DRAW`: each tick, 191 agents are drawn with replacement and act immediately (`sampling: 'draw'`).
+- The ring is a 1 x 191 wrapped strip, a scape with an `Array2DMoore` space. Ascape's one-dimensional `findWithin` (`ListBase.findWithinImpl`) returns the cells within circular distance `d`, or the whole ring when `2d+1` covers it; `Array2D.findWithin` with the chebyshev metric gives the same set. Radius 0 (for the `radius - 1` sample) is the agent itself.
+- The scape runs with `REPEATED_DRAW`: each period, 191 agents are drawn with replacement and act immediately (`sampling: 'draw'`).
 - Sampled cell lists are recomputed whenever the radius is set, as in the legacy `findNearCells`.
 - Legacy scrolling one-dimensional history views have no counterpart; the strategy and radius strips show the current state only.
 

@@ -55,7 +55,7 @@ const configB = step(
   configA,
   'Bionland: Step B',
   'Model_B',
-  'The bions now take a random walk each tick, one step to a random neighboring site when it is free, on light gray tiles.',
+  'The bions now take a random walk each period, one step to a random neighboring site when it is free, on light gray tiles.',
   'Step B: adds the random walk rule and light gray tiles.',
   { walk: true, tiles: 'lightGray' },
 );
@@ -127,7 +127,7 @@ const configJ = step(
   configI,
   'Bionland: Step J',
   'Model_J',
-  'Tile energy now spreads: each tile takes the average of its neighbors every tick. The chart now counts bions.',
+  'Tile energy now spreads: each tile takes the average of its neighbors every period. The chart now counts bions.',
   'Step J: adds plain diffusion (each tile becomes the mean of its neighbors) of all three energies; the chart switches to bion counts; the ball images are commented out.',
   { diffusion: 'average', occupantShape: 'square' },
 );
@@ -193,27 +193,27 @@ const configDataFull = step(
   configFull,
   'Bionland: Data Run (Full Model)',
   'ModelData',
-  'The full model, set to stop after 50 ticks as the legacy data-collecting launcher did.',
+  'The full model, set to stop after 50 periods as the legacy data-collecting launcher did.',
   'ModelData: the full model with a stop period of 50 (the legacy launcher also wrote data files and swept the diffusion constant, which are not ported).',
-  { stopAt: 50 },
+  { stopPeriod: 50 },
 );
 
 const configDataN = step(
   configM,
   'Bionland: Data Run N',
   'ModelData_N',
-  'Step M on a 10 x 10 lattice, set to stop after 2000 ticks as the legacy data-collecting launcher did.',
+  'Step M on a 10 x 10 lattice, set to stop after 2000 periods as the legacy data-collecting launcher did.',
   'ModelData_N: Step M with a 10 x 10 lattice and a stop period of 2000 (the legacy launcher also wrote data files, which is not ported).',
-  { width: 10, height: 10, stopAt: 2000 },
+  { width: 10, height: 10, stopPeriod: 2000 },
 );
 
 const configDataO = step(
   configM,
   'Bionland: Data Run O',
   'ModelData_O',
-  'Step M on a 10 x 10 lattice, set to stop after 500 ticks as the legacy data-collecting launcher did.',
+  'Step M on a 10 x 10 lattice, set to stop after 500 periods as the legacy data-collecting launcher did.',
   'ModelData_O: Step M with a 10 x 10 lattice and a stop period of 500 (the legacy launcher also wrote data files and swept the diffusion constant, which are not ported).',
-  { width: 10, height: 10, stopAt: 500 },
+  { width: 10, height: 10, stopPeriod: 500 },
 );
 
 /** Step configurations, for tests that want to vary one. */
@@ -265,9 +265,9 @@ export const stepM = latticeModel(configM);
 export const stepP = latticeModel(configP);
 /** The full Bionland model. */
 export const fullModel = latticeModel(configFull);
-/** The full model, stopping at tick 50. */
+/** The full model, stopping at period 50. */
 export const dataRunFull = latticeModel(configDataFull);
-/** Step M on a 10 x 10 lattice, stopping at tick 2000. */
+/** Step M on a 10 x 10 lattice, stopping at period 2000. */
 export const dataRunN = latticeModel(configDataN);
-/** Step M on a 10 x 10 lattice, stopping at tick 500. */
+/** Step M on a 10 x 10 lattice, stopping at period 500. */
 export const dataRunO = latticeModel(configDataO);

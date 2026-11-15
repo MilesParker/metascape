@@ -4,20 +4,22 @@
 // Original: Copyright (c) Metascape LLC and others, made available under the Eclipse Public License
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  type Array2D,
+  Array2DVonNeumann,
+  CellOccupant,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
   real,
   Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
 /** One site of the game space. */
-export class PlayCell extends Cell {}
+export class PlayCell extends HostCell {}
 
 /** The settings a player reads from the model. */
 export interface PlayerSettings {
@@ -34,7 +36,7 @@ export interface PlayerSettings {
 }
 
 /** A player: it either cooperates or defects with every neighbour it plays. */
-export class Player extends Occupant<PlayCell> {
+export class Player extends CellOccupant<PlayCell> {
   cooperate = false;
   age = 0;
   wealth = 0;
@@ -42,7 +44,7 @@ export class Player extends Occupant<PlayCell> {
   born = false;
 
   constructor(
-    private readonly world: GridScape<PlayCell>,
+    private readonly world: Array2D<PlayCell>,
     private readonly scapeOfPlayers: () => Scape<Player>,
     private readonly settings: PlayerSettings,
   ) {
@@ -58,15 +60,15 @@ export class Player extends Occupant<PlayCell> {
   }
 
   /** The "Move To Random Location" initial rule. */
-  moveToRandomLocation(): void {
+  override moveToRandomLocation(): void {
     if (this.born) return;
-    const cell = this.world.randomAvailableCell();
+    const cell = this.world.findRandomAvailable();
     if (cell) this.moveTo(cell);
   }
 
   /** The "Random Walk" rule: step to a random available von Neumann neighbour, if any. */
-  randomWalk(): void {
-    this.moveToRandomAvailableNeighbor();
+  override randomWalk(): void {
+    this.randomWalkAvailable();
   }
 
   /** The "Play Neighbor" rule: play one randomly chosen neighbouring player; both are paid. */
@@ -105,7 +107,7 @@ export class Player extends Occupant<PlayCell> {
    */
   fission(): void {
     if (this.wealth < this.settings.fissionWealth) return;
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const free = here.neighbors.filter((cell) => cell.isAvailable);
     if (free.length === 0) return;
@@ -135,7 +137,7 @@ export class Player extends Occupant<PlayCell> {
 export const demographicPd = defineModel({
   name: "Demographic Prisoner's Dilemma (AMP)",
   description:
-    "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every tick; wealthy players have children, poor or old ones die, and strategies are inherited with some mutation.",
+    "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every period; wealthy players have children, poor or old ones die, and strategies are inherited with some mutation.",
   provenance: {
     authors: 'Joshua M. Epstein',
     citation:
@@ -245,18 +247,16 @@ export const demographicPd = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
-    const world = sim.addScape(
-      new GridScape<PlayCell>({
+  build(root) {
+    const p = root.parameters;
+    const world = root.add(
+      new Scape<PlayCell>({
         name: 'Game Spaces',
-        width: p.width,
-        height: p.height,
-        wrap: true,
-        neighborhood: 'vonNeumann',
-        schedule: 'byRule',
-        order: 'sequential',
-        create: () => new PlayCell(),
+        space: new Array2DVonNeumann<PlayCell>(),
+        extent: [p.width, p.height],
+        periodic: true,
+        prototypeAgent: () => new PlayCell(),
+        executionOrder: 'byRule',
       }),
     );
     const settings: PlayerSettings = {
@@ -271,13 +271,12 @@ export const demographicPd = defineModel({
       mutationRate: p.mutationRate,
       deathAge: p.deathAge,
     };
-    const players: Scape<Player> = sim.addScape(
+    const players: Scape<Player> = root.add(
       new Scape<Player>({
         name: 'Players',
         size: p.playerCount,
-        schedule: 'byRule',
-        order: 'shuffled',
-        create: () => new Player(world, () => players, settings),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new Player(world.space as Array2D<PlayCell>, () => players, settings),
       }),
     );
     players.addInitialRule('Initialize', (a) => a.initializeState());
@@ -289,18 +288,22 @@ export const demographicPd = defineModel({
     players.addRule('Die At Age', (a) => a.dieAtAge());
     players.addRule('Die At Wealth 0', (a) => a.dieAtWealth0());
 
-    sim.data.count(players, 'Players Population');
-    sim.data.count(players, 'Player is Cooperate', (a) => a.cooperate);
-    sim.data.count(players, 'Player is not Cooperate', (a) => !a.cooperate);
-    sim.data.measure(players, 'Player Age', (a) => a.age, { statistics: ['mean', 'min', 'max'] });
-    sim.data.measure(players, 'Player Wealth', (a) => a.wealth, {
-      statistics: ['mean', 'min', 'max'],
-    });
+    players.addStatCollector(stat.count('Players Population'));
+    players.addStatCollector(stat.count('Player is Cooperate', (a) => a.cooperate));
+    players.addStatCollector(stat.count('Player is not Cooperate', (a) => !a.cooperate));
+    players.addStatCollector(
+      stat.measure('Player Age', (a) => a.age, { statistics: ['mean', 'min', 'max'] }),
+    );
+    players.addStatCollector(
+      stat.measure('Player Wealth', (a) => a.wealth, {
+        statistics: ['mean', 'min', 'max'],
+      }),
+    );
 
-    sim.addView(
+    root.addView(
       gridView<PlayCell, Player>({
         title: 'Game space',
-        grid: world,
+        scape: world,
         // Style: cells are green; cooperators are blue ovals and defectors red ovals.
         cellColor: () => colors.green,
         occupantColor: (a) => (a.cooperate ? colors.blue : colors.red),
@@ -311,7 +314,7 @@ export const demographicPd = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Cooperators and defectors',
         series: ['Player is Cooperate', 'Player is not Cooperate'],
@@ -319,8 +322,8 @@ export const demographicPd = defineModel({
         yMin: 0,
       }),
     );
-    sim.addView(timeSeriesView({ title: 'Population', series: ['Players Population'], yMin: 0 }));
-    sim.addView(
+    root.addView(timeSeriesView({ title: 'Population', series: ['Players Population'], yMin: 0 }));
+    root.addView(
       timeSeriesView({
         title: 'Player wealth and age',
         series: ['Player Wealth.mean', 'Player Age.mean'],

@@ -5,11 +5,13 @@ import {
   colors,
   connectSmallWorld,
   defineModel,
+  Graph,
   int,
-  Network,
   networkView,
   real,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
@@ -20,7 +22,7 @@ export type Health = (typeof Health)[keyof typeof Health];
 /** One member of the population. */
 export class Person extends Agent {
   health: Health = Health.Susceptible;
-  /** Ticks spent in the current state (infected, or recovered with waning immunity). */
+  /** Periods spent in the current state (infected, or recovered with waning immunity). */
   timer = 0;
   /** Whether this person has ever been infected. */
   everInfected = false;
@@ -60,14 +62,14 @@ const parameters = {
     min: 0,
     max: 1,
     label: 'Transmission probability',
-    description: 'Chance per tick that one infected neighbor infects a susceptible person.',
+    description: 'Chance per period that one infected neighbor infects a susceptible person.',
   }),
   infectiousPeriod: int(8, {
     live: true,
     min: 1,
     max: 200,
     label: 'Infectious period',
-    description: 'Ticks a person stays infected before recovering.',
+    description: 'Periods a person stays infected before recovering.',
   }),
   immunityPeriod: int(0, {
     live: true,
@@ -75,7 +77,7 @@ const parameters = {
     max: 1000,
     label: 'Immunity period',
     description:
-      'Ticks of immunity after recovery before becoming susceptible again; 0 is permanent.',
+      'Periods of immunity after recovery before becoming susceptible again; 0 is permanent.',
   }),
 } as const;
 
@@ -101,7 +103,7 @@ export const epidemic = defineModel({
     },
     {
       title: 'Immunity that wears off',
-      description: 'Recovered people become susceptible again after 20 ticks; look for waves.',
+      description: 'Recovered people become susceptible again after 20 periods; look for waves.',
       parameters: { immunityPeriod: 20 },
     },
     {
@@ -111,22 +113,17 @@ export const epidemic = defineModel({
     },
   ],
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const people = sim.addScape(
-      new Scape<Person>({ name: 'people', size: p.population, create: () => new Person() }),
+  build(root) {
+    const p = root.parameters;
+    const people = root.add(
+      new Scape<Person>({
+        name: 'people',
+        space: new Graph<Person>(),
+        size: p.population,
+        prototypeAgent: () => new Person(),
+      }),
     );
-    const network = new Network<Person>();
-    sim.setup(() => {
-      const members = [...people.members];
-      connectSmallWorld(network, members, p.k, p.rewire, people.random);
-      for (const person of members) person.contacts = network.neighbors(person);
-      const order = people.random.shuffle([...members]);
-      for (const person of order.slice(0, Math.min(p.initialInfected, order.length))) {
-        person.health = person.nextHealth = Health.Infected;
-        person.everInfected = true;
-      }
-    });
+    const contacts = people.space as Graph<Person>;
 
     people.addRule({
       name: 'epidemic',
@@ -141,20 +138,20 @@ export const epidemic = defineModel({
             }
             if (
               infected > 0 &&
-              people.random.chance(1 - Math.pow(1 - sim.parameters.transmission, infected))
+              people.random.chance(1 - Math.pow(1 - root.parameters.transmission, infected))
             ) {
               person.nextHealth = Health.Infected;
             }
             break;
           }
           case Health.Infected:
-            if (person.timer + 1 >= sim.parameters.infectiousPeriod)
+            if (person.timer + 1 >= root.parameters.infectiousPeriod)
               person.nextHealth = Health.Recovered;
             break;
           case Health.Recovered:
             if (
-              sim.parameters.immunityPeriod > 0 &&
-              person.timer + 1 >= sim.parameters.immunityPeriod
+              root.parameters.immunityPeriod > 0 &&
+              person.timer + 1 >= root.parameters.immunityPeriod
             ) {
               person.nextHealth = Health.Susceptible;
             }
@@ -172,16 +169,37 @@ export const epidemic = defineModel({
       },
     });
 
-    sim.data.count(people, 'susceptible', (a) => a.health === Health.Susceptible);
-    sim.data.count(people, 'infected', (a) => a.health === Health.Infected);
-    sim.data.count(people, 'recovered', (a) => a.health === Health.Recovered);
-    sim.data.count(people, 'everInfected', (a) => a.everInfected);
+    people.addStatCollector(stat.count('susceptible', (a) => a.health === Health.Susceptible));
+    people.addStatCollector(stat.count('infected', (a) => a.health === Health.Infected));
+    people.addStatCollector(stat.count('recovered', (a) => a.health === Health.Recovered));
+    people.addStatCollector(stat.count('everInfected', (a) => a.everInfected));
 
-    sim.observe({
-      stepped(s) {
-        if (s.data.latest('infected') === 0) s.stop('no one is infected');
+    // The outbreak as a whole: it wires the contact network and seeds the infection once
+    // everyone exists, and stops the model after the iteration in which the last case recovers.
+    const outbreak = root.add(new Scape({ name: 'outbreak', space: new Singleton() }));
+    outbreak.addInitialRule(
+      'wire and seed',
+      () => {
+        const members = [...people.members];
+        connectSmallWorld(contacts, members, p.k, p.rewire, people.random);
+        for (const person of members) person.contacts = contacts.neighbors(person);
+        const order = people.random.shuffle([...members]);
+        for (const person of order.slice(0, Math.min(p.initialInfected, order.length))) {
+          person.health = person.nextHealth = Health.Infected;
+          person.everInfected = true;
+        }
       },
-    });
+      { randomExecution: false },
+    );
+    outbreak.addRule(
+      'stop when over',
+      () => {
+        if (people.count((a) => a.health === Health.Infected) === 0) {
+          root.stop('no one is infected');
+        }
+      },
+      { randomExecution: false, causesRemoval: false },
+    );
 
     const palette = {
       susceptible: colors.blue,
@@ -189,11 +207,11 @@ export const epidemic = defineModel({
       recovered: colors.green,
     };
     const series = ['susceptible', 'infected', 'recovered'];
-    sim.addView(
+    people.addView(
       networkView<Person>({
         title: 'Contact network',
         nodes: people,
-        network,
+        graph: contacts,
         legend: [
           { color: colors.blue, label: 'Susceptible' },
           { color: colors.red, label: 'Infected' },
@@ -203,9 +221,9 @@ export const epidemic = defineModel({
         layout: 'circle',
       }),
     );
-    sim.addView(
+    people.addView(
       timeSeriesView({ title: 'S, I and R over time', series, colors: palette, yMin: 0 }),
     );
-    sim.addView(barsView({ title: 'S, I and R now', series, colors: palette }));
+    people.addView(barsView({ title: 'S, I and R now', series, colors: palette }));
   },
 });

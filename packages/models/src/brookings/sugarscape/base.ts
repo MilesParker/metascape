@@ -5,20 +5,22 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  Array2DVonNeumann,
+  type Color,
   colors,
   gradient,
-  GridScape,
   gridView,
   int,
-  real,
-  rgb,
-  Scape,
-  timeSeriesView,
-  type Color,
   type LegendEntry,
   type Provenance,
+  real,
+  rgb,
+  type RootScape,
   type Rule,
-  type Simulation,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
   type ViewSpec,
 } from '@metascape/engine';
 import {
@@ -272,28 +274,26 @@ export function spiceSettings(p: SpiceParameterValues): [SugarSettings, SpiceSet
 
 /** Creates the sugar lattice (rule order) and the agent scape (agent order, shuffled). */
 function createScapes(
-  sim: Simulation,
+  root: RootScape,
   world: SugarscapeWorld,
   kinds: Kinds,
   names: [string, string],
 ): SugarscapeWorld {
-  world.grid = sim.addScape(
-    new GridScape<SugarCell>({
+  world.grid = root.add(
+    new Scape<SugarCell>({
       name: names[0],
-      width: LATTICE_SIZE,
-      height: LATTICE_SIZE,
-      wrap: true,
-      neighborhood: 'vonNeumann',
-      schedule: 'byRule',
-      order: 'sequential',
-      create: () => kinds.cell(world),
+      space: new Array2DVonNeumann<SugarCell>(),
+      extent: [LATTICE_SIZE, LATTICE_SIZE],
+      periodic: true,
+      prototypeAgent: () => kinds.cell(world),
+      executionOrder: 'byRule',
     }),
   );
-  world.agents = sim.addScape(
+  world.agents = root.add(
     new Scape<SugarAgent>({
       name: names[1],
       size: world.settings.initialPopulation,
-      create: () => kinds.agent(world),
+      prototypeAgent: () => kinds.agent(world),
     }),
   );
   return world;
@@ -305,30 +305,29 @@ function createScapes(
  * (sugar, age, vision, sugar metabolism).
  */
 export function createGasBase(
-  sim: Simulation,
+  root: RootScape,
   settings: SugarSettings,
   kinds: Kinds = SUGAR_KINDS,
 ): SugarscapeWorld {
-  const world = createScapes(sim, new SugarscapeWorld(sim, settings), kinds, [
+  const world = createScapes(root, new SugarscapeWorld(root, settings), kinds, [
     'Sugar Cells',
     'Sugar Agents',
   ]);
-  const { data } = sim;
-  data.count(world.agents, 'population');
-  data.measure(world.agents, 'sugar', (a) => a.sugar.stock);
-  data.measure(world.agents, 'age', (a) => a.age);
-  data.measure(world.agents, 'vision', (a) => a.vision);
-  data.measure(world.agents, 'sugarMetabolism', (a) => a.sugarMetabolism);
+  world.agents.addStatCollector(stat.count('population'));
+  world.agents.addStatCollector(stat.measure('sugar', (a) => a.sugar.stock));
+  world.agents.addStatCollector(stat.measure('age', (a) => a.age));
+  world.agents.addStatCollector(stat.measure('vision', (a) => a.vision));
+  world.agents.addStatCollector(stat.measure('sugarMetabolism', (a) => a.sugarMetabolism));
   return world;
 }
 
 /**
  * `GAS_SexBase.createScape`: `SexualAgent`s with movement, harvest,
  * metabolism, promiscuous reproduction and death by starvation or old age;
- * sugar grows back one unit per tick.
+ * sugar grows back one unit per period.
  */
-export function createGasSexBase(sim: Simulation, settings: SugarSettings): SugarscapeWorld {
-  const world = createGasBase(sim, settings, {
+export function createGasSexBase(root: RootScape, settings: SugarSettings): SugarscapeWorld {
+  const world = createGasBase(root, settings, {
     cell: SUGAR_KINDS.cell,
     agent: (w) => new SexualAgent(w),
   });
@@ -349,24 +348,23 @@ export function createGasSexBase(sim: Simulation, settings: SugarSettings): Suga
  * the statistics `SpiceAgent` and `SpiceCell` register.
  */
 export function createGasSpiceBase(
-  sim: Simulation,
+  root: RootScape,
   settings: [SugarSettings, SpiceSettings],
   kinds: Kinds = SPICE_KINDS,
 ): SugarscapeWorld {
-  const world = createScapes(sim, new SugarscapeWorld(sim, settings[0], settings[1]), kinds, [
+  const world = createScapes(root, new SugarscapeWorld(root, settings[0], settings[1]), kinds, [
     'SpiceScape',
     'Spice Agents',
   ]);
-  const { data } = sim;
   const all = ['count', 'sum', 'mean', 'min', 'max', 'variance'] as const;
   const agents = world.agents as Scape<SpiceAgent>;
-  const cells = world.grid as GridScape<SpiceCell>;
-  data.count(agents, 'population');
-  data.measure(agents, 'sugar', (a) => a.sugar.stock, { statistics: all });
-  data.measure(agents, 'spice', (a) => a.spice.stock, { statistics: all });
-  data.measure(agents, 'mrs', (a) => a.calculateMRS(), { statistics: all });
-  data.measure(cells, 'cellSugar', (c) => c.sugar.quantity, { statistics: all });
-  data.measure(cells, 'cellSpice', (c) => c.spice.quantity, { statistics: all });
+  const cells = world.grid as unknown as Scape<SpiceCell>;
+  agents.addStatCollector(stat.count('population'));
+  agents.addStatCollector(stat.measure('sugar', (a) => a.sugar.stock, { statistics: all }));
+  agents.addStatCollector(stat.measure('spice', (a) => a.spice.stock, { statistics: all }));
+  agents.addStatCollector(stat.measure('mrs', (a) => a.calculateMRS(), { statistics: all }));
+  cells.addStatCollector(stat.measure('cellSugar', (c) => c.sugar.quantity, { statistics: all }));
+  cells.addStatCollector(stat.measure('cellSpice', (c) => c.spice.quantity, { statistics: all }));
   return world;
 }
 
@@ -479,18 +477,18 @@ export function gasSpiceBaseViews(): ViewPlan {
 }
 
 /** Adds the planned lattice view, then the planned charts. */
-export function showViews(sim: Simulation, world: SugarscapeWorld, plan: ViewPlan): void {
-  sim.addView(
+export function showViews(root: RootScape, world: SugarscapeWorld, plan: ViewPlan): void {
+  root.addView(
     gridView<SugarCell, SugarAgent>({
       title: plan.title,
-      grid: world.grid,
+      scape: world.grid,
       cellColor: plan.cellColor,
       occupantColor: plan.agentColor,
       occupantShape: 'circle',
       legend: [...plan.agentLegend, ...plan.cellLegend],
     }),
   );
-  for (const view of plan.extra) sim.addView(view);
+  for (const view of plan.extra) root.addView(view);
 }
 
 /** The charts of the `GAS_Base` statistics (the legacy model had them only as data). */
@@ -525,11 +523,13 @@ export function spiceStatisticsCharts(): ViewSpec[] {
   ];
 }
 
-/** Stops the run after `period` ticks (Ascape `setStopPeriod`). */
-export function stopAtPeriod(sim: Simulation, period: number): void {
-  sim.observe({
-    stepped(s) {
-      if (s.tick >= period) s.stop(`stop period ${period} reached`);
+/** Stops the run after `period` iterations (Ascape `setStopPeriod`). */
+export function stopAtPeriod(root: RootScape, period: number): void {
+  root.add(new Scape({ name: 'Stop period', space: new Singleton() })).addRule(
+    'Stop at period',
+    () => {
+      if (root.iteration >= period) root.stop(`stop period ${period} reached`);
     },
-  });
+    { randomExecution: false, causesRemoval: false },
+  );
 }

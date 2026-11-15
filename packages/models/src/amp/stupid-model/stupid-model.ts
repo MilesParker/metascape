@@ -5,18 +5,20 @@
 // Original: Copyright (c) Metascape LLC and others, made available under the Eclipse Public License
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
-  colors,
-  GridScape,
-  gridView,
-  int,
-  Occupant,
-  rgb,
-  Scape,
-  timeSeriesView,
+  type Array2D,
+  Array2DMoore,
+  CellOccupant,
   type Color,
+  colors,
+  gridView,
+  HostCell,
+  int,
   type Provenance,
-  type Simulation,
+  rgb,
+  type RootScape,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 
 /** The parameters shared by every StupidModel variant, with the legacy defaults. */
@@ -59,7 +61,7 @@ export interface StupidVariant {
   readonly label: string;
   /** What the "Grow" rule does: nothing (no such rule), `increment` the size by one, or `eat` habitat food. */
   readonly grow: 'none' | 'increment' | 'eat';
-  /** Habitats grow food by a uniform draw in [0, rate) every tick; `undefined` means they do nothing. */
+  /** Habitats grow food by a uniform draw in [0, rate) every period; `undefined` means they do nothing. */
   readonly foodRate: number | undefined;
   /** Whether bugs are coloured by size (white to red) or plain red. */
   readonly sizeColor: boolean;
@@ -81,20 +83,20 @@ export function stupidProvenance(file: string, note?: string): Provenance {
 }
 
 /** A patch of habitat: one cell of the grid. */
-export class Habitat extends Cell {
+export class Habitat extends HostCell {
   /** Food on the cell (models 3 and 5). */
   foodAvailability = 0;
 }
 
 /** A bug: it moves to a random free cell within its vision, then grows. */
-export class Bug extends Occupant<Habitat> {
+export class Bug extends CellOccupant<Habitat> {
   /** Size: whole numbers in models 2 and 3, real in model 5. */
   size = 0;
-  /** The most food a bug eats in a tick (model 5). */
+  /** The most food a bug eats in a period (model 5). */
   readonly maxConsumption = 0.2;
 
   constructor(
-    private readonly world: GridScape<Habitat>,
+    private readonly world: Array2D<Habitat>,
     private readonly vision: number,
   ) {
     super();
@@ -102,15 +104,15 @@ export class Bug extends Occupant<Habitat> {
 
   /** The "Initialize" initial rule: move to a random available habitat. */
   placeRandomly(): void {
-    const home = this.world.randomAvailableCell();
+    const home = this.world.findRandomAvailable();
     if (home) this.moveTo(home);
   }
 
   /** The movement rule: a random available habitat within `bugVision`, if any. */
   move(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
-    const open = this.world.within(here, this.vision).filter((cell) => cell.isAvailable);
+    const open = this.world.findWithin(here, this.vision).filter((cell) => cell.isAvailable);
     if (open.length > 0) this.moveTo(this.random.pick(open));
   }
 
@@ -121,7 +123,7 @@ export class Bug extends Occupant<Habitat> {
 
   /** Model 5: eat `min(food, maxConsumption)` from the current habitat and grow by it. */
   eat(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const availability = here.foodAvailability;
     const consumption = availability < this.maxConsumption ? availability : this.maxConsumption;
@@ -136,40 +138,41 @@ const sizeColor = (size: number): Color => {
   return rgb(255, channel, channel);
 };
 
-/** Builds one StupidModel variant on a simulation. */
+/** Builds one StupidModel variant on a root scape. */
 export function buildStupidModel(
-  sim: Simulation<typeof stupidParameters>,
+  root: RootScape<typeof stupidParameters>,
   variant: StupidVariant,
 ): void {
-  const p = sim.parameters;
+  const p = root.parameters;
 
   // As in the original, the habitat grid is added first, so it steps before the bugs.
-  const world = sim.addScape(
-    new GridScape<Habitat>({
+  const world = root.add(
+    new Scape<Habitat>({
       name: 'Habitats',
-      width: p.width,
-      height: p.height,
-      wrap: true,
-      neighborhood: 'moore',
-      schedule: 'byRule',
-      order: 'sequential',
-      create: () => new Habitat(),
+      space: new Array2DMoore<Habitat>(),
+      extent: [p.width, p.height],
+      periodic: true,
+      prototypeAgent: () => new Habitat(),
+      executionOrder: 'byRule',
     }),
   );
   const rate = variant.foodRate;
   if (rate !== undefined) {
-    world.addRule('determindFoodProduction', (habitat) => {
-      habitat.foodAvailability += habitat.random.float() * rate;
-    });
+    world.addRule(
+      'determindFoodProduction',
+      (habitat) => {
+        habitat.foodAvailability += habitat.random.float() * rate;
+      },
+      { randomExecution: false },
+    );
   }
 
-  const bugs = sim.addScape(
+  const bugs = root.add(
     new Scape<Bug>({
       name: 'Bugs',
       size: p.bugCount,
-      schedule: 'byRule',
-      order: 'shuffled',
-      create: () => new Bug(world, p.bugVision),
+      executionOrder: 'byRule',
+      prototypeAgent: () => new Bug(world.space as Array2D<Habitat>, p.bugVision),
     }),
   );
   bugs.addInitialRule('Initialize', (bug) => bug.placeRandomly());
@@ -177,21 +180,25 @@ export function buildStupidModel(
   if (variant.grow === 'increment') bugs.addRule('Grow', (bug) => bug.growByOne());
   if (variant.grow === 'eat') bugs.addRule('Grow', (bug) => bug.eat());
 
-  sim.data.count(bugs, 'Bugs Population');
+  bugs.addStatCollector(stat.count('Bugs Population'));
   const series = ['Bugs Population'];
   if (variant.grow !== 'none') {
-    sim.data.measure(bugs, 'Bug size', (bug) => bug.size, { statistics: ['mean', 'max'] });
+    bugs.addStatCollector(
+      stat.measure('Bug size', (bug) => bug.size, { statistics: ['mean', 'max'] }),
+    );
   }
   if (variant.foodRate !== undefined) {
-    sim.data.measure(world, 'Food', (habitat) => habitat.foodAvailability, {
-      statistics: ['mean'],
-    });
+    world.addStatCollector(
+      stat.measure('Food', (habitat) => habitat.foodAvailability, {
+        statistics: ['mean'],
+      }),
+    );
   }
 
-  sim.addView(
+  root.addView(
     gridView<Habitat, Bug>({
       title: variant.label,
-      grid: world,
+      scape: world,
       cellColor: () => variant.habitatColor,
       occupantColor: (bug) => (variant.sizeColor ? sizeColor(bug.size) : colors.red),
       occupantShape: 'circle',
@@ -205,7 +212,7 @@ export function buildStupidModel(
     }),
   );
   if (variant.grow !== 'none') {
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Bug size',
         series: ['Bug size.mean', 'Bug size.max'],
@@ -213,7 +220,7 @@ export function buildStupidModel(
     );
   }
   if (variant.foodRate !== undefined) {
-    sim.addView(timeSeriesView({ title: 'Food per habitat', series: ['Food.mean'] }));
+    root.addView(timeSeriesView({ title: 'Food per habitat', series: ['Food.mean'] }));
   }
-  sim.addView(timeSeriesView({ title: 'Population', series, yMin: 0 }));
+  root.addView(timeSeriesView({ title: 'Population', series, yMin: 0 }));
 }

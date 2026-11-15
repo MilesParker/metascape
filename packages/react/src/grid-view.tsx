@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  HostCell,
   toCss,
+  type Array2D,
   type Cell,
-  type GridScape,
+  type CellOccupant,
   type GridViewSpec,
-  type Occupant,
 } from '@metascape/engine';
-import type { Agent, Scape, Simulation } from '@metascape/engine';
+import type { Agent, Scape, RootScape } from '@metascape/engine';
 import { useCallback, useEffect, useMemo, useRef, type ReactElement, type Ref } from 'react';
 import {
   CanvasSurface,
@@ -35,6 +36,16 @@ export function packColor(color: number): number {
     : ((r << 24) | (g << 16) | (b << 8) | 0xff) >>> 0;
 }
 
+/** The lattice of a grid view: the space of its scape. */
+export function latticeOf(spec: GridViewSpec): Array2D<Cell> {
+  return spec.scape.space as unknown as Array2D<Cell>;
+}
+
+/** The occupants standing on a cell; none for a cell that cannot be stood on. */
+export function occupantsOf(cell: Cell): readonly CellOccupant[] {
+  return cell instanceof HostCell ? cell.occupants : [];
+}
+
 /** Options of {@link paintGrid}. */
 export interface PaintGridOptions {
   /** Paint each occupant as one pixel on its cell. Default true. */
@@ -52,7 +63,8 @@ export function paintGrid(
   pixels: Uint32Array,
   options: PaintGridOptions = {},
 ): void {
-  const { width, height } = spec.grid;
+  const grid = latticeOf(spec);
+  const { width, height } = grid;
   if (pixels.length < width * height) {
     throw new RangeError(`pixels holds ${pixels.length} values, ${width * height} needed`);
   }
@@ -60,11 +72,11 @@ export function paintGrid(
   pixels.fill(background, 0, width * height);
   const { cellColor, occupantColor } = spec;
   const withOccupants = options.occupants !== false && occupantColor !== undefined;
-  for (const cell of spec.grid.members) {
+  for (const cell of grid.members) {
     const index = cell.y * width + cell.x;
     if (cellColor) pixels[index] = packColor(cellColor(cell));
     if (withOccupants) {
-      for (const occupant of cell.occupants) {
+      for (const occupant of occupantsOf(cell)) {
         const color = occupantColor(occupant);
         if (color !== undefined) pixels[index] = packColor(color);
       }
@@ -74,7 +86,7 @@ export function paintGrid(
 
 /** The cell under a point given as fractions (0..1) of the grid's width and height. */
 export function cellAtFraction(
-  grid: GridScape<Cell>,
+  grid: Array2D<Cell>,
   fractionX: number,
   fractionY: number,
 ): Cell | undefined {
@@ -90,16 +102,16 @@ export interface GridViewProps {
   /** Changes on each frame to trigger a redraw. */
   readonly frame: number;
   /** Called when a cell is clicked, with its first occupant if there is one. */
-  readonly onPick?: ((cell: Cell, occupant: Occupant | undefined) => void) | undefined;
+  readonly onPick?: ((cell: Cell, occupant: CellOccupant | undefined) => void) | undefined;
   /** Called with the cell under the pointer, and with nothing when it leaves. */
-  readonly onHover?: ((cell?: Cell, occupant?: Occupant) => void) | undefined;
+  readonly onHover?: ((cell?: Cell, occupant?: CellOccupant) => void) | undefined;
   /** An agent or cell to mark as selected. */
   readonly selected?: Agent | undefined;
   /**
-   * The running simulation. Given one, a lattice one row high is drawn as a
-   * history: each tick's row below the last, so change over time is visible.
+   * The running model. Given one, a lattice one row high is drawn as a
+   * history: each period's row below the last, so change over time is visible.
    */
-  readonly sim?: Simulation | undefined;
+  readonly root?: RootScape | undefined;
   readonly fit?: 'width' | 'contain' | undefined;
   readonly zoomable?: boolean | undefined;
   readonly handleRef?: Ref<CanvasSurfaceHandle> | undefined;
@@ -127,16 +139,16 @@ function makeBuffer(width: number, height: number): Buffer | undefined {
 
 /** Where an agent or cell sits on a grid, if it does, and whether it is the cell itself. */
 export function gridPositionOf(
-  grid: GridScape<Cell>,
+  grid: Array2D<Cell>,
   agent: Agent | undefined,
 ): { x: number; y: number; cell: boolean } | undefined {
   if (!agent) return undefined;
-  const own = grid as unknown as Scape<Agent>;
+  const own = grid.scape as unknown as Scape<Agent>;
   if (agent.scape === own) {
     const cell = agent as unknown as Cell;
     return { x: cell.x, y: cell.y, cell: true };
   }
-  const cell = (agent as unknown as { cell?: Cell | null }).cell;
+  const cell = (agent as unknown as { hostCell?: Cell | undefined }).hostCell;
   if (cell && cell.scape === own) return { x: cell.x, y: cell.y, cell: false };
   return undefined;
 }
@@ -191,13 +203,13 @@ export function drawSelection(
   context.restore();
 }
 
-/** Rows of a one-row lattice, one per tick, kept for {@link GridView}'s history. */
+/** Rows of a one-row lattice, one per period, kept for {@link GridView}'s history. */
 class RowHistory {
   readonly width: number;
   readonly depth: number;
   readonly pixels: Uint32Array;
-  /** Ticks recorded, oldest first; at most `depth`. */
-  readonly ticks: number[] = [];
+  /** Periods recorded, oldest first; at most `depth`. */
+  readonly periods: number[] = [];
   readonly #row: Uint32Array;
 
   constructor(width: number, depth: number) {
@@ -207,19 +219,19 @@ class RowHistory {
     this.#row = new Uint32Array(width);
   }
 
-  record(spec: GridViewSpec, tick: number): void {
-    if (this.ticks[this.ticks.length - 1] === tick) return;
+  record(spec: GridViewSpec, period: number): void {
+    if (this.periods[this.periods.length - 1] === period) return;
     paintGrid(spec, this.#row);
-    if (this.ticks.length === this.depth) {
+    if (this.periods.length === this.depth) {
       this.pixels.copyWithin(0, this.width);
-      this.ticks.shift();
+      this.periods.shift();
     }
-    this.pixels.set(this.#row, this.ticks.length * this.width);
-    this.ticks.push(tick);
+    this.pixels.set(this.#row, this.periods.length * this.width);
+    this.periods.push(period);
   }
 }
 
-/** How many ticks of history a one-row lattice keeps: about square, within limits. */
+/** How many periods of history a one-row lattice keeps: about square, within limits. */
 export function historyDepth(width: number): number {
   return Math.max(100, Math.min(600, width));
 }
@@ -227,7 +239,7 @@ export function historyDepth(width: number): number {
 /**
  * A lattice drawn with one image pixel per cell, scaled up crisply, with
  * occupants on top as shapes once cells are big enough on screen. A lattice
- * one row high, given the simulation, becomes a scrolling history of its rows.
+ * one row high, given the root, becomes a scrolling history of its rows.
  */
 export function GridView({
   spec,
@@ -235,27 +247,27 @@ export function GridView({
   onPick,
   onHover,
   selected,
-  sim,
+  root,
   fit,
   zoomable,
   handleRef,
   onCameraChange,
 }: GridViewProps): ReactElement {
   const bufferRef = useRef<Buffer | undefined>(undefined);
-  const { grid } = spec;
-  const historic = sim !== undefined && grid.height === 1;
-  // The history belongs to one simulation and spec; it fills as the simulation steps.
+  const grid = latticeOf(spec);
+  const historic = root !== undefined && grid.height === 1;
+  // The history belongs to one run and spec; it fills as the model iterates.
   const history = useMemo(() => {
-    if (!historic || !sim) return undefined;
+    if (!historic || !root) return undefined;
     const rows = new RowHistory(grid.width, historyDepth(grid.width));
-    rows.record(spec, sim.tick);
+    rows.record(spec, root.period);
     return rows;
-  }, [historic, sim, spec, grid.width]);
+  }, [historic, root, spec, grid.width]);
 
   useEffect(() => {
-    if (!history || !sim) return;
-    return sim.observe({ stepped: (s) => history.record(spec, s.tick) });
-  }, [history, sim, spec]);
+    if (!history || !root) return;
+    return root.addScapeListener({ scapeIterated: (s) => history.record(spec, s.period) });
+  }, [history, root, spec]);
 
   const rowsShown = history?.depth ?? grid.height;
 
@@ -277,7 +289,7 @@ export function GridView({
         context.imageSmoothingEnabled = false;
         context.drawImage(buffer.canvas, 0, 0, size.width, size.height);
         // Mark the latest row so "now" is easy to find.
-        const latest = history.ticks.length - 1;
+        const latest = history.periods.length - 1;
         const accent = themeColor(context.canvas, '--ms-accent', FALLBACK_ACCENT);
         context.fillStyle = accent;
         context.globalAlpha = 0.9;
@@ -330,7 +342,7 @@ export function GridView({
         for (const cell of grid.members) {
           const cx = (cell.x + 0.5) * cellPixels;
           const cy = (cell.y + 0.5) * cellHeight;
-          for (const occupant of cell.occupants) {
+          for (const occupant of occupantsOf(cell)) {
             const color = spec.occupantColor(occupant);
             if (color === undefined) continue;
             context.fillStyle = toCss(color);
@@ -377,7 +389,7 @@ export function GridView({
   const pick = useCallback(
     (fx: number, fy: number) => {
       const cell = cellAt(fx, fy);
-      if (cell && onPick) onPick(cell, cell.occupant);
+      if (cell && onPick) onPick(cell, occupantsOf(cell)[0]);
     },
     [cellAt, onPick],
   );
@@ -386,7 +398,7 @@ export function GridView({
     (fx?: number, fy?: number) => {
       if (!onHover) return;
       const cell = fx === undefined || fy === undefined ? undefined : cellAt(fx, fy);
-      if (cell) onHover(cell, cell.occupant);
+      if (cell) onHover(cell, occupantsOf(cell)[0]);
       else onHover();
     },
     [cellAt, onHover],
@@ -400,7 +412,7 @@ export function GridView({
       onPointer={onPick ? pick : undefined}
       onHover={onHover ? hover : undefined}
       label={
-        history ? `${spec.title}: one row per tick, time running down the picture` : spec.title
+        history ? `${spec.title}: one row per period, time running down the picture` : spec.title
       }
       fit={fit}
       zoomable={zoomable}

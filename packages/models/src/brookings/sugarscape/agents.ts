@@ -5,7 +5,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Occupant, type Rule } from '@metascape/engine';
+import { CellOccupant, type Rule } from '@metascape/engine';
 import { findMaximum, findRandomUnoccupiedCell, lineOfSight, UNIQUE_SERIES } from './ascape-space';
 import type { PollutableSugarCell, SpiceCell, SugarCell } from './cells';
 import type { Exchange, Exchange2 } from './exchange';
@@ -25,7 +25,7 @@ function randomIs(agent: SugarAgent): boolean {
  * `SugarAgent`: a basic Sugarscape citizen with vision, sugar metabolism, a
  * sugar stock, an age and a death age.
  */
-export class SugarAgent extends Occupant<SugarCell> {
+export class SugarAgent extends CellOccupant<SugarCell> {
   readonly world: SugarscapeWorld;
   sugar = new CommodityStock();
   age = 0;
@@ -50,7 +50,7 @@ export class SugarAgent extends Occupant<SugarCell> {
   override initialize(): void {
     const s = this.world.settings;
     this.sugar = new CommodityStock();
-    const cell = findRandomUnoccupiedCell(this.world.grid, this.random);
+    const cell = findRandomUnoccupiedCell(this.world.lattice, this.random);
     if (cell) this.moveTo(cell);
     this.deathAge = randomInRange(this, s.minDeathAge, s.maxDeathAge);
     this.age = randomInRange(this, 0, this.deathAge);
@@ -61,7 +61,7 @@ export class SugarAgent extends Occupant<SugarCell> {
 
   /** Takes all the sugar on its cell. */
   harvest(): void {
-    if (this.cell) this.sugar.putStock(this.cell.takeSugar());
+    if (this.hostCell) this.sugar.putStock(this.hostCell.takeSugar());
   }
 
   /**
@@ -71,21 +71,21 @@ export class SugarAgent extends Occupant<SugarCell> {
    * the agent stays put (Ascape `findMaximumWithin` then `isAvailable`).
    */
   movement(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
-    const visible = lineOfSight(this.world.grid, here, this.vision);
+    const visible = lineOfSight(this.world.lattice, here, this.vision);
     const best = findMaximum(visible, (cell) => cell.getPerceivedValue(), this.random);
     if (best?.isAvailable) this.moveTo(best);
   }
 
-  /** Pays the sugar metabolism and ages one tick. */
+  /** Pays the sugar metabolism and ages one period. */
   metabolism(): void {
     this.sugar.reduceStock(this.sugarMetabolism);
     this.age++;
   }
 }
 
-/** `PollutingSugarAgent`: pollutes its cell by `beta` (50) times its metabolism every tick. */
+/** `PollutingSugarAgent`: pollutes its cell by `beta` (50) times its metabolism every period. */
 export class PollutingSugarAgent extends SugarAgent {
   /** `beta`: pollution per unit of sugar metabolized. */
   static readonly BETA = 50;
@@ -95,7 +95,7 @@ export class PollutingSugarAgent extends SugarAgent {
   }
 
   override metabolism(): void {
-    (this.cell as PollutableSugarCell | undefined)?.addPollution(
+    (this.hostCell as PollutableSugarCell | undefined)?.addPollution(
       this.sugarMetabolism * PollutingSugarAgent.BETA,
     );
     super.metabolism();
@@ -211,13 +211,13 @@ export class SpiceAgent extends SugarAgent {
   }
 
   override harvest(): void {
-    const cell = this.cell as SpiceCell | undefined;
+    const cell = this.hostCell as SpiceCell | undefined;
     if (!cell) return;
     this.sugar.putStock(cell.takeSugar());
     this.spice.putStock(cell.takeSpice());
   }
 
-  /** Pays both metabolisms. Ages twice per tick: the legacy code increments age here and in the superclass. */
+  /** Pays both metabolisms. Ages twice per period: the legacy code increments age here and in the superclass. */
   override metabolism(): void {
     super.metabolism();
     this.spice.reduceStock(this.spiceMetabolism);
@@ -230,13 +230,13 @@ export class SpiceAgent extends SugarAgent {
    * directions at each distance in a random order.
    */
   override movement(): void {
-    const here = this.cell as SpiceCell | undefined;
+    const here = this.hostCell as SpiceCell | undefined;
     if (!here) return;
     const sugarStock = this.sugar.stock;
     const spiceStock = this.spice.stock;
     const value = (cell: SpiceCell): number =>
       cell.getPotentialValue(sugarStock, spiceStock, this.sugarMetabolism, this.spiceMetabolism);
-    const visible = lineOfSight(this.world.grid, here, this.vision) as SpiceCell[];
+    const visible = lineOfSight(this.world.lattice, here, this.vision) as SpiceCell[];
     let bestValue = value(visible[0]!);
     for (let i = 1; i < visible.length; i++) {
       const cell = visible[i]!;

@@ -10,8 +10,9 @@ interface ParameterBase {
   readonly unit?: string;
   /**
    * Whether the model reads this parameter afresh as it runs, so that a change
-   * made with `Simulation.setParameter` takes effect without a restart. Only set
-   * it where that is true; other parameters shape the world when it is built.
+   * takes effect without a restart. It is information for tools: any
+   * parameter can be set at any time, but one that is not live shapes the
+   * model when it is built. Only set it where it is true.
    */
   readonly live?: boolean;
 }

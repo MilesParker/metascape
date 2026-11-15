@@ -12,6 +12,7 @@ import {
   int,
   real,
   Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 
@@ -213,26 +214,29 @@ export const markets = defineModel({
     note: "The model carries no description, author or citation. The disconnect act removes all of the seller's links (as the generated code does), and the generated code does not check an instrument's status or the buyer's funds in the buy; the metaabm does, and this port follows the metaabm.",
   },
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const traders = sim.addScape(
+  build(root) {
+    const p = root.parameters;
+    const traders = root.add(
       new Scape<Trader>({
         name: 'traders',
         size: p.traderCount,
-        schedule: 'byRule',
-        create: () => new Trader(),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new Trader(),
       }),
     );
-    const firms = sim.addScape(
+    const firms = root.add(
       new Scape<Firm>({
         name: 'firms',
         size: p.firmCount,
-        schedule: 'byRule',
-        create: () => new Firm(),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new Firm(),
       }),
     );
-    const instruments = sim.addScape(
-      new Scape<Instrument>({ name: 'instruments', create: () => new Instrument() }),
+    const instruments = root.add(
+      new Scape<Instrument>({
+        name: 'instruments',
+        prototypeAgent: () => new Instrument(),
+      }),
     );
     const instrumentHolders = new AdjacencyGraph();
     const firmInstruments = new AdjacencyGraph();
@@ -265,12 +269,12 @@ export const markets = defineModel({
       // The AMP rule calls itself until the firm has no shares left, or there is no trader.
       while (firm.sharesInternal > 0) {
         firm.sharesInternal -= p.firmSharesperInstrument;
-        const instrument = instruments.spawn();
+        const instrument = instruments.newAgent();
         instrument.status = InstrumentStatus.held;
         firmInstruments.addNeighborSafe(firm, instrument, false);
         instrument.offerPrice = firm.lastPrice;
         instrument.shares = p.firmSharesperInstrument;
-        const holder = traders.randomMember();
+        const holder = traders.findRandom();
         if (!holder) break;
         instrumentHolders.addNeighborSafe(holder, instrument, false);
         holder.instrumentCount++;
@@ -299,7 +303,7 @@ export const markets = defineModel({
     });
     traders.addRule('buy', (trader) => {
       targetBuyFirms.clearNeighbors(trader);
-      const offered = firms.randomMember();
+      const offered = firms.findRandom();
       if (offered) targetBuyFirms.addNeighborSafe(trader, offered, false);
     });
     traders.addRule('execute', (trader) => {
@@ -338,42 +342,68 @@ export const markets = defineModel({
     });
 
     const summary = ['mean', 'min', 'max'] as const;
-    sim.data.count(traders, 'traders');
-    sim.data.measure(traders, 'traderFunds', (t) => t.funds, { statistics: [...summary, 'sum'] });
-    sim.data.measure(traders, 'traderInstrumentCount', (t) => t.instrumentCount, {
-      statistics: summary,
-    });
-    sim.data.count(firms, 'firms');
-    sim.data.measure(firms, 'firmSharesOutstanding', (f) => f.sharesOutstanding, {
-      statistics: summary,
-    });
-    sim.data.measure(firms, 'firmLastEarnings', (f) => f.lastEarnings, { statistics: summary });
-    sim.data.measure(firms, 'firmLastPrice', (f) => f.lastPrice, { statistics: summary });
-    sim.data.measure(firms, 'firmSharesInternal', (f) => f.sharesInternal, { statistics: summary });
-    sim.data.count(instruments, 'instruments');
-    sim.data.count(instruments, 'instrumentsAsk', (i) => i.status === InstrumentStatus.ask);
-    sim.data.count(instruments, 'instrumentsHeld', (i) => i.status === InstrumentStatus.held);
-    sim.data.count(instruments, 'instrumentsBid', (i) => i.status === InstrumentStatus.bid);
-    sim.data.measure(instruments, 'instrumentOfferPrice', (i) => i.offerPrice, {
-      statistics: summary,
-    });
-    sim.data.measure(instruments, 'instrumentTotalPrice', (i) => i.totalPrice, {
-      statistics: summary,
-    });
-    sim.data.value('instrumentsWithHolder', () => {
-      let held = 0;
-      for (const instrument of instruments.members) {
-        if (instrumentHolders.neighbors(instrument).length > 0) held++;
-      }
-      return held;
-    });
-    sim.data.distribution(traders, 'traderFundsDistribution', (t) => t.funds, {
-      bins: 20,
-      min: 0,
-      max: Math.max(1, p.initialTraderFundsMaximum * 2),
-    });
+    traders.addStatCollector(stat.count('traders'));
+    traders.addStatCollector(
+      stat.measure('traderFunds', (t) => t.funds, { statistics: [...summary, 'sum'] }),
+    );
+    traders.addStatCollector(
+      stat.measure('traderInstrumentCount', (t) => t.instrumentCount, {
+        statistics: summary,
+      }),
+    );
+    firms.addStatCollector(stat.count('firms'));
+    firms.addStatCollector(
+      stat.measure('firmSharesOutstanding', (f) => f.sharesOutstanding, {
+        statistics: summary,
+      }),
+    );
+    firms.addStatCollector(
+      stat.measure('firmLastEarnings', (f) => f.lastEarnings, { statistics: summary }),
+    );
+    firms.addStatCollector(
+      stat.measure('firmLastPrice', (f) => f.lastPrice, { statistics: summary }),
+    );
+    firms.addStatCollector(
+      stat.measure('firmSharesInternal', (f) => f.sharesInternal, { statistics: summary }),
+    );
+    instruments.addStatCollector(stat.count('instruments'));
+    instruments.addStatCollector(
+      stat.count('instrumentsAsk', (i) => i.status === InstrumentStatus.ask),
+    );
+    instruments.addStatCollector(
+      stat.count('instrumentsHeld', (i) => i.status === InstrumentStatus.held),
+    );
+    instruments.addStatCollector(
+      stat.count('instrumentsBid', (i) => i.status === InstrumentStatus.bid),
+    );
+    instruments.addStatCollector(
+      stat.measure('instrumentOfferPrice', (i) => i.offerPrice, {
+        statistics: summary,
+      }),
+    );
+    instruments.addStatCollector(
+      stat.measure('instrumentTotalPrice', (i) => i.totalPrice, {
+        statistics: summary,
+      }),
+    );
+    root.addStatCollector(
+      stat.value('instrumentsWithHolder', () => {
+        let held = 0;
+        for (const instrument of instruments.members) {
+          if (instrumentHolders.neighbors(instrument).length > 0) held++;
+        }
+        return held;
+      }),
+    );
+    traders.addStatCollector(
+      stat.distribution('traderFundsDistribution', (t) => t.funds, {
+        bins: 20,
+        min: 0,
+        max: Math.max(1, p.initialTraderFundsMaximum * 2),
+      }),
+    );
 
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Firm last price',
         series: ['firmLastPrice.mean', 'firmLastPrice.min', 'firmLastPrice.max'],
@@ -384,7 +414,7 @@ export const markets = defineModel({
         },
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Instruments asked and held',
         series: ['instrumentsAsk', 'instrumentsHeld'],
@@ -392,7 +422,7 @@ export const markets = defineModel({
         yMin: 0,
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Trader funds',
         series: ['traderFunds.mean', 'traderFunds.min', 'traderFunds.max'],
@@ -403,7 +433,7 @@ export const markets = defineModel({
         },
       }),
     );
-    sim.addView(
+    root.addView(
       barsView({
         title: 'Instruments by status now',
         series: ['instrumentsAsk', 'instrumentsHeld', 'instrumentsBid'],
@@ -414,7 +444,7 @@ export const markets = defineModel({
         },
       }),
     );
-    sim.addView(
+    root.addView(
       histogramView({
         title: 'Trader funds',
         distribution: 'traderFundsDistribution',

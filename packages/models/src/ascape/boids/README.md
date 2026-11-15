@@ -24,7 +24,7 @@ Licence: the legacy code is BSD (`LICENSES/ascape-license.txt`), Copyright 1998-
 - Headings are not normalized and `headAway` / `headToward` use raw coordinates without wrapping, as in Ascape. Cohesion's centre of mass can lie outside the world; distance uses Ascape's periodic formula (`periodicDistance`) which tolerates that. "Self" is excluded from searches by coordinate equality (tolerance 1e-10), and nearest-ties are broken at random, as in Ascape.
 - Alignment uses the sentinel -1 for "no neighbours", so a true average of exactly -1 would be ignored; kept.
 - Movement wraps once (as `Continuous2D.normalize`); the engine then maps a coordinate exactly equal to 50 to 0.
-- Obstacles: the legacy model starts with none and obstacles are added by shift-click in the view. Here there is no parameter; `placeObstacle(sim, x, y)` does the same (obstacles added after setup).
+- Obstacles: the legacy model starts with none and obstacles are added by shift-click in the view. Here there is no parameter; `placeObstacle(root, x, y)` does the same (obstacles added after setup).
 - `agentSize` is a legacy parameter used only for drawing; it sets the view radius.
 - The legacy model has no statistics or charts. Added by the port: heading agreement (polarization) and mean nearest team-mate distance, per team.
 - World size 50 by 50 is fixed (not a legacy parameter). Initial positions are uniform in the plane; headings uniform in [0, 2 pi).

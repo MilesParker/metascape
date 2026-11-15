@@ -11,6 +11,6 @@ export const family = defineFamily({
   collection: 'Brookings Institution models (from Ascape)',
   tags: ['tutorial'],
   description:
-    'The smallest Ascape example: one agent whose happiness doubles every tick and an environment that sometimes breaks it.',
+    'The smallest Ascape example: one agent whose happiness doubles every period and an environment that sometimes breaks it.',
   models: [simple],
 });

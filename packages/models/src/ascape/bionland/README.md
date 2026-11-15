@@ -33,9 +33,9 @@ The Java steps are near-copies of each other. Here `lattice-model.ts` holds the 
 | Step R                | Model_R      | Random directed graph of 50 nodes whose links are rebuilt now and then; the species chase on it.                                                                                                        |
 | Step S                | Model_S      | Small-world graph (ring plus random edges) instead of the random graph.                                                                                                                                 |
 | Full Model            | Model        | Ring of 190, density 28%, consumption 0.023, no random walk, each species eats only its prey, random vision, `fissionEnergy`, energy gain scales what is left behind, rule order death, fission, leave. |
-| Data Run (Full Model) | ModelData    | The full model stopping at tick 50.                                                                                                                                                                     |
-| Data Run N            | ModelData_N  | Step M on 10 x 10, stopping at tick 2000.                                                                                                                                                               |
-| Data Run O            | ModelData_O  | Step M on 10 x 10, stopping at tick 500.                                                                                                                                                                |
+| Data Run (Full Model) | ModelData    | The full model stopping at period 50.                                                                                                                                                                   |
+| Data Run N            | ModelData_N  | Step M on 10 x 10, stopping at period 2000.                                                                                                                                                             |
+| Data Run O            | ModelData_O  | Step M on 10 x 10, stopping at period 500.                                                                                                                                                              |
 
 ## Legacy classes
 
@@ -49,7 +49,7 @@ The Java steps are near-copies of each other. Here `lattice-model.ts` holds the 
 | ModelData                | `steps.ts` (Data Run (Full Model))              | ported (stop period only; see below)    |
 | ModelData_N, ModelData_O | `steps.ts` (Data Run N, Data Run O)             | ported (grid size and stop period only) |
 
-`ModelData*` are launchers that subclass the full model or Step M, change settings (grid size 10 x 10, stop period) and add console output, data output files (`DataOutputView`) and, for `ModelData` and `ModelData_O`, a parameter sweep of `DiffusionConstant` from 0 to 1 in steps of 0.05. The settings are ported as models; the console, files and sweep are not (use `sim.data.toCSV()` and run the model with different `diffusionConstant` values instead).
+`ModelData*` are launchers that subclass the full model or Step M, change settings (grid size 10 x 10, stop period) and add console output, data output files (`DataOutputView`) and, for `ModelData` and `ModelData_O`, a parameter sweep of `DiffusionConstant` from 0 to 1 in steps of 0.05. The settings are ported as models; the console, files and sweep are not (use `root.data.toCSV()` and run the model with different `diffusionConstant` values instead).
 
 ## Deviations and kept legacy behaviour
 
@@ -57,7 +57,7 @@ The Java steps are near-copies of each other. Here `lattice-model.ts` holds the 
 - **Search reach is capped.** Ascape's Euclidean neighbour-rank table is complete only to distance sqrt(61) (about 7.8) and then jumps to junk entries; searches here stop at that distance, so a vision above 8 behaves like 8 on 2D lattices. Nearest searches use the strict test `distance < vision` on a 2D lattice and `<= vision` on the ring and in graphs, as the Java does.
 - **Von Neumann quirks (Step L).** Nearest searches and stepping toward or away are the same as on a Moore lattice (both lattices are periodic and Ascape's code is identical there); "move toward / away from maximum energy" only sees cells in the same row or column (Ascape's "line of sight" distance for von Neumann), which is what the Java does; an away step may be diagonal.
 - **Moving away where the origin is the target** (the energy maximum is the bion's own tile): Ascape picks a random neighbor and moves only if it is free; kept.
-- **Initial placement** is done once in `sim.setup` (shuffled bions, each to a uniformly random free site), equivalent to Ascape's initial rule `MOVE_RANDOM_LOCATION_RULE`; it is not an initial rule so that children born by fission are not re-placed. If no free site remains a bion dies, as in Ascape.
+- **Initial placement** is done once in `root.setup` (shuffled bions, each to a uniformly random free site), equivalent to Ascape's initial rule `MOVE_RANDOM_LOCATION_RULE`; it is not an initial rule so that children born by fission are not re-placed. If no free site remains a bion dies, as in Ascape.
 - **Fission** halves the energy between parent and child, placing the child on a random free neighbor, only when one exists. In the tutorial steps the child is a clone of the parent (vision 8); in the full model the child re-initializes (random vision) as `child.initialize()` does.
 - **Float constants** (`0.28f`, `0.02f`, `0.015f`, `0.023f`) are used as plain decimals.
 - **Step E and F** differ only in drawing. Ball images, 15 px cells, custom draw features, the energy rings of Step M, the slider customizers of Steps L, M, P and the full model, and the time-scrolling 1D view are replaced by a `gridView` (tile colours as in the legacy colour features, occupants in species colours) and are otherwise not ported. In Step M the rings shrinking with stored energy are not shown.
@@ -70,4 +70,4 @@ The Java steps are near-copies of each other. Here `lattice-model.ts` holds the 
 
 ## Tests
 
-`bionland.test.ts`: every model builds and runs 25 ticks, is deterministic for a seed and differs for another; initial populations; single occupancy; tile energy stays in 0 to 1; diffusion conserves energy and evaporation drains it; fission and the full model's population change; data-run stop periods; the lattice search and step helpers; the graph search and step helpers; Step S's ring.
+`bionland.test.ts`: every model builds and runs 25 periods, is deterministic for a seed and differs for another; initial populations; single occupancy; tile energy stays in 0 to 1; diffusion conserves energy and evaporation drains it; fission and the full model's population change; data-run stop periods; the lattice search and step helpers; the graph search and step helpers; Step S's ring.

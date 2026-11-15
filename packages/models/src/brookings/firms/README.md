@@ -20,7 +20,7 @@ Legacy `FixedStretchyView`s show firms as columns in fixed slots (or with gaps r
 
 ## Deviations and kept legacy behaviour
 
-- `employees` (500) is a parameter; legacy fixed it. One twentieth act per tick, chosen without replacement (legacy partial tour).
+- `employees` (500) is a parameter; legacy fixed it. One twentieth act per period, chosen without replacement (legacy partial tour).
 - Comparison firms: Ascape's list space returns the previous and next firm in order of formation, wrapping around, or all others if there are three or fewer firms. Ported that way (the "friends" option, off in the legacy code, is not ported).
 - Kept: `Function.maximize` golden-section search is ported line by line, including its odd bookkeeping of probe values.
 - Kept: an employee who founds a new firm resets effort to its preference theta, not the maximized effort.

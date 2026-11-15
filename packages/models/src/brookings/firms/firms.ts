@@ -7,16 +7,17 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   Agent,
+  Array2DVonNeumann,
   colors,
   defineModel,
   gradient,
-  GridScape,
   gridView,
   histogramView,
+  HostCell,
   int,
   Scape,
+  stat,
   timeSeriesView,
-  Cell,
 } from '@metascape/engine';
 
 /** Economy of scale factor (legacy `UtilityFunction.sigma`). */
@@ -156,7 +157,7 @@ export class Firm extends Agent {
     if (this.employees.length === 0) this.die();
   }
 
-  /** Passive per-tick bookkeeping (legacy `Firm.iterate`). */
+  /** Passive per-period bookkeeping (legacy `Firm.iterate`). */
   iterate(): void {
     this.age++;
     this.lpEffort = this.effort();
@@ -312,47 +313,52 @@ export const firmsModel = defineModel({
       max: 5000,
       label: 'Employees',
       description:
-        'Number of employees. Fixed at 500 in the legacy model; one twentieth of them act in each tick.',
+        'Number of employees. Fixed at 500 in the legacy model; one twentieth of them act in each period.',
     }),
   },
-  build(sim) {
-    const n = sim.parameters.employees;
-    const firms = sim.addScape(new Scape<Firm>({ name: 'firms', order: 'sequential' }));
+  build(root) {
+    const n = root.parameters.employees;
+    const firms = root.add(new Scape<Firm>({ name: 'firms' }));
     const world: FirmsWorld = { firms, slots: [] };
-    firms.addRule('Iterate', (firm) => firm.iterate());
-    const employees = sim.addScape(
+    firms.addRule('Iterate', (firm) => firm.iterate(), { randomExecution: false });
+    const employees = root.add(
       new Scape<Employee>({
         name: 'employees',
         size: n,
-        create: () => new Employee(world),
-        activations: Math.floor(n / 20),
-        sampling: 'tour',
+        prototypeAgent: () => new Employee(world),
+        agentsPerIteration: Math.floor(n / 20),
+        executionStyle: 'completeTour',
       }),
     );
     employees.addRule('Iterate', (employee) => employee.iterate());
 
-    sim.data.count(firms, 'firms');
-    sim.data.measure(firms, 'firm size', (f) => f.size, {
-      statistics: ['mean', 'max', 'stdDev'],
-    });
-    sim.data.measure(firms, 'firm unit output', (f) => f.avgOutput, {
-      statistics: ['mean', 'min', 'max'],
-    });
-    sim.data.measure(employees, 'effort', (e) => e.effort(), { statistics: ['mean'] });
-    sim.data.distribution(firms, 'firm sizes', (f) => f.size, {
-      bins: 25,
-      min: 1,
-      max: Math.max(26, Math.floor(n / 5) + 1),
-    });
+    firms.addStatCollector(stat.count('firms'));
+    firms.addStatCollector(
+      stat.measure('firm size', (f) => f.size, {
+        statistics: ['mean', 'max', 'stdDev'],
+      }),
+    );
+    firms.addStatCollector(
+      stat.measure('firm unit output', (f) => f.avgOutput, {
+        statistics: ['mean', 'min', 'max'],
+      }),
+    );
+    employees.addStatCollector(stat.measure('effort', (e) => e.effort(), { statistics: ['mean'] }));
+    firms.addStatCollector(
+      stat.distribution('firm sizes', (f) => f.size, {
+        bins: 25,
+        min: 1,
+        max: Math.max(26, Math.floor(n / 5) + 1),
+      }),
+    );
 
     const side = Math.ceil(Math.sqrt(n));
-    const grid = sim.addScape(
-      new GridScape<Cell>({
+    const grid = root.add(
+      new Scape<HostCell>({
         name: 'firm slots',
-        width: side,
-        height: side,
-        wrap: false,
-        neighborhood: 'vonNeumann',
+        space: new Array2DVonNeumann<HostCell>(),
+        extent: [side, side],
+        periodic: false,
       }),
     );
     const effortColor = gradient(colors.white, colors.blue);
@@ -360,14 +366,14 @@ export const firmsModel = defineModel({
     let maxTick = -1;
     let maxUnit = 0;
     const unitMax = (): number => {
-      if (maxTick !== sim.tick) {
-        maxTick = sim.tick;
+      if (maxTick !== root.iteration) {
+        maxTick = root.iteration;
         maxUnit = maxOf(firms.members, (f) => f.avgOutput);
       }
       return maxUnit;
     };
-    const bySlot = (cell: Cell): Firm | undefined => world.slots[cell.y * side + cell.x];
-    const byAge = (cell: Cell): Firm | undefined => firms.members[cell.y * side + cell.x];
+    const bySlot = (cell: HostCell): Firm | undefined => world.slots[cell.y * side + cell.x];
+    const byAge = (cell: HostCell): Firm | undefined => firms.members[cell.y * side + cell.x];
     const effort = (f: Firm | undefined): number => (f ? effortColor(f.avgEffort) : colors.white);
     const unit = (f: Firm | undefined): number => {
       if (!f) return colors.white;
@@ -384,53 +390,53 @@ export const firmsModel = defineModel({
       { color: outputColor(0), label: 'Lowest output per worker' },
       { color: colors.white, label: 'No firm' },
     ];
-    sim.addView(
-      gridView<Cell>({
+    root.addView(
+      gridView<HostCell>({
         title: 'Firm Effort',
-        grid,
+        scape: grid,
         background: colors.white,
         cellColor: (c) => effort(bySlot(c)),
         legend: effortLegend,
       }),
     );
-    sim.addView(
-      gridView<Cell>({
+    root.addView(
+      gridView<HostCell>({
         title: 'Firm Output',
-        grid,
+        scape: grid,
         background: colors.white,
         cellColor: (c) => unit(bySlot(c)),
         legend: outputLegend,
       }),
     );
-    sim.addView(
-      gridView<Cell>({
+    root.addView(
+      gridView<HostCell>({
         title: 'Firm Effort by Age',
-        grid,
+        scape: grid,
         background: colors.white,
         cellColor: (c) => effort(byAge(c)),
         legend: effortLegend,
       }),
     );
-    sim.addView(
-      gridView<Cell>({
+    root.addView(
+      gridView<HostCell>({
         title: 'Firms Output by Age',
-        grid,
+        scape: grid,
         background: colors.white,
         cellColor: (c) => unit(byAge(c)),
         legend: outputLegend,
       }),
     );
-    sim.addView(
+    root.addView(
       histogramView({ title: 'Firm sizes', distribution: 'firm sizes', color: colors.teal }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Firms and their size',
         series: ['firms', 'firm size.mean', 'firm size.max'],
         yMin: 0,
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Effort and unit output',
         series: ['effort.mean', 'firm unit output.mean', 'firm unit output.max'],

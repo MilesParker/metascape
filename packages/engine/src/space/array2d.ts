@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Scape, type ScapeOptions } from '../../scape';
-import { Cell, placeCell } from './cell';
+import { HostCell, type Cell } from '../cell';
+import { writePosition } from '../located-agent';
+import {
+  dimensions,
+  Space,
+  type FindOptions,
+  type Geometry,
+  type Point,
+  type SpaceSetup,
+} from './space';
 
 /** Which cells count as neighbors: the 8 surrounding cells, or the 4 orthogonal ones. */
 export type Neighborhood = 'moore' | 'vonNeumann';
@@ -8,28 +16,15 @@ export type Neighborhood = 'moore' | 'vonNeumann';
 /** How distance between cells is measured. */
 export type Metric = 'chebyshev' | 'manhattan' | 'euclidean';
 
-/** Options of {@link GridScape.within}. */
-export interface WithinOptions {
-  /** Default: the grid's natural metric (chebyshev for moore, manhattan for vonNeumann). */
+/** Options of {@link Array2D.findWithin}. */
+export interface WithinOptions<C> extends FindOptions<C> {
+  /** Default: the lattice's natural metric (chebyshev for moore, manhattan for vonNeumann). */
   readonly metric?: Metric;
-  /** Include the origin cell. Default false. */
-  readonly includeSelf?: boolean;
 }
 
-export interface GridScapeOptions<C extends Cell = Cell> extends Omit<
-  ScapeOptions<C>,
-  'create' | 'size'
-> {
-  readonly width: number;
-  readonly height: number;
-  /** Edges join up (a torus). Default true. */
-  readonly wrap?: boolean;
-  /** Default `moore`. */
-  readonly neighborhood?: Neighborhood;
+export interface Array2DOptions {
   /** Allow several occupants on one cell. Default false. */
   readonly multiOccupancy?: boolean;
-  /** Creates the cell at a position. Default: a plain {@link Cell}. */
-  readonly create?: (x: number, y: number) => C;
 }
 
 interface Offset {
@@ -64,48 +59,77 @@ function offsetDistance(metric: Metric, dx: number, dy: number): number {
 }
 
 /**
- * A fixed lattice of `width` x `height` cells, in a torus (default) or with
- * hard edges. Coordinates start at the top left; y grows downward.
+ * A fixed lattice of `width` x `height` cells, in a torus (`periodic`, the
+ * default) or with hard edges. The scape's extent gives the width and height.
+ * Coordinates start at the top left; y grows downward.
  *
- * Cells are created in row-major order when the simulation populates the
- * scape (y outer loop, x inner), so `members[y * width + x]` is the cell at
- * (x, y). Membership is fixed afterwards: cells cannot be added or removed.
+ * Cells are created in row-major order when the model populates the scape
+ * (y outer loop, x inner), so `members[y * width + x]` is the cell at (x, y);
+ * the prototype agent is given that index. Without a prototype agent the
+ * cells are plain host cells. Membership is fixed afterwards: cells cannot be
+ * added or removed.
  *
- * Agents that move about on the grid are {@link Occupant}s living in a
- * separate scape. Everything here that picks at random uses the grid's own
- * `random` stream.
+ * Use {@link Array2DMoore} or {@link Array2DVonNeumann}; they differ only in
+ * which cells are neighbors and so in how distance is measured.
  */
-export class GridScape<C extends Cell = Cell> extends Scape<C> {
-  readonly width: number;
-  readonly height: number;
-  readonly wrap: boolean;
-  readonly neighborhood: Neighborhood;
-  readonly multiOccupancy: boolean;
+export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
+  readonly geometry: Geometry = 'array2d';
+  abstract readonly neighborhood: Neighborhood;
 
-  readonly #createCell: (x: number, y: number) => C;
+  readonly #multiOccupancy: boolean;
+  #width = 0;
+  #height = 0;
   readonly #cells: C[] = [];
   readonly #neighborCache: (readonly C[] | undefined)[] = [];
   readonly #templates = new Map<string, readonly Offset[]>();
-  #populating = false;
   #populated = false;
 
-  constructor(options: GridScapeOptions<C>) {
-    const { width, height, wrap, neighborhood, multiOccupancy, create, ...base } = options;
-    super(base);
+  constructor(options: Array2DOptions = {}) {
+    super();
+    this.#multiOccupancy = options.multiOccupancy ?? false;
+  }
+
+  protected override configure(setup: SpaceSetup): void {
+    const [width, height] = dimensions(setup.extent) ?? [Number.NaN, Number.NaN];
     for (const [label, value] of [
       ['width', width],
       ['height', height],
     ] as const) {
       if (!Number.isInteger(value) || value < 1) {
-        throw new RangeError(`GridScape "${this.name}": ${label} must be a positive integer`);
+        throw new RangeError(
+          `Scape "${this.scape.name}": the ${label} of its extent must be a positive integer`,
+        );
       }
     }
-    this.width = width;
-    this.height = height;
-    this.wrap = wrap ?? true;
-    this.neighborhood = neighborhood ?? 'moore';
-    this.multiOccupancy = multiOccupancy ?? false;
-    this.#createCell = create ?? ((): C => new Cell() as C);
+    this.#width = width;
+    this.#height = height;
+  }
+
+  /** Number of columns. */
+  get width(): number {
+    return this.#width;
+  }
+
+  /** Number of rows. */
+  get height(): number {
+    return this.#height;
+  }
+
+  /** Whether the edges join up; the same as `periodic`. */
+  get wrap(): boolean {
+    return this.periodic;
+  }
+
+  override get extent(): readonly number[] {
+    return [this.#width, this.#height];
+  }
+
+  override get multiOccupancy(): boolean {
+    return this.#multiOccupancy;
+  }
+
+  override get fixedMembership(): boolean {
+    return true;
   }
 
   /** The metric used when none is given: chebyshev for moore, manhattan for vonNeumann. */
@@ -113,41 +137,22 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
     return this.neighborhood === 'moore' ? 'chebyshev' : 'manhattan';
   }
 
-  /** Creates every cell, in row-major order. Called by the simulation. */
-  override populate(): void {
-    if (this.#populated) throw new Error(`GridScape "${this.name}" is already populated`);
-    this.#populating = true;
-    try {
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          const cell = this.#createCell(x, y);
-          placeCell(cell, x, y);
-          this.#cells.push(cell);
-          this.add(cell);
-        }
+  /** Creates every cell, in row-major order. Called by the model. */
+  populate(): void {
+    if (this.#populated) throw new Error(`Scape "${this.scape.name}" is already populated`);
+    this.#populated = true;
+    const scape = this.scape;
+    const prototypeAgent = scape.prototypeAgent;
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const cell = prototypeAgent
+          ? prototypeAgent(y * this.width + x)
+          : (new HostCell() as unknown as C);
+        writePosition(cell, x, y);
+        this.#cells.push(cell);
+        scape.add(cell);
       }
-    } finally {
-      this.#populating = false;
-      this.#populated = true;
     }
-  }
-
-  /** Not allowed after population: the lattice is fixed. */
-  override add(agent: C): C {
-    if (!this.#populating) {
-      throw new Error(`GridScape "${this.name}" has fixed membership: cells cannot be added`);
-    }
-    return super.add(agent);
-  }
-
-  /** Not supported: a grid has no `create(index)` function. */
-  override spawn(): C {
-    throw new Error(`GridScape "${this.name}" has fixed membership: cells cannot be spawned`);
-  }
-
-  /** Not allowed: the lattice is fixed. */
-  override remove(_agent: C): boolean {
-    throw new Error(`GridScape "${this.name}" has fixed membership: cells cannot be removed`);
   }
 
   /**
@@ -186,7 +191,7 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
   /**
    * Replaces the neighbors of a cell, for lattices whose wiring is not a plain
    * neighborhood (see {@link wireSmallWorld}). Everything that reads
-   * neighbors, including {@link Cell.neighbors}, sees the new list. The list
+   * neighbors, including `cell.neighbors`, sees the new list. The list
    * may be one-way and may include the cell itself.
    */
   setNeighbors(cell: C, neighbors: readonly C[]): void {
@@ -194,8 +199,8 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
     this.#neighborCache[this.#indexOf(cell)] = Object.freeze([...neighbors]);
   }
 
-  /** Distance between two cells, the shortest way round on a torus. */
-  distance(a: Cell, b: Cell, metric: Metric = this.defaultMetric): number {
+  /** Distance between two cells (or any two positions), the shortest way round on a torus. */
+  distance(a: Point, b: Point, metric: Metric = this.defaultMetric): number {
     let dx = Math.abs(a.x - b.x);
     let dy = Math.abs(a.y - b.y);
     if (this.wrap) {
@@ -210,12 +215,13 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
    * each at most once, in row-major order of their offsets from the origin
    * (nearest row above first). Offset templates are cached per metric and radius.
    */
-  within(cell: C, radius: number, options: WithinOptions = {}): C[] {
+  findWithin(cell: C, radius: number, options: WithinOptions<C> = {}): C[] {
     const metric = options.metric ?? this.defaultMetric;
     const includeSelf = options.includeSelf ?? false;
     this.#indexOf(cell);
     const template = this.#withinTemplate(metric, radius);
-    return this.#collect(cell, template, includeSelf, this.#needsDedupe(radius));
+    const found = this.#collect(cell, template, includeSelf, this.#needsDedupe(radius));
+    return options.condition ? found.filter(options.condition) : found;
   }
 
   /**
@@ -247,7 +253,11 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
    * outward ring by ring by the default metric. Ties at the same distance are
    * broken uniformly at random. `undefined` if there is none within `maxRadius`.
    */
-  nearest(cell: C, condition: (cell: C) => boolean, maxRadius = Infinity): C | undefined {
+  override findNearest(
+    cell: C,
+    condition: (cell: C) => boolean = () => true,
+    maxRadius = Infinity,
+  ): C | undefined {
     this.#indexOf(cell);
     const manhattan = this.defaultMetric === 'manhattan';
     const limit = Math.min(
@@ -268,51 +278,15 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
     return undefined;
   }
 
-  /** A uniformly chosen cell, optionally among those satisfying a condition. */
-  randomCell(condition?: (cell: C) => boolean): C | undefined {
-    return this.randomMember(condition);
-  }
-
   /** A uniformly chosen cell without occupants, if there is one. */
-  randomAvailableCell(): C | undefined {
-    return this.randomMember((cell) => cell.isAvailable);
-  }
-
-  /**
-   * The neighbor of `from` that brings it closest to `to` by the default
-   * metric (random among equals), or `undefined` if no neighbor is closer.
-   */
-  toward(from: C, to: Cell): C | undefined {
-    return this.#step(from, to, -1);
-  }
-
-  /**
-   * The neighbor of `from` that takes it farthest from `to` by the default
-   * metric (random among equals), or `undefined` if no neighbor is farther.
-   */
-  away(from: C, to: Cell): C | undefined {
-    return this.#step(from, to, 1);
-  }
-
-  #step(from: C, to: Cell, sign: 1 | -1): C | undefined {
-    let best = this.distance(from, to);
-    let candidates: C[] = [];
-    for (const other of this.neighbors(from)) {
-      const d = this.distance(other, to);
-      if (d * sign > best * sign) {
-        best = d;
-        candidates = [other];
-      } else if (d === best && candidates.length > 0) {
-        candidates.push(other);
-      }
-    }
-    return candidates.length === 0 ? undefined : this.random.pick(candidates);
+  findRandomAvailable(): C | undefined {
+    return this.scape.findRandom((cell) => cell.isAvailable);
   }
 
   #indexOf(cell: Cell): number {
     const index = cell.y * this.width + cell.x;
     if (this.#cells[index] !== (cell as unknown as C)) {
-      throw new Error(`Cell is not a member of GridScape "${this.name}"`);
+      throw new Error(`Cell is not a member of scape "${this.scape.name}"`);
     }
     return index;
   }
@@ -397,4 +371,14 @@ export class GridScape<C extends Cell = Cell> extends Scape<C> {
     }
     return result;
   }
+}
+
+/** A lattice whose cells have the 8 surrounding cells as neighbors. Distance is the larger of the row and column differences. */
+export class Array2DMoore<C extends Cell = Cell> extends Array2D<C> {
+  readonly neighborhood: Neighborhood = 'moore';
+}
+
+/** A lattice whose cells have the 4 orthogonal cells as neighbors. Distance is the sum of the row and column differences. */
+export class Array2DVonNeumann<C extends Cell = Cell> extends Array2D<C> {
+  readonly neighborhood: Neighborhood = 'vonNeumann';
 }

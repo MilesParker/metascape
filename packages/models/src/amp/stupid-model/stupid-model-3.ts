@@ -10,11 +10,11 @@ import { buildStupidModel, stupidParameters, stupidProvenance } from './stupid-m
 export const stupidModel3 = defineModel({
   name: 'StupidModel 3',
   description:
-    'As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per tick. Bugs neither eat nor look for food.',
+    'As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per period. Bugs neither eat nor look for food.',
   provenance: stupidProvenance('StupidModel3'),
   parameters: stupidParameters,
-  build(sim) {
-    buildStupidModel(sim, {
+  build(root) {
+    buildStupidModel(root, {
       label: 'StupidModel 3',
       grow: 'increment',
       foodRate: 0.01,

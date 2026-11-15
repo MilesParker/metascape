@@ -23,11 +23,11 @@ Citation: Axtell, R. L., Epstein, J. M., & Young, H. P. (2001). The emergence of
 
 ## Mapping of the views
 
-The legacy `SimplexView` plots each agent in a triangle by the proportions of high, medium and low demands in its memory. Each model has a `continuousView` of a bounded 2D space holding one dot per agent, placed at those proportions inside the outline of the triangle, whose corners are labelled (high bottom left, medium bottom right, low on top; light and dark agents in light and dark grey, on white). Tagged models have a second view for the intergroup memory. Dots are moved after each tick and take no part in the dynamics. The legacy view's second argument (the low demand, apparently used for guide lines) is not drawn. Agents whose counts are not yet defined (the legacy view divides by zero) sit at the centre. The commented-out legacy chart (counts of agents whose last demand was low, medium, high) is the time series `low`, `medium`, `high`.
+The legacy `SimplexView` plots each agent in a triangle by the proportions of high, medium and low demands in its memory. Each model has a `continuousView` of a bounded 2D space holding one dot per agent, placed at those proportions inside the outline of the triangle, whose corners are labelled (high bottom left, medium bottom right, low on top; light and dark agents in light and dark grey, on white). Tagged models have a second view for the intergroup memory. Dots are moved after each period and take no part in the dynamics. The legacy view's second argument (the low demand, apparently used for guide lines) is not drawn. Agents whose counts are not yet defined (the legacy view divides by zero) sit at the centre. The commented-out legacy chart (counts of agents whose last demand was low, medium, high) is the time series `low`, `medium`, `high`.
 
 ## Deviations and kept legacy behaviour
 
-- Each tick, `population / 2` agents are drawn independently at random with replacement (legacy `REPEATED_DRAW`), each plays one random other agent (`PLAY_OTHER`).
+- Each period, `population / 2` agents are drawn independently at random with replacement (legacy `REPEATED_DRAW`), each plays one random other agent (`PLAY_OTHER`).
 - `population` (100) is a parameter here; the legacy field was private and fixed.
 - The payoffs were static fields in Java, so `BargainingModelPeyton` setting 0.1/0.3/0.5 leaked into every model later run in the same JVM. Here they are ordinary parameters per model. Defaults: 0.3, 0.5 and 0.7 (high is `1 - low` in the legacy code but is not updated if low changes; kept independent).
 - Estimated payoffs are computed in 32-bit float arithmetic (`Math.fround`), as in the Java `float`, so exact ties break the same way.

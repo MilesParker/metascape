@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Agent } from '../agent';
+import type { HostCell, Cell } from '../cell';
+import type { CellOccupant } from '../cell-occupant';
+import type { LocatedAgent } from '../located-agent';
 import type { Scape } from '../scape';
-import type { ContinuousScape } from '../space/continuous/continuous-scape';
-import type { PointAgent } from '../space/continuous/point-agent';
-import type { Cell } from '../space/grid/cell';
-import type { GridScape } from '../space/grid/grid-scape';
-import type { Occupant } from '../space/grid/occupant';
-import type { Network } from '../space/network/network';
+import type { Graph } from '../space/graph';
 import type { Color } from './color';
 
 /*
- * View specifications describe how a running simulation should be shown,
- * without depending on any UI technology. A model returns them from
- * `Model.views`; a front end (such as @metascape/react) renders them. The
- * functions in a spec are called for each agent on every redraw, so they
- * should be cheap and must not change the simulation.
+ * View specifications describe how a scape of a running model should be
+ * shown, without depending on any UI technology. A model adds them to its
+ * scapes with `addView`; a front end (such as @metascape/react) renders them.
+ * The functions in a spec are called for each agent on every redraw, so they
+ * should be cheap and must not change the model.
  */
 
 interface ViewBase {
   readonly title: string;
   /**
    * Where a tool should put the view: `stage` for the main picture of the
-   * world, `aside` for a supporting one. Default: spatial views on the stage,
+   * model, `aside` for a supporting one. Default: spatial views on the stage,
    * charts aside (promoted to the stage when a model has no spatial view).
    */
   readonly role?: 'stage' | 'aside';
@@ -31,7 +29,7 @@ interface ViewBase {
 export interface LegendEntry {
   readonly color: Color;
   readonly label: string;
-  /** What carries the colour; default `cell` for grids, `agent` otherwise. */
+  /** What carries the colour; default `cell` for lattices, `agent` otherwise. */
   readonly mark?: 'cell' | 'agent' | 'link';
 }
 
@@ -40,13 +38,14 @@ interface SpatialBase extends ViewBase {
   readonly legend?: readonly LegendEntry[];
 }
 
-/** A lattice drawn from above: each cell coloured, with occupants on top. */
+/** A scape with a lattice space drawn from above: each cell coloured, with occupants on top. */
 export interface GridViewSpec<
   C extends Cell = Cell,
-  O extends Occupant<C> = Occupant<C>,
+  O extends CellOccupant<C & HostCell> = CellOccupant<C & HostCell>,
 > extends SpatialBase {
   readonly type: 'grid';
-  readonly grid: GridScape<C>;
+  /** The scape of cells; its space must be an `Array2D`. */
+  readonly scape: Scape<C>;
   /** Colour of each cell. Default: the background. */
   readonly cellColor?: (cell: C) => Color;
   /** Colour of each occupant; `undefined` hides it. Default: occupants are not drawn. */
@@ -56,10 +55,11 @@ export interface GridViewSpec<
   readonly background?: Color;
 }
 
-/** Agents drawn at their positions in a continuous space. */
-export interface ContinuousViewSpec<A extends PointAgent = PointAgent> extends SpatialBase {
+/** The members of a scape with a continuous space, drawn at their positions. */
+export interface ContinuousViewSpec<A extends LocatedAgent = LocatedAgent> extends SpatialBase {
   readonly type: 'continuous';
-  readonly scape: ContinuousScape<A>;
+  /** The scape of agents; its space must be a `Continuous2D`. */
+  readonly scape: Scape<A>;
   readonly color?: (agent: A) => Color;
   /** Radius in space units. Default 1. */
   readonly radius?: (agent: A) => number;
@@ -76,25 +76,26 @@ export interface ContinuousViewSpec<A extends PointAgent = PointAgent> extends S
   };
 }
 
-/** The members of a scape drawn as nodes, with the links of a network between them. */
+/** The members of a scape drawn as nodes, with the links of a graph between them. */
 export interface NetworkViewSpec<A extends Agent = Agent> extends SpatialBase {
   readonly type: 'network';
   readonly nodes: Scape<A>;
-  readonly network: Network<A>;
+  /** The links: usually the space of `nodes`, or that of another scape the nodes are also members of. */
+  readonly graph: Graph<A>;
   readonly color?: (agent: A) => Color;
   /** Default `circle`: nodes evenly spaced on a circle in membership order. */
   readonly layout?: 'circle' | 'force';
   readonly background?: Color;
 }
 
-/** Recorded series plotted against time. */
+/** Collected series plotted against the period. */
 export interface TimeSeriesViewSpec extends ViewBase {
   readonly type: 'timeSeries';
-  /** Ids of series in `sim.data`, for example `wealth.mean`. */
+  /** Ids of series in the model's data, for example `wealth.mean`. */
   readonly series: readonly string[];
   /** Colour per series id. Default: a standard palette in order. */
   readonly colors?: Readonly<Record<string, Color>>;
-  /** Readable names per series id, in place of the recorder's labels. */
+  /** Readable names per series id, in place of the series' own labels. */
   readonly labels?: Readonly<Record<string, string>>;
   readonly yMin?: number;
   readonly yMax?: number;
@@ -107,14 +108,14 @@ export interface BarsViewSpec extends ViewBase {
   readonly type: 'bars';
   readonly series: readonly string[];
   readonly colors?: Readonly<Record<string, Color>>;
-  /** Readable names per series id, in place of the recorder's labels. */
+  /** Readable names per series id, in place of the series' own labels. */
   readonly labels?: Readonly<Record<string, string>>;
 }
 
-/** The latest sample of a distribution declared with `sim.data.distribution`. */
+/** The latest sample of a distribution collected with `stat.distribution`. */
 export interface HistogramViewSpec extends ViewBase {
   readonly type: 'histogram';
-  /** Name of the distribution in `sim.data`. */
+  /** Name of the distribution in the model's data. */
   readonly distribution: string;
   readonly color?: Color;
 }
@@ -135,14 +136,15 @@ export type ViewSpec =
  */
 
 /** A grid view, typed by the model's own cell and occupant classes. */
-export function gridView<C extends Cell, O extends Occupant<C> = Occupant<C>>(
-  spec: Omit<GridViewSpec<C, O>, 'type'>,
-): ViewSpec {
+export function gridView<
+  C extends Cell,
+  O extends CellOccupant<C & HostCell> = CellOccupant<C & HostCell>,
+>(spec: Omit<GridViewSpec<C, O>, 'type'>): ViewSpec {
   return { type: 'grid', ...spec } as unknown as ViewSpec;
 }
 
 /** A continuous-space view, typed by the model's own agent class. */
-export function continuousView<A extends PointAgent>(
+export function continuousView<A extends LocatedAgent>(
   spec: Omit<ContinuousViewSpec<A>, 'type'>,
 ): ViewSpec {
   return { type: 'continuous', ...spec } as unknown as ViewSpec;
@@ -153,17 +155,17 @@ export function networkView<A extends Agent>(spec: Omit<NetworkViewSpec<A>, 'typ
   return { type: 'network', ...spec } as unknown as ViewSpec;
 }
 
-/** A time-series chart of recorded series. */
+/** A time-series chart of collected series. */
 export function timeSeriesView(spec: Omit<TimeSeriesViewSpec, 'type'>): ViewSpec {
   return { type: 'timeSeries', ...spec };
 }
 
-/** A bar chart of the latest values of recorded series. */
+/** A bar chart of the latest values of collected series. */
 export function barsView(spec: Omit<BarsViewSpec, 'type'>): ViewSpec {
   return { type: 'bars', ...spec };
 }
 
-/** A histogram of a recorded distribution. */
+/** A histogram of a collected distribution. */
 export function histogramView(spec: Omit<HistogramViewSpec, 'type'>): ViewSpec {
   return { type: 'histogram', ...spec };
 }

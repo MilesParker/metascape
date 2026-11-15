@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, timeSeriesView, type TimeSeriesViewSpec } from '@metascape/engine';
+import { RootScape, timeSeriesView, type TimeSeriesViewSpec } from '@metascape/engine';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ghostOf, seriesColors, TimeSeriesChart } from './time-series-chart';
@@ -64,20 +64,20 @@ type Options = {
 
 describe('TimeSeriesChart', () => {
   it('creates the plot once, updates it on each frame and destroys it on unmount', async () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
+    const root = new RootScape(demoModel, { seed: 1 });
     const chartSpec = spec();
-    const view = render(<TimeSeriesChart spec={chartSpec} sim={sim} frame={0} syncKey="k" />);
+    const view = render(<TimeSeriesChart spec={chartSpec} root={root} frame={0} syncKey="k" />);
     await flush();
     expect(created).toHaveLength(1);
     const options = created[0]!.options as Options;
-    expect(options.series.map((x) => x.label)).toEqual(['Tick', 'Mean energy', 'Max energy']);
+    expect(options.series.map((x) => x.label)).toEqual(['Period', 'Mean energy', 'Max energy']);
     expect(options.series[2]!.stroke).toBe('#ff0000');
     expect(options.legend.show).toBe(false);
     expect(options.cursor.sync?.key).toBe('k');
     expect(options.scales.y.range(null, 3, 9)[0]).toBe(0);
     expect(options.scales.y.range(null, 3, 9)[1]).toBeGreaterThanOrEqual(9);
-    sim.run(4);
-    view.rerender(<TimeSeriesChart spec={chartSpec} sim={sim} frame={1} syncKey="k" />);
+    root.run(4);
+    view.rerender(<TimeSeriesChart spec={chartSpec} root={root} frame={1} syncKey="k" />);
     expect(created).toHaveLength(1);
     const latest = created[0]!.setData.at(-1) as Float64Array[];
     expect([...latest[0]!]).toEqual([0, 1, 2, 3, 4]);
@@ -86,31 +86,31 @@ describe('TimeSeriesChart', () => {
   });
 
   it('shows the latest values in its own legend, and the time only under the cursor', async () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
-    sim.run(2);
-    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
+    const root = new RootScape(demoModel, { seed: 1 });
+    root.run(2);
+    render(<TimeSeriesChart spec={spec()} root={root} frame={0} />);
     await flush();
     const legend = screen.getByRole('list', { name: 'Energy values' });
-    expect(legend.textContent).not.toContain('Tick');
+    expect(legend.textContent).not.toContain('Period');
     expect(legend.textContent).toContain('Mean energy');
     expect(legend.textContent).toContain(
-      String(Number(sim.data.latest('energy.max').toPrecision(4))),
+      String(Number(root.data.latest('energy.max').toPrecision(4))),
     );
   });
 
   it('labels the time axis with the model time and allows for a ghost run in the range', async () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
-    sim.run(3);
-    const ghost = ghostOf(sim);
+    const root = new RootScape(demoModel, { seed: 1 });
+    root.run(3);
+    const ghost = ghostOf(root);
     ghost.values['energy.max']![1] = 1e6;
-    const fresh = new Simulation(demoModel, { seed: 2 });
+    const fresh = new RootScape(demoModel, { seed: 2 });
     render(
       <TimeSeriesChart
         spec={spec()}
-        sim={fresh}
+        root={fresh}
         frame={0}
         ghost={ghost}
-        marks={[{ tick: 1, label: 'x' }]}
+        marks={[{ period: 1, label: 'x' }]}
       />,
     );
     await flush();
@@ -122,12 +122,12 @@ describe('TimeSeriesChart', () => {
   });
 
   it('decimates long runs but keeps the data fresh when buffers grow', async () => {
-    const sim = new Simulation(demoModel, { seed: 1 });
+    const root = new RootScape(demoModel, { seed: 1 });
     const chartSpec = spec();
-    const view = render(<TimeSeriesChart spec={chartSpec} sim={sim} frame={0} />);
+    const view = render(<TimeSeriesChart spec={chartSpec} root={root} frame={0} />);
     await flush();
-    sim.run(6000);
-    view.rerender(<TimeSeriesChart spec={chartSpec} sim={sim} frame={1} />);
+    root.run(6000);
+    view.rerender(<TimeSeriesChart spec={chartSpec} root={root} frame={1} />);
     const data = created[0]!.setData.at(-1) as Float64Array[];
     expect(data[0]!.length).toBeLessThanOrEqual(2002);
     expect(data[0]!.at(-1)).toBe(6000);
@@ -135,8 +135,8 @@ describe('TimeSeriesChart', () => {
 
   it('leaves an empty plot area when the plot cannot be created', async () => {
     failing = true;
-    const sim = new Simulation(demoModel, { seed: 1 });
-    render(<TimeSeriesChart spec={spec()} sim={sim} frame={0} />);
+    const root = new RootScape(demoModel, { seed: 1 });
+    render(<TimeSeriesChart spec={spec()} root={root} frame={0} />);
     await flush();
     const box = screen.getByRole('img');
     expect(box.getAttribute('data-unavailable')).toBe('true');

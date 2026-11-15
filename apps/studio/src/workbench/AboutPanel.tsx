@@ -40,7 +40,7 @@ function switched(settings: ScapeSettings, change: NonNullable<Exploration['rule
 
 function scapeSettings(session: Session, scape: string): ScapeSettings | undefined {
   try {
-    return readScapeSettings(session.sim.scape(scape));
+    return readScapeSettings(session.root.findScape(scape));
   } catch {
     return undefined; // A scape the model does not have.
   }

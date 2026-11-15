@@ -15,7 +15,7 @@ Legacy code: Copyright 1998-2007 The Brookings Institution, with revisions by Me
 
 ## Deviations and kept quirks
 
-- Legacy settings were static fields of the cell classes; they are per-simulation here.
+- Legacy settings were static fields of the cell classes; they are per-model here.
 - Execution: each step 25 cells are chosen by repeated random draw (with replacement) and each decides at once (asynchronous). Spans: 50 (AB), 10 (ABC, ABCDEF), 20 (Big).
 - A payoff whose integer part is 0 gives the action zero weight (`(int) charAction == 0`), kept. So in ABC, low cells always take A, and medium cells choose only between A and B. If all weights are zero the last action is chosen, as in the legacy final `else`.
 - The popularity term always divides by 8, the Moore neighbor count. The AB model has no popularity term: its payoff is the sum of pairwise payoffs against its four von Neumann neighbors.

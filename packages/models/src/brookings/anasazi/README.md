@@ -7,7 +7,7 @@ case: the Kayenta Anasazi of Long House Valley in north-eastern Arizona. Househo
 on an 80 x 120 lattice of 93.5 m cells; yields follow the reconstructed climate (adjusted Palmer
 Drought Severity Index) and hydrology of each environment zone year by year; households settle
 near water, store maize for two years, fission, and leave the valley when they cannot find land.
-The simulated number of households is recorded beside the number in the archaeological
+The modelled number of households is recorded beside the number in the archaeological
 (SARG) settlement record, which grows to a peak of 216 households in AD 1269 and is empty from
 AD 1300.
 
@@ -37,22 +37,22 @@ Institution, itself a port of a C++ model by Steven McCarroll and Miles Parker
 | `lhvDisaggregate` | `edu.brook.aa.LHVDisaggregate` | "Very preliminary exploration": households made of individual people.                |
 | `lhvClan`         | `edu.brook.aa.LHVClan`         | `LHVDisaggregate` run to AD 1400 with clan series and colours.                       |
 
-Each step is one year; tick 0 is the start year (800 by default) and the run stops at the stop
+Each step is one year; period 0 is the start year (800 by default) and the run stops at the stop
 year (1350; 1400 for `lhvClan`), as the legacy StartPeriod and StopPeriod did.
 
 Recorded series: `year`, `households`, `historicHouseholds` (legacy "Sum Historic Households"),
-`difference` (simulated minus historic, the quantity of `LHVRMS`), `settlements`,
+`difference` (modelled minus historic, the quantity of `LHVRMS`), `settlements`,
 `historicSettlements` (extant historic sites), `farmsPerHousehold.mean|max`, and per-year event
 counts `movements`, `fissions`, `departures`, plus `deathsStarvation`, `deathsOldAge` (aggregate
 models) or `people`, `householdSize.*`, `births`, `deaths`, `householdsFormed`,
 `householdsDisbanded` and `clan0`..`clan5` (disaggregated models).
 
-Views: "Long House Valley: simulation" (environment zones in the legacy zone colours, off-map
-light grey, farms yellow, current water sources blue, simulated settlements as circles coloured
+Views: "Long House Valley: model" (environment zones in the legacy zone colours, off-map
+light grey, farms yellow, current water sources blue, modelled settlements as circles coloured
 by the legacy tier: black under 5 households, green under 20, red otherwise; in `lhvClan` farms
 take their clan's colour); "Long House Valley: history" (the legacy default hydrology fill, white
 to blue, with farms, water and the extant historic settlements in the same tiers); and the chart
-"Households: simulated and historical" (the legacy chart of Sum Historic Households and Count
+"Households: modelled and historical" (the legacy chart of Sum Historic Households and Count
 Households).
 
 ### Calibration harnesses
@@ -65,14 +65,14 @@ are expressed as experiment designs for `experimentRuns(lhv, design)`:
   fertility end age (26,34) .. (30,30); fertility (0.09,0.16) .. (0.125,0.125) in steps of 0.0025;
   death age (26,34) .. (30,30); 1500 points x 3 replicates. Each run reports the minimum, maximum
   and average of `difference` and its root mean square; as in the legacy harness a run is stopped
-  if, before AD 1000, the simulation exceeds the record by more than 300 households.
+  if, before AD 1000, the model exceeds the record by more than 300 households.
 - `lhvTestExperiment` (`LHVTest`): the same sweep, 5 replicates. The legacy harness dumped every
   statistic per year; here each run reports final `households`, `historicHouseholds`,
   `historicSettlements` (its misnamed "Difference Squared" collector was the count of extant
   historic settlements) and the difference summary.
 
 `LHVMultiple` only adds a `DataOutputView` (file export) to `LHV`, with its sweep commented out.
-It is not ported: the model is identical to `lhv`, whose recorded series (`sim.data.toCSV()`)
+It is not ported: the model is identical to `lhv`, whose recorded series (`root.data.toCSV()`)
 replace the export.
 
 ## Legacy classes
@@ -151,7 +151,7 @@ Bios projects; it says nothing about the data and does not apply to Metascape.
   in the legacy order. Households and people act agent by agent in a fresh random order, as
   Ascape's default agent-order execution did. The legacy initial rules (set the start year's
   environment, then Force Move each household in random order; in the disaggregated models Force
-  Move, Force Move, Create Scape per household) run in a `sim.setup` callback.
+  Move, Force Move, Create Scape per household) run in a `root.setup` callback.
 - The yield-zone farmland lists are kept sorted on insertion instead of being re-sorted lazily;
   the resulting order is the same as the legacy stable sort. The nearest-water search caches,
   per year, the rank of the nearest water for each cell (the random choice within the rank is
@@ -164,15 +164,15 @@ Bios projects; it says nothing about the data and does not apply to Metascape.
   "Plot Yield", "Zone Yield", "APDSI", "Maize Zone", "Yield Zone" and "Sand Dunes" fills are not
   offered. In the legacy draw features the labels of "Simulation Settlement Tier" and "Historical
   Settlement Tier" are swapped, so the legacy view named "Simulation" drew the historic
-  settlements and "History" the simulated ones; the port draws simulated settlements in the
-  simulation view. The legacy `LHVClan.createViews` dereferences the never-assigned `view` field
+  settlements and "History" the modelled ones; the port draws modelled settlements in the
+  model view. The legacy `LHVClan.createViews` dereferences the never-assigned `view` field
   (a NullPointerException); the port colours farmland by clan instead of outlining cells.
 - `Location.isAvailable` is named `isFree`, to keep the engine's `Cell.isAvailable`.
 
 ## Legacy behaviour kept (apparent bugs and oddities)
 
 - **Default parameters overshoot the record.** With the legacy defaults (harvest adjustment 1.0,
-  need 800 kg) the simulation grows to about 1060 households by AD 1050, against at most 216 in
+  need 800 kg) the model grows to about 1060 households by AD 1050, against at most 216 in
   the record, and falls to about 300 by 1350 without reaching zero. The test checks the
   qualitative pattern only: growth with the record from 14 households in 800, a peak between
   1000 and 1270, and a decline after 1250 to under half the peak by 1350. At a harvest

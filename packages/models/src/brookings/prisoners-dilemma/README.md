@@ -2,7 +2,7 @@
 
 Ported from Ascape 5.6.1, package `edu.brook.pd`. Players with a fixed, inherited
 strategy of cooperate or defect move to random sites on a lattice and play a
-neighbor each tick. Payoffs accumulate as wealth; players above the fission
+neighbor each period. Payoffs accumulate as wealth; players above the fission
 threshold clone onto a free neighboring site, and players with negative wealth
 (or older than the death age) die. Zones of cooperation emerge.
 
@@ -36,12 +36,12 @@ The port is EPL-2.0.
 
 Initial: 100 players on a 20 x 20 von Neumann torus (Demo: 30 x 30), random strategy,
 age uniform in 0..deathAge, wealth 6, each moved to a random unoccupied cell (removed
-if none). Each tick, rule by rule, every live player in one shuffled order: Random Walk
+if none). Each period, rule by rule, every live player in one shuffled order: Random Walk
 (step to a random neighbor cell only if it is free), Play Random Neighbor (one random
 occupied neighbor), Fissioning (wealth > 11: child on a free neighbor with wealth 6,
 age 0, parent pays 6, strategy copied unless a 10% mutation draws it at random), Update
-(age + 1), Death (wealth < 0 or age > 100). Players born during a tick first act in the
-next one (Ascape's iterators are snapshots taken at the start of the tick, with a single
+(age + 1), Death (wealth < 0 or age > 100). Players born during a period first act in the
+next one (Ascape's iterators are snapshots taken at the start of the period, with a single
 shuffle shared by all rules, as in the engine's `byRule` schedule). Payoffs C/C 2, D/C 6,
 C/D -6, D/D -5.
 

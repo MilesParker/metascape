@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: EPL-2.0
+export { DataGroup, type DataOptions } from './data-group';
 export {
-  DataRecorder,
   DEFAULT_STATISTICS,
-  type DistributionHandle,
+  stat,
+  type CountCollector,
+  type DistributionCollector,
   type DistributionOptions,
-  type MeasureHandle,
+  type MeasureCollector,
   type MeasureOptions,
-  type RecorderOptions,
   type Series,
   type SeriesStatistic,
+  type StatCollector,
   type Statistic,
-} from './recorder';
+  type ValueCollector,
+} from './stat-collector';

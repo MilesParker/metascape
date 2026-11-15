@@ -10,11 +10,11 @@ import { buildStupidModel, stupidParameters, stupidProvenance } from './stupid-m
 export const stupidModel2 = defineModel({
   name: 'StupidModel 2',
   description:
-    'Bugs move as in StupidModel 1 and also grow by one each tick; their colour fades from white to red with size.',
+    'Bugs move as in StupidModel 1 and also grow by one each period; their colour fades from white to red with size.',
   provenance: stupidProvenance('StupidModel2'),
   parameters: stupidParameters,
-  build(sim) {
-    buildStupidModel(sim, {
+  build(root) {
+    buildStupidModel(root, {
       label: 'StupidModel 2',
       grow: 'increment',
       foodRate: undefined,

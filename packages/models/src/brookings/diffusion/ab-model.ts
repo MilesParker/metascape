@@ -5,19 +5,21 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  Array2DVonNeumann,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
   real,
   rgb,
+  Scape,
+  stat,
   timeSeriesView,
 } from '@metascape/engine';
 import { diffusionProvenance } from './action-model';
 
 /** A site of the AB model: playing A (yellow) or B (black). */
-export class ABCell extends Cell {
+export class ABCell extends HostCell {
   /** True for action A; every cell starts with action B. */
   isA = false;
 
@@ -76,29 +78,28 @@ export const abDiffusion = defineModel({
     }),
   },
 
-  build(sim) {
-    const { span, beta } = sim.parameters;
-    const cells = sim.addScape(
-      new GridScape<ABCell>({
+  build(root) {
+    const { span, beta } = root.parameters;
+    const cells = root.add(
+      new Scape<ABCell>({
         name: 'cells',
-        width: span,
-        height: span,
-        wrap: true,
-        neighborhood: 'vonNeumann',
-        activations: 25,
-        sampling: 'draw',
-        create: () => new ABCell(),
+        space: new Array2DVonNeumann<ABCell>(),
+        extent: [span, span],
+        periodic: true,
+        prototypeAgent: () => new ABCell(),
+        agentsPerIteration: 25,
+        executionStyle: 'repeatedDraw',
       }),
     );
     cells.addRule('Decide State', (cell) => cell.decideState(beta));
 
-    sim.data.count(cells, 'A', (cell) => cell.isA);
-    sim.data.count(cells, 'B', (cell) => !cell.isA);
+    cells.addStatCollector(stat.count('A', (cell) => cell.isA));
+    cells.addStatCollector(stat.count('B', (cell) => !cell.isA));
 
-    sim.addView(
+    root.addView(
       gridView<ABCell>({
         title: 'Cells',
-        grid: cells,
+        scape: cells,
         cellColor: (cell) => (cell.isA ? rgb(255, 255, 0) : rgb(0, 0, 0)),
         legend: [
           { color: rgb(255, 255, 0), label: 'Plays A' },
@@ -106,7 +107,7 @@ export const abDiffusion = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Cells playing each action',
         series: ['A', 'B'],

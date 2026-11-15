@@ -7,20 +7,22 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Color,
   colors,
-  ContinuousScape,
+  Continuous2D,
   continuousView,
   defineModel,
   int,
-  PointAgent,
-  real,
-  timeSeriesView,
-  type Color,
+  LocatedAgent,
   type Model,
   type Provenance,
   type Random,
-  type Scape,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 
 /** A demand in the bargaining game: `0` low, `1` medium, `2` high (legacy `Strategy`). */
@@ -90,9 +92,9 @@ export const PLOT_HEIGHT = (PLOT_WIDTH * Math.sqrt(3)) / 2;
  *
  * It is also a point in a continuous space: the position is its latest
  * memory proportions plotted on a simplex, which replaces the legacy
- * `SimplexView`. The simulation updates the position after each step.
+ * `SimplexView`. The model updates the position after each step.
  */
-export class Bargainer extends PointAgent {
+export class Bargainer extends LocatedAgent {
   strategyMemory: Strategy[] = [];
   oldestMemory = 0;
   lastStrategy: Strategy = MEDIUM;
@@ -243,8 +245,8 @@ export class BargainerTagged extends Bargainer {
   initializeOpponentMemory(): void {
     const agents = this.scape as Scape<BargainerTagged>;
     for (let i = 0; i < this.strategyMemory.length; i++) {
-      let randomAgent = agents.randomMember()!;
-      while (randomAgent === this) randomAgent = agents.randomMember()!;
+      let randomAgent = agents.findRandom()!;
+      while (randomAgent === this) randomAgent = agents.findRandom()!;
       this.opponentMemory[i] = randomAgent;
     }
   }
@@ -427,7 +429,7 @@ const SIMPLEX = {
 } as const;
 
 /** A dot in the intergroup plot, following one bargainer. */
-class InterDot extends PointAgent {
+class InterDot extends LocatedAgent {
   constructor(readonly bargainer: BargainerTagged) {
     super(PLOT_WIDTH / 2, (PLOT_HEIGHT * 2) / 3);
   }
@@ -443,8 +445,8 @@ export interface BargainingDeclaration {
 
 /**
  * Builds a model of the family. The root scape of the legacy
- * `BargainingModelBase` is the simulation itself; its one child scape `agents`
- * holds the bargainers, each of whom, 50 times per tick (half the population),
+ * `BargainingModelBase` is the root scape itself; its one child scape `agents`
+ * holds the bargainers, each of whom, 50 times per period (half the population),
  * is drawn at random with replacement and plays a randomly drawn opponent.
  */
 export function bargainingModel(declaration: BargainingDeclaration) {
@@ -460,7 +462,7 @@ export function bargainingModel(declaration: BargainingDeclaration) {
         max: 2000,
         label: 'Population',
         description:
-          'Number of agents. Fixed at 100 in the legacy model, which did not expose it; half of them act in each tick.',
+          'Number of agents. Fixed at 100 in the legacy model, which did not expose it; half of them act in each period.',
       }),
       minimumMemorySize: int(v.minimumMemorySize, {
         min: 1,
@@ -499,8 +501,8 @@ export function bargainingModel(declaration: BargainingDeclaration) {
         description: 'Share of the pie claimed by a high demand.',
       }),
     },
-    build(sim) {
-      const p = sim.parameters;
+    build(root) {
+      const p = root.parameters;
       if (p.minimumMemorySize > p.maximumMemorySize) {
         throw new RangeError('The minimum memory size must not exceed the maximum.');
       }
@@ -520,17 +522,17 @@ export function bargainingModel(declaration: BargainingDeclaration) {
             : new PeytonBargainer(world);
       const tagged = v.kind !== 'untagged';
 
-      const agents = sim.addScape(
-        new ContinuousScape<Bargainer>({
+      const agents = root.add(
+        new Scape<Bargainer>({
           name: 'agents',
-          width: PLOT_WIDTH,
-          height: PLOT_HEIGHT,
-          wrap: false,
+          space: new Continuous2D<Bargainer>(),
+          extent: [PLOT_WIDTH, PLOT_HEIGHT],
+          periodic: false,
           size: p.population,
-          create,
-          schedule: 'byAgent',
-          activations: Math.floor(p.population / 2),
-          sampling: 'draw',
+          prototypeAgent: create,
+          executionOrder: 'byAgent',
+          agentsPerIteration: Math.floor(p.population / 2),
+          executionStyle: 'repeatedDraw',
         }),
       );
       world.agents = agents;
@@ -538,8 +540,8 @@ export function bargainingModel(declaration: BargainingDeclaration) {
       // Legacy rule PLAY_OTHER: play a random other agent, giving up if there is none.
       agents.addRule('Play Other', (agent) => {
         if (agents.size <= 1) return;
-        let other = agents.randomMember()!;
-        while (other === agent) other = agents.randomMember()!;
+        let other = agents.findRandom()!;
+        while (other === agent) other = agents.findRandom()!;
         agent.play(other);
       });
 
@@ -557,15 +559,15 @@ export function bargainingModel(declaration: BargainingDeclaration) {
 
       const intraPoint = (a: Bargainer): [number, number] =>
         simplexPoint(a.countIntraHigh(), a.countIntraMedium(), a.countIntraLow(), a.countIntra());
-      let inter: ContinuousScape<InterDot> | undefined;
+      let inter: Scape<InterDot> | undefined;
       if (tagged) {
-        inter = sim.addScape(
-          new ContinuousScape<InterDot>({
+        inter = root.add(
+          new Scape<InterDot>({
             name: 'intergroup plot',
-            width: PLOT_WIDTH,
-            height: PLOT_HEIGHT,
-            wrap: false,
-            create: (i) => new InterDot(agents.members[i] as BargainerTagged),
+            space: new Continuous2D<InterDot>(),
+            extent: [PLOT_WIDTH, PLOT_HEIGHT],
+            periodic: false,
+            prototypeAgent: (i) => new InterDot(agents.members[i] as BargainerTagged),
             size: p.population,
           }),
         );
@@ -584,14 +586,17 @@ export function bargainingModel(declaration: BargainingDeclaration) {
           }
         }
       };
-      sim.setup(refresh);
-      sim.observe({ stepped: refresh });
+      // Places the dots by what the agents remember, at the start and after every iteration.
+      root
+        .add(new Scape({ name: 'Plots', space: new Singleton() }))
+        .addInitialRule('Place', refresh, { randomExecution: false })
+        .addRule('Place', refresh, { randomExecution: false, causesRemoval: false });
 
-      sim.data.count(agents, 'low', (a) => a.lastStrategy === LOW);
-      sim.data.count(agents, 'medium', (a) => a.lastStrategy === MEDIUM);
-      sim.data.count(agents, 'high', (a) => a.lastStrategy === HIGH);
+      agents.addStatCollector(stat.count('low', (a) => a.lastStrategy === LOW));
+      agents.addStatCollector(stat.count('medium', (a) => a.lastStrategy === MEDIUM));
+      agents.addStatCollector(stat.count('high', (a) => a.lastStrategy === HIGH));
 
-      sim.addView(
+      root.addView(
         continuousView<Bargainer>({
           title: 'Intragroup memory (high / medium / low)',
           scape: agents,
@@ -609,7 +614,7 @@ export function bargainingModel(declaration: BargainingDeclaration) {
         }),
       );
       if (inter) {
-        sim.addView(
+        root.addView(
           continuousView<InterDot>({
             title: 'Intergroup memory (high / medium / low)',
             scape: inter,
@@ -624,7 +629,7 @@ export function bargainingModel(declaration: BargainingDeclaration) {
           }),
         );
       }
-      sim.addView(
+      root.addView(
         timeSeriesView({
           title: 'Demands in the latest encounter',
           series: ['low', 'medium', 'high'],
@@ -639,5 +644,5 @@ export function bargainingModel(declaration: BargainingDeclaration) {
 /** The model type that {@link bargainingModel} returns. */
 export type BargainingModel = Model<ReturnType<typeof bargainingModel>['parameters']>;
 
-/** A simulation of one of the family's models. */
-export type BargainingSimulation = Simulation<BargainingModel['parameters']>;
+/** A run of one of the family's models. */
+export type BargainingRoot = RootScape<BargainingModel['parameters']>;

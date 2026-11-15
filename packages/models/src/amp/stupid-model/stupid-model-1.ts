@@ -13,8 +13,8 @@ export const stupidModel1 = defineModel({
     'Bugs move to a random free cell within their vision on a periodic Moore grid, nothing else.',
   provenance: stupidProvenance('StupidModel1'),
   parameters: stupidParameters,
-  build(sim) {
-    buildStupidModel(sim, {
+  build(root) {
+    buildStupidModel(root, {
       label: 'StupidModel 1',
       grow: 'none',
       foodRate: undefined,

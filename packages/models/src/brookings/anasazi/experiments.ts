@@ -11,7 +11,7 @@
  * own but `LHV` run under a parameter sweep that wrote run statistics to a
  * file. Run them with `experimentRuns(lhv, lhvRmsExperiment)`.
  */
-import { range, type ExperimentDesign, type Simulation } from '@metascape/engine';
+import { type ExperimentDesign, range, type RootScape } from '@metascape/engine';
 import { lhv } from './lhv';
 
 type LhvSchema = (typeof lhv)['parameters'];
@@ -35,10 +35,10 @@ const LINKED = [
   ['minDeathAge', 'maxDeathAge'],
 ] as const;
 
-/** Ticks from the default start year 800 to the stop year 1350. */
+/** Periods from the default start year 800 to the stop year 1350. */
 const RUN_TICKS = 550;
 
-/** Summary of the simulated-minus-historic household difference over a run. */
+/** Summary of the modelled-minus-historic household difference over a run. */
 export interface DifferenceSummary {
   readonly minimumDifference: number;
   readonly maximumDifference: number;
@@ -47,9 +47,9 @@ export interface DifferenceSummary {
   readonly rms: number;
 }
 
-/** Summarises the recorded `difference` series of a run, every sample from tick 0 on. */
-export function summarizeDifference(sim: Simulation): DifferenceSummary {
-  const values = sim.data.values('difference');
+/** Summarises the recorded `difference` series of a run, every sample from period 0 on. */
+export function summarizeDifference(root: RootScape): DifferenceSummary {
+  const values = root.data.values('difference');
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   let sum = 0;
@@ -71,35 +71,35 @@ export function summarizeDifference(sim: Simulation): DifferenceSummary {
 
 /**
  * `LHVRMS`: the sweep (4 x 5 x 15 x 5 = 1500 points, 3 runs each) recording
- * the minimum, maximum and average difference between simulated and
+ * the minimum, maximum and average difference between modelled and
  * historic households and its root mean square. As in the legacy harness, a
- * run is abandoned once, before AD 1000, the simulation exceeds the record
+ * run is abandoned once, before AD 1000, the model exceeds the record
  * by more than 300 households.
  */
 export const lhvRmsExperiment: ExperimentDesign<LhvSchema> = {
   parameters: SWEEP,
   linked: LINKED,
   replicates: 3,
-  maxTicks: RUN_TICKS,
-  setup(sim) {
-    sim.observe({
-      stepped: () => {
-        const year = sim.data.latest('year');
-        if (year < 1000 && sim.data.latest('difference') > 300) {
-          sim.stop('difference above 300 before AD 1000');
+  maxIterations: RUN_TICKS,
+  prepare(root) {
+    root.addScapeListener({
+      scapeIterated: () => {
+        const year = root.data.latest('year');
+        if (year < 1000 && root.data.latest('difference') > 300) {
+          root.stop('difference above 300 before AD 1000');
         }
       },
     });
   },
-  measure(sim) {
-    return { ...summarizeDifference(sim as unknown as Simulation) };
+  measure(root) {
+    return { ...summarizeDifference(root as unknown as RootScape) };
   },
 };
 
 /**
  * `LHVTest`: the same sweep with 5 runs per point. The legacy harness wrote
  * every statistic of every year to a file; here each run reports its final
- * simulated and historic household counts and the difference summary. Its
+ * modelled and historic household counts and the difference summary. Its
  * extra series, misnamed "Difference Squared", was the number of extant
  * historic settlements, reported here as `historicSettlements`.
  */
@@ -107,13 +107,13 @@ export const lhvTestExperiment: ExperimentDesign<LhvSchema> = {
   parameters: SWEEP,
   linked: LINKED,
   replicates: 5,
-  maxTicks: RUN_TICKS,
-  measure(sim) {
+  maxIterations: RUN_TICKS,
+  measure(root) {
     return {
-      households: sim.data.latest('households'),
-      historicHouseholds: sim.data.latest('historicHouseholds'),
-      historicSettlements: sim.data.latest('historicSettlements'),
-      ...summarizeDifference(sim as unknown as Simulation),
+      households: root.data.latest('households'),
+      historicHouseholds: root.data.latest('historicHouseholds'),
+      historicSettlements: root.data.latest('historicSettlements'),
+      ...summarizeDifference(root as unknown as RootScape),
     };
   },
 };

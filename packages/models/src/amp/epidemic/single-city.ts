@@ -4,18 +4,20 @@
 // Original: Copyright 2009, Miles Parker. Released under Eclipse Public License. All uses should be attributed.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
   barsView,
-  Cell,
   colors,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Network,
+  Graph,
   networkView,
-  Scape,
-  timeSeriesView,
   type ParameterSchema,
-  type Simulation,
+  type RootScape,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import { durationParameters, movementParameter, transmissionParameters } from './parameters';
 import {
@@ -74,20 +76,20 @@ export function cityParameters(defaults: {
 }
 
 /** A site of the city grid. */
-export class Place extends Cell {}
+export class Place extends HostCell {}
 
 /** Everything a variant gets back from {@link buildCity}. */
 export interface CityWorld {
-  readonly city: GridScape<Place>;
+  readonly city: Array2D<Place>;
   readonly individuals: Scape<Individual>;
 }
 
 /** Options of {@link buildCity}. */
 export interface CityOptions {
   /** Record who infected whom in this directed network (the Contact variant). */
-  readonly contacts?: Network<Individual>;
+  readonly contacts?: Graph<Individual>;
   /** Called after the individuals scape is added, to add further scapes of creatures (Plague). */
-  readonly addCreatures?: (city: GridScape<Place>) => void;
+  readonly addCreatures?: (city: Array2D<Place>) => void;
 }
 
 /**
@@ -98,35 +100,39 @@ export interface CityOptions {
  * scapes in Ascape.
  */
 export function buildCity<S extends ParameterSchema>(
-  sim: Simulation<S>,
+  root: RootScape<S>,
   p: CityParameters,
   options: CityOptions = {},
 ): CityWorld {
-  const epi: Epidemiology = { parameters: p, period: () => sim.tick };
-  const city = sim.addScape(
-    new GridScape<Place>({
+  const epi: Epidemiology = { parameters: p, period: () => root.iteration };
+  const city = root.add(
+    new Scape<Place>({
       name: 'city',
-      width: p.cityWidth,
-      height: p.cityHeight,
-      wrap: false,
-      neighborhood: 'moore',
-      create: () => new Place(),
+      space: new Array2DMoore<Place>(),
+      extent: [p.cityWidth, p.cityHeight],
+      periodic: false,
+      prototypeAgent: () => new Place(),
     }),
   );
-  const individuals = sim.addScape(
+  const individuals = root.add(
     new Scape<Individual>({
       name: 'individuals',
       size: p.individualCount,
-      schedule: 'byRule',
-      create: () => new Individual(epi),
+      executionOrder: 'byRule',
+      prototypeAgent: () => new Individual(epi),
     }),
   );
   const contacts = options.contacts;
+  // The contact network, as a graph whose members are the individuals it links. It draws
+  // nothing at random, so it shares the root's stream rather than forking one.
+  if (contacts) {
+    root.add(new Scape<Individual>({ name: 'Contacts', space: contacts, randomStream: 'parent' }));
+  }
 
   // Initialize Location: a random available cell. Individuals beyond the
   // number of cells stay without a location.
   individuals.addInitialRule('initialize location', (person) => {
-    const cell = city.randomAvailableCell();
+    const cell = city.findRandom((cell) => cell.isAvailable);
     if (cell) person.moveTo(cell);
   });
   individuals.addInitialRule('initialize state', (person) => {
@@ -142,36 +148,37 @@ export function buildCity<S extends ParameterSchema>(
     }
   });
   individuals.addRule('movement', (person) => {
-    if (person.cell) person.movement();
+    if (person.hostCell) person.movement();
   });
   individuals.addRule('transmission', (person) => {
-    if (!person.cell) return;
+    if (!person.hostCell) return;
     const infected = person.transmission();
     if (infected && contacts) contacts.connect(person, infected);
   });
   individuals.addRule('progression', (person) => person.progression());
 
-  options.addCreatures?.(city);
+  options.addCreatures?.(city.space as Array2D<Place>);
 
   for (const name of statusNames) {
-    sim.data.count(individuals, name, (a) => statusNames[a.status] === name);
+    individuals.addStatCollector(stat.count(name, (a) => statusNames[a.status] === name));
   }
-  sim.data.count(individuals, 'population');
-  sim.data.measure(individuals, 'exposureEndPeriod', (a) => a.exposureEndPeriod, {
-    statistics: ['mean', 'min', 'max'],
-  });
-  sim.data.measure(
-    individuals,
-    'contactTransmissionProbability',
-    (a) => a.contactTransmissionProbability,
-    { statistics: ['mean', 'min', 'max'] },
+  individuals.addStatCollector(stat.count('population'));
+  individuals.addStatCollector(
+    stat.measure('exposureEndPeriod', (a) => a.exposureEndPeriod, {
+      statistics: ['mean', 'min', 'max'],
+    }),
+  );
+  individuals.addStatCollector(
+    stat.measure('contactTransmissionProbability', (a) => a.contactTransmissionProbability, {
+      statistics: ['mean', 'min', 'max'],
+    }),
   );
 
   const palette = { ...statusColors } as Record<string, number>;
-  sim.addView(
+  root.addView(
     gridView<Place, Creature>({
       title: 'City',
-      grid: city,
+      scape: city,
       legend: statusNames.map((name) => ({
         color: statusColors[name],
         label: STATUS_LABELS[name],
@@ -182,7 +189,7 @@ export function buildCity<S extends ParameterSchema>(
       background: colors.white,
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Individuals by status',
       series: [...statusNames],
@@ -191,7 +198,7 @@ export function buildCity<S extends ParameterSchema>(
       yMin: 0,
     }),
   );
-  sim.addView(
+  root.addView(
     barsView({
       title: 'Individuals by status now',
       series: [...statusNames],
@@ -200,11 +207,11 @@ export function buildCity<S extends ParameterSchema>(
     }),
   );
   if (contacts) {
-    sim.addView(
+    root.addView(
       networkView<Individual>({
         title: 'Contacts',
         nodes: individuals,
-        network: contacts,
+        graph: contacts,
         color: (o) => o.color(),
         legend: statusNames.map((name) => ({
           color: statusColors[name],
@@ -214,5 +221,5 @@ export function buildCity<S extends ParameterSchema>(
       }),
     );
   }
-  return { city, individuals };
+  return { city: city.space as Array2D<Place>, individuals };
 }

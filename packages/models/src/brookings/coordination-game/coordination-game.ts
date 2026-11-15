@@ -6,17 +6,19 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   Agent,
+  Array2DVonNeumann,
   barsView,
+  CellOccupant,
   colors,
-  GridScape,
   gridView,
-  Network,
+  type HostCell,
+  Graph,
   networkView,
-  Occupant,
+  type RootScape,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
-  type Cell,
-  type Simulation,
 } from '@metascape/engine';
 
 /** The two colours (conventions) a player can follow. */
@@ -57,12 +59,12 @@ export const FRIENDS_SIZE = 4;
 export interface GameContext {
   readonly parameters: GameParameters;
   readonly config: StepConfig;
-  readonly lattice: GridScape<Cell>;
+  readonly lattice: Scape<HostCell>;
   players: Scape<Player>;
 }
 
 /** A player of the coordination game, standing on a lattice cell. */
-export class Player extends Occupant {
+export class Player extends CellOccupant {
   color: Hue = 'red';
   totalScore = 0;
   recentPlays: number[] = new Array<number>(MEMORY).fill(0);
@@ -86,8 +88,8 @@ export class Player extends Occupant {
     this.recentPartners = new Array<Hue | undefined>(MEMORY).fill(undefined);
     this.friends = [];
     // The legacy initial rule MOVE_RANDOM_LOCATION_RULE; offspring are placed by their parent.
-    if (this.#spawned || this.cell) return;
-    const cell = this.#context.lattice.randomAvailableCell();
+    if (this.#spawned || this.hostCell) return;
+    const cell = this.#context.lattice.findRandom((cell) => cell.isAvailable);
     if (cell) this.moveTo(cell);
     else this.die();
   }
@@ -97,8 +99,8 @@ export class Player extends Occupant {
   }
 
   /** RANDOM_WALK_RULE: step to a random neighbor cell, if it is empty. */
-  randomWalk(): void {
-    const cell = this.cell;
+  override randomWalk(): void {
+    const cell = this.hostCell;
     if (!cell) return;
     const candidate = this.random.pick(cell.neighbors);
     if (candidate.isAvailable) this.moveTo(candidate);
@@ -197,7 +199,7 @@ export class Player extends Occupant {
   }
 
   #reproduce(): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const free = cell.neighbors.filter((neighbor) => neighbor.isAvailable);
     if (free.length === 0) return;
@@ -223,9 +225,9 @@ interface Pass {
  * otherwise. The engine has one order per scape, so the passes are run by a
  * single driver agent in its own scape, after the players' scape.
  */
-function addPasses(sim: Simulation, players: Scape<Player>, passes: readonly Pass[]): void {
-  const driver = sim.addScape(
-    new Scape<Agent>({ name: 'Schedule', size: 1, create: () => new Agent() }),
+function addPasses(root: RootScape, players: Scape<Player>, passes: readonly Pass[]): void {
+  const driver = root.add(
+    new Scape<Agent>({ name: 'Schedule', size: 1, prototypeAgent: () => new Agent() }),
   );
   driver.addRule('Rules by rule order', () => {
     for (const pass of passes) {
@@ -238,17 +240,16 @@ function addPasses(sim: Simulation, players: Scape<Player>, passes: readonly Pas
 
 /** Builds one step of the tutorial. */
 export function buildCoordinationGame(
-  sim: Simulation,
+  root: RootScape,
   parameters: GameParameters,
   config: StepConfig,
 ): void {
-  const lattice = sim.addScape(
-    new GridScape({
+  const lattice = root.add(
+    new Scape<HostCell>({
       name: 'Lattice',
-      width: 30,
-      height: 30,
-      wrap: true,
-      neighborhood: 'vonNeumann',
+      space: new Array2DVonNeumann<HostCell>(),
+      extent: [30, 30],
+      periodic: true,
     }),
   );
   const context: GameContext = {
@@ -257,11 +258,11 @@ export function buildCoordinationGame(
     lattice,
     players: undefined as unknown as Scape<Player>,
   };
-  const players: Scape<Player> = sim.addScape(
+  const players: Scape<Player> = root.add(
     new Scape<Player>({
       name: 'Players',
       size: parameters.nPlayers,
-      create: () => new Player(context),
+      prototypeAgent: () => new Player(context),
     }),
   );
   context.players = players;
@@ -270,32 +271,41 @@ export function buildCoordinationGame(
   if (config.revision !== 'none') passes.push({ random: false, run: (p) => p.update() });
   passes.push({ random: true, run: (p) => p.playRandomNeighbor() });
   if (config.demography) passes.push({ random: false, run: (p) => p.metabolism() });
-  addPasses(sim, players, passes);
+  addPasses(root, players, passes);
 
   // The legacy initial rule SetNewNetwork: four players drawn at random, with repetition, possibly oneself.
-  const network = new Network<Player>({ directed: true });
+  // The friends, as a graph whose members are the players it links. It draws nothing
+  // at random, so it shares the root's stream rather than forking one.
+  const network = new Graph<Player>({ directed: true });
   if (config.friends) {
-    sim.setup(() => {
-      for (const player of players.members) {
-        for (let i = 0; i < FRIENDS_SIZE; i++)
-          player.friends.push(players.random.pick(players.members));
-        for (const friend of player.friends) network.connect(player, friend);
-      }
-    });
+    root.add(new Scape<Player>({ name: 'Friends', space: network, randomStream: 'parent' }));
+    root.add(new Scape({ name: 'Set New Network', space: new Singleton() })).addInitialRule(
+      'Set New Network',
+      () => {
+        for (const player of players.members) {
+          for (let i = 0; i < FRIENDS_SIZE; i++)
+            player.friends.push(players.random.pick(players.members));
+          for (const friend of player.friends) network.connect(player, friend);
+        }
+      },
+      { randomExecution: false },
+    );
   }
 
-  sim.data.count(players, 'reds', (p) => p.color === 'red');
-  sim.data.count(players, 'blues', (p) => p.color === 'blue');
+  players.addStatCollector(stat.count('reds', (p) => p.color === 'red'));
+  players.addStatCollector(stat.count('blues', (p) => p.color === 'blue'));
   const chart = ['reds', 'blues'];
   if (config.payoff) {
-    sim.data.measure(players, 'payoff', (p) => p.totalScore * 10, { statistics: ['mean'] });
+    players.addStatCollector(
+      stat.measure('payoff', (p) => p.totalScore * 10, { statistics: ['mean'] }),
+    );
     chart.push('payoff.mean');
   }
 
-  sim.addView(
-    gridView<Cell, Player>({
+  root.addView(
+    gridView<HostCell, Player>({
       title: 'Lattice',
-      grid: lattice,
+      scape: lattice,
       background: colors.green,
       cellColor: () => colors.green,
       occupantColor: (p) => (p.color === 'red' ? colors.red : colors.blue),
@@ -307,11 +317,11 @@ export function buildCoordinationGame(
     }),
   );
   if (config.friends) {
-    sim.addView(
+    root.addView(
       networkView<Player>({
         title: 'Friends',
         nodes: players,
-        network,
+        graph: network,
         color: (p) => (p.color === 'red' ? colors.red : colors.blue),
         legend: [
           { color: colors.red, label: 'Plays red' },
@@ -320,7 +330,7 @@ export function buildCoordinationGame(
       }),
     );
   }
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Players',
       series: chart,
@@ -328,7 +338,7 @@ export function buildCoordinationGame(
       yMin: 0,
     }),
   );
-  sim.addView(
+  root.addView(
     barsView({
       title: 'Reds and blues',
       series: ['reds', 'blues'],

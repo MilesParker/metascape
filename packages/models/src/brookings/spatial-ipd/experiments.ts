@@ -5,20 +5,20 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles T. Parker and contributors, under EPL-2.0.
 import {
-  range,
   type ExperimentDesign,
   type ExperimentValue,
-  type Simulation,
+  range,
+  type RootScape,
 } from '@metascape/engine';
 import { topGenomes, type GaParameters, type GaPlayer } from './spatial-ipd';
 
 type Design = ExperimentDesign<GaParameters>;
 
 /** The end-of-run statistics the legacy data files carried. */
-function finalStatistics(sim: Simulation<GaParameters>): Record<string, ExperimentValue> {
-  const d = sim.data;
+function finalStatistics(root: RootScape<GaParameters>): Record<string, ExperimentValue> {
+  const d = root.data;
   return {
-    population: sim.scape('Players').size,
+    population: root.findScape('Players').size,
     cooperateRatio: d.latest('Cooperate Ratio.sum'),
     defectRatio: d.latest('Defect Ratio.sum'),
     cooperateClosest: d.latest('Cooperate Closest.sum'),
@@ -29,14 +29,14 @@ function finalStatistics(sim: Simulation<GaParameters>): Record<string, Experime
 }
 
 /**
- * The sweep of `PD2DGAMultiple`: memory size 1 only, 35 runs of 1000 ticks, with
+ * The sweep of `PD2DGAMultiple`: memory size 1 only, 35 runs of 1000 periods, with
  * the final summed ratios as output. Run it on `pd2dgaMultiple`.
  */
 export function pd2dgaMultipleDesign(overrides: Partial<Design> = {}): Design {
   return {
     parameters: { memorySize: range(1, 1, 1) },
     replicates: 35,
-    maxTicks: 1000,
+    maxIterations: 1000,
     measure: finalStatistics,
     ...overrides,
   };
@@ -44,15 +44,15 @@ export function pd2dgaMultipleDesign(overrides: Partial<Design> = {}): Design {
 
 /**
  * The sweep of `PD2DGAMultipleTo`: memory size 1 only, 35 runs, each until the
- * population is extinct (the model stops itself) or `maxTicks`. The tick at which
- * a run ended is the built-in `ticks` column. Run it on `pd2dgaMultipleTo`.
+ * population is extinct (the model stops itself) or `maxIterations`. The period at which
+ * a run ended is the built-in `periods` column. Run it on `pd2dgaMultipleTo`.
  */
 export function pd2dgaMultipleToDesign(overrides: Partial<Design> = {}): Design {
   return {
     parameters: { memorySize: range(1, 1, 1) },
     replicates: 35,
-    maxTicks: 10000,
-    measure: (sim) => ({ population: sim.scape('Players').size }),
+    maxIterations: 10000,
+    measure: (root) => ({ population: root.findScape('Players').size }),
     ...overrides,
   };
 }
@@ -65,10 +65,13 @@ export function pd2dgaMultiDesign(overrides: Partial<Design> = {}, rankSize = 8)
   return {
     parameters: { memorySize: range(1, 1, 1) },
     replicates: 35,
-    maxTicks: 1000,
-    measure: (sim) => {
+    maxIterations: 1000,
+    measure: (root) => {
       const row: Record<string, ExperimentValue> = {};
-      const ranked = topGenomes(sim.scape('Players') as unknown as Iterable<GaPlayer>, rankSize);
+      const ranked = topGenomes(
+        root.findScape('Players') as unknown as Iterable<GaPlayer>,
+        rankSize,
+      );
       for (let i = 0; i < rankSize; i++) {
         row[`genome${i}`] = ranked[i]?.genome ?? '';
         row[`count${i}`] = ranked[i]?.count ?? 0;

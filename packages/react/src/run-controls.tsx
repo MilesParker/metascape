@@ -5,12 +5,12 @@ import { useRunnerState } from './hooks';
 
 /** The highest slider position, which means "as fast as possible". */
 const MAX_POSITION = 100;
-/** The slider position for 1,000 ticks per second; one step further is Max. */
+/** The slider position for 1,000 iterations per second; one step further is Max. */
 const TOP_POSITION = MAX_POSITION - 1;
 const MIN_SPEED = 1;
 const MAX_SPEED = 1000;
 
-/** Converts a speed slider position (0..100) to ticks per second: logarithmic from 1 to 1,000, then `Infinity`. */
+/** Converts a speed slider position (0..100) to iterations per second: logarithmic from 1 to 1,000, then `Infinity`. */
 export function positionToSpeed(position: number): number {
   if (position >= MAX_POSITION) return Infinity;
   const clamped = Math.max(0, position);
@@ -28,7 +28,7 @@ export function speedToPosition(speed: number): number {
 }
 
 function describeSpeed(speed: number): string {
-  return Number.isFinite(speed) ? `${speed} ticks/s` : 'Max';
+  return Number.isFinite(speed) ? `${speed} iterations/s` : 'Max';
 }
 
 function errorMessage(error: unknown): string {
@@ -47,16 +47,16 @@ export interface RunControlsProps<S extends ParameterSchema = ParameterSchema> {
 
 /**
  * Start/Pause, Step and Restart buttons, a logarithmic speed slider (1 to
- * 1,000 ticks per second, then Max), a read-out of tick, state and seed, and
+ * 1,000 iterations per second, then Max), a read-out of period, state and seed, and
  * an editable seed that is used on the next restart.
  */
 export function RunControls<S extends ParameterSchema>({
   runner,
 }: RunControlsProps<S>): ReactElement {
-  const { state, tick, sim, error } = useRunnerState(runner);
+  const { state, period, root, error } = useRunnerState(runner);
   const speedId = useId();
   const seedId = useId();
-  const [position, setPosition] = useState(() => speedToPosition(runner.ticksPerSecond));
+  const [position, setPosition] = useState(() => speedToPosition(runner.iterationsPerSecond));
   const [seedDraft, setSeedDraft] = useState<string | undefined>(undefined);
   const [restartError, setRestartError] = useState<string | undefined>(undefined);
 
@@ -122,14 +122,14 @@ export function RunControls<S extends ParameterSchema>({
         <input
           id={seedId}
           type="text"
-          value={seedDraft ?? String(sim.seed)}
+          value={seedDraft ?? String(root.seed)}
           onChange={(event) => setSeedDraft(event.target.value)}
         />
       </div>
       <dl className="ms-readout" aria-live="off">
         <div>
-          <dt>Tick</dt>
-          <dd data-testid="ms-tick">{tick}</dd>
+          <dt>Period</dt>
+          <dd data-testid="ms-period">{period}</dd>
         </div>
         <div>
           <dt>State</dt>
@@ -137,7 +137,7 @@ export function RunControls<S extends ParameterSchema>({
         </div>
         <div>
           <dt>Seed</dt>
-          <dd data-testid="ms-seed">{String(sim.seed)}</dd>
+          <dd data-testid="ms-seed">{String(root.seed)}</dd>
         </div>
       </dl>
       {failure !== undefined && (

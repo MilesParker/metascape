@@ -1,24 +1,29 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  Array2DMoore,
+  Array2DVonNeumann,
   barsView,
   colors,
   connectRandom,
   connectRing,
   connectSmallWorld,
-  ContinuousScape,
+  Continuous2D,
   continuousView,
+  Graph,
   gridView,
-  Network,
   networkView,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
   type Agent,
+  type Array2D,
   type Color,
   type Model,
   type Parameter,
   type ParameterSchema,
+  type RootScape,
   type Rule,
-  type Simulation,
   type Statistic,
 } from '@metascape/engine';
 import { actionKind, assertValidModel, recordedStatistics } from './check';
@@ -26,14 +31,13 @@ import { OPERATORS, operatorResult } from './operators';
 import {
   applyPending,
   FramePool,
-  OccupantScape,
+  ModelContext,
+  OccupantSpace,
   randomFreeCell,
   SpecCell,
-  SpecGrid,
   SpecOccupant,
   SpecPlain,
   SpecPoint,
-  World,
   type AgentKind,
   type Frame,
   type SpecAgent,
@@ -68,7 +72,7 @@ import {
 /*
  * The compiler translates a checked model ONCE into closures. Names are
  * resolved to attribute slots, frame slots and operator implementations
- * here; nothing looks a name up while a simulation runs. Values are typed at
+ * here; nothing looks a name up while a model runs. Values are typed at
  * compile time, so every closure returns either a number (int, real, colour,
  * state index), a boolean, or an agent.
  */
@@ -156,7 +160,7 @@ interface CompiledType {
 function inFrame<T>(root: ScopeRoot, body: (f: Frame) => T): (agent: SpecAgent) => T {
   const pool = new FramePool(root);
   return (agent) => {
-    const frame = pool.enter(agent, agent.world, agent.random);
+    const frame = pool.enter(agent, agent.context, agent.random);
     try {
       return body(frame);
     } finally {
@@ -166,16 +170,20 @@ function inFrame<T>(root: ScopeRoot, body: (f: Frame) => T): (agent: SpecAgent) 
 }
 
 /**
- * Compiles a model into an ordinary engine {@link Model}, which runs in
- * `Simulation`, `Runner`, experiments and the React views like any other.
- * Checks it with {@link assertValidModel} first.
+ * Compiles a model into an ordinary engine {@link Model}, which runs as a
+ * `RootScape`, in a `Runner`, in experiments and in the React views like any
+ * other. Checks it with {@link assertValidModel} first.
  *
- * Mapping: parameters become engine parameters; a grid becomes a
- * `GridScape` of its cell type and a continuous space a `ContinuousScape`
- * per agent type in it; a network becomes a `Network` wired in `sim.setup`.
- * Each agent type is a scape named after it, and they step in declaration
- * order. Recorded attributes and populations become `sim.data` series, and
- * the spaces and charts become views.
+ * Mapping: parameters become engine parameters. Each agent type is a scape
+ * of the root named after it, and they iterate in declaration order. A
+ * grid's cell type has a lattice space (`Array2DMoore` or
+ * `Array2DVonNeumann`); each agent type in a continuous space has a
+ * `Continuous2D` space; an occupant type has a list space that stands its
+ * members on cells. A network is a further scape with a `Graph` space, whose
+ * members are the agents it links; its initial wiring is an initial rule of
+ * a scape with a `Singleton` space, as is `stopWhen`. Recorded attributes and
+ * populations become stat collectors of the type's scape, and the spaces and
+ * charts become views of the scapes they show.
  */
 export function compileModel(spec: ModelSpec): Model {
   assertValidModel(spec);
@@ -231,20 +239,21 @@ class Compiler {
     const parameters = toEngineParameters(this.spec.parameters ?? {});
     const spec = this.spec;
 
-    const build = (sim: Simulation): void => {
-      const world = new World(sim, info.parameterList.length, info.spaceList.length);
+    const build = (root: RootScape): void => {
+      const context = new ModelContext(root, info.parameterList.length, info.spaceList.length);
       for (const parameter of info.parameterList) {
-        const value = sim.parameters[parameter.name];
-        world.params[parameter.index] = typeof value === 'number' ? value : value === true ? 1 : 0;
+        const value = root.parameters[parameter.name];
+        context.params[parameter.index] =
+          typeof value === 'number' ? value : value === true ? 1 : 0;
       }
-      const frame = constantPool.enter(undefined, world, sim.random);
+      const frame = constantPool.enter(undefined, context, root.random);
       const networkSettings: { k: number; probability: number }[] = [];
       try {
         info.spaceList.forEach((space, index) => {
           const size = sizes[index]!;
           if ('width' in size) {
-            world.widths[index] = size.width(frame);
-            world.heights[index] = size.height(frame);
+            context.widths[index] = size.width(frame);
+            context.heights[index] = size.height(frame);
           } else {
             networkSettings[index] = {
               k: size.k?.(frame) ?? 0,
@@ -253,58 +262,88 @@ class Compiler {
           }
         });
         types.forEach((type) => {
-          const scape = this.#scape(type, world, type.count ? type.count(frame) : 0);
+          const scape = this.#scape(type, context, type.count ? type.count(frame) : 0);
+          // A sequential order visits members in order of joining: its rules need no random tour.
+          const randomExecution = type.info.spec.order !== 'sequential';
           for (const rule of type.rules) {
             const execute = rule.execute as (agent: Agent) => void;
             const engineRule: Rule<Agent> = rule.synchronous
               ? {
                   name: rule.name,
+                  randomExecution,
                   execute,
                   update: (agent) => applyPending(agent as SpecAgent),
                 }
-              : { name: rule.name, execute };
+              : { name: rule.name, randomExecution, execute };
             scape.addRule(engineRule);
           }
           const initialize = type.initialize;
           if (initialize) {
-            scape.addInitialRule('initialize', (agent) => initialize(agent as SpecAgent));
+            scape.addInitialRule('initialize', (agent) => initialize(agent as SpecAgent), {
+              randomExecution,
+            });
           }
-          world.scapes[type.info.index] = sim.addScape(scape);
+          context.scapes[type.info.index] = root.add(scape);
         });
       } finally {
         constantPool.exit();
       }
 
+      // A network over a type without a position is that type's own space. Any other is a
+      // scape of its own, whose members are the agents it links; it draws nothing at random
+      // itself, so it shares the root's stream rather than forking one.
       for (const space of info.spaceList) {
         const spaceSpec = space.spec;
         if (spaceSpec.kind !== 'network') continue;
-        const network = new Network<Agent>({ directed: spaceSpec.directed ?? false });
-        world.networks[space.index] = network;
-        const nodes = world.scapes[info.agents.get(spaceSpec.nodes)!.index]!;
+        const nodes = context.scapes[info.agents.get(spaceSpec.nodes)!.index]!;
+        let network = context.networks[space.index];
+        if (!network) {
+          const links = root.add(
+            new Scape<Agent>({
+              name: space.name,
+              space: new Graph<Agent>({ directed: spaceSpec.directed ?? false }),
+              randomStream: 'parent',
+            }),
+          );
+          network = links.space as Graph<Agent>;
+          context.networks[space.index] = network;
+        }
+        const graph = network;
         const initial = spaceSpec.initial;
         const settings = networkSettings[space.index]!;
         if (initial && initial.topology !== 'none') {
-          sim.setup(() => {
-            const members = nodes.members;
-            if (initial.topology === 'ring') connectRing(network, members, settings.k);
-            else if (initial.topology === 'random') {
-              connectRandom(network, members, settings.probability, nodes.random);
-            } else {
-              connectSmallWorld(network, members, settings.k, settings.probability, nodes.random);
-            }
-          });
+          // A rule of the root, executed on its scapes once all of theirs have run: it wires
+          // the network when it reaches the scape of the network's nodes.
+          root.addInitialRule(
+            `wire ${space.name}`,
+            (scape) => {
+              if (scape !== nodes) return;
+              const members = nodes.members;
+              if (initial.topology === 'ring') connectRing(graph, members, settings.k);
+              else if (initial.topology === 'random') {
+                connectRandom(graph, members, settings.probability, nodes.random);
+              } else {
+                connectSmallWorld(graph, members, settings.k, settings.probability, nodes.random);
+              }
+            },
+            { randomExecution: false, causesRemoval: false },
+          );
         }
       }
 
-      this.#record(sim, world);
-      this.#views(sim, world, types);
+      this.#record(context);
+      this.#views(root, context, types);
 
+      // The model as a whole, last of the root's scapes: the condition for stopping, checked
+      // once every scape has iterated.
       if (stopWhen) {
-        sim.observe({
-          stepped: (current) => {
-            if (stopWhen(world, current)) current.stop('stopWhen condition met');
+        root.add(new Scape({ name: `${spec.name} as a whole`, space: new Singleton() })).addRule(
+          'stop when',
+          () => {
+            if (stopWhen(context)) root.stop('stopWhen condition met');
           },
-        });
+          { randomExecution: false, causesRemoval: false },
+        );
       }
     };
 
@@ -312,7 +351,7 @@ class Compiler {
       name: spec.name,
       ...(spec.description !== undefined ? { description: spec.description } : {}),
       parameters,
-      build: build as (sim: Simulation<ParameterSchema>) => void,
+      build: build as (root: RootScape<ParameterSchema>) => void,
     };
   }
 
@@ -340,11 +379,11 @@ class Compiler {
       synchronous: agent.spec.rules?.some((rule) => rule.synchronous === true) ?? false,
       init: (instance) => {
         run(instance);
-        const world = instance.world;
-        if (world.overrideKind === kind) {
-          world.overrideKind = undefined;
-          const slots = world.overrideSlots;
-          for (let i = 0; i < slots.length; i++) instance.v[slots[i]!] = world.overrideValues[i]!;
+        const context = instance.context;
+        if (context.overrideKind === kind) {
+          context.overrideKind = undefined;
+          const slots = context.overrideSlots;
+          for (let i = 0; i < slots.length; i++) instance.v[slots[i]!] = context.overrideValues[i]!;
         }
       },
     };
@@ -415,14 +454,13 @@ class Compiler {
     };
   }
 
-  #scape(type: CompiledType, world: World, count: number): Scape<Agent> {
+  #scape(type: CompiledType, context: ModelContext, count: number): Scape<Agent> {
     const info = type.info;
     const spec = info.spec;
     const kind = type.kind;
     const base = {
       name: info.name,
-      ...(spec.order !== undefined ? { order: spec.order } : {}),
-      ...(spec.schedule !== undefined ? { schedule: spec.schedule } : {}),
+      ...(spec.schedule !== undefined ? { executionOrder: spec.schedule } : {}),
     };
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError(
@@ -430,54 +468,74 @@ class Compiler {
       );
     }
     const space = info.space;
+    let scape: Scape<Agent>;
     switch (info.role) {
       case 'cell': {
         const grid = space!.spec as Extract<SpaceInfo['spec'], { kind: 'grid' }>;
-        const scape = new SpecGrid({
+        const options = { multiOccupancy: grid.multiOccupancy ?? false };
+        const cells = new Scape<SpecCell>({
           ...base,
-          width: world.widths[space!.index]!,
-          height: world.heights[space!.index]!,
-          wrap: grid.wrap ?? true,
-          neighborhood: grid.neighborhood ?? 'moore',
-          multiOccupancy: grid.multiOccupancy ?? false,
-          create: () => new SpecCell(kind, world),
+          space:
+            grid.neighborhood === 'vonNeumann'
+              ? new Array2DVonNeumann<SpecCell>(options)
+              : new Array2DMoore<SpecCell>(options),
+          extent: [context.widths[space!.index]!, context.heights[space!.index]!],
+          periodic: grid.wrap ?? true,
+          prototypeAgent: () => new SpecCell(kind, context),
         });
-        world.grids[space!.index] = scape;
-        return scape as unknown as Scape<Agent>;
+        context.grids[space!.index] = cells.space as Array2D<SpecCell>;
+        scape = cells as unknown as Scape<Agent>;
+        break;
       }
       case 'occupant':
-        return new OccupantScape(
-          { ...base, size: count, create: () => new SpecOccupant(kind, world) },
-          world,
-          space!.index,
-        ) as unknown as Scape<Agent>;
+        scape = new Scape<SpecOccupant>({
+          ...base,
+          space: new OccupantSpace(context, space!.index),
+          size: count,
+          prototypeAgent: () => new SpecOccupant(kind, context),
+        }) as unknown as Scape<Agent>;
+        break;
       case 'point': {
         const continuous = space!.spec as Extract<SpaceInfo['spec'], { kind: 'continuous' }>;
-        const scape = new ContinuousScape<SpecPoint>({
+        const points = new Scape<SpecPoint>({
           ...base,
+          space: new Continuous2D<SpecPoint>(),
+          extent: [context.widths[space!.index]!, context.heights[space!.index]!],
+          periodic: continuous.wrap ?? true,
           size: count,
-          width: world.widths[space!.index]!,
-          height: world.heights[space!.index]!,
-          wrap: continuous.wrap ?? true,
-          create: () => new SpecPoint(kind, world),
+          prototypeAgent: () => new SpecPoint(kind, context),
         });
-        world.continuous[space!.index] ??= scape;
-        return scape as unknown as Scape<Agent>;
+        context.continuous[space!.index] ??= points.space as Continuous2D<SpecPoint>;
+        scape = points as unknown as Scape<Agent>;
+        break;
       }
-      case 'plain':
-        return new Scape<SpecPlain>({
+      case 'plain': {
+        // The first network over this type is its space.
+        const network = this.#info.spaceList.find(
+          (candidate) => candidate.spec.kind === 'network' && candidate.spec.nodes === info.name,
+        );
+        const graph =
+          network?.spec.kind === 'network'
+            ? new Graph<SpecPlain>({ directed: network.spec.directed ?? false })
+            : undefined;
+        scape = new Scape<SpecPlain>({
           ...base,
+          ...(graph && { space: graph }),
           size: count,
-          create: () => new SpecPlain(kind, world),
+          prototypeAgent: () => new SpecPlain(kind, context),
         }) as unknown as Scape<Agent>;
+        if (network && graph) context.networks[network.index] = graph as unknown as Graph<Agent>;
+        break;
+      }
     }
+    return scape;
   }
 
-  #stopWhen(e: Expression, root: ScopeRoot): (world: World, sim: Simulation) => boolean {
+  #stopWhen(e: Expression, root: ScopeRoot): (context: ModelContext) => boolean {
     const condition = asBool(this.#expr(e, new Scope(root), BOOLEAN));
     const pool = new FramePool(root);
-    return (world, sim) => {
-      const frame = pool.enter(undefined, world, sim.random);
+    return (context) => {
+      const frame = pool.enter(undefined, context, context.root.random);
       try {
         return condition(frame);
       } finally {
@@ -488,10 +546,10 @@ class Compiler {
 
   // ──────────────────────────────── Data and views ───────────────────────
 
-  #record(sim: Simulation, world: World): void {
+  #record(context: ModelContext): void {
     for (const agent of this.#info.agentList) {
-      const scape = world.scapes[agent.index]!;
-      sim.data.count(scape, `${agent.name}.count`);
+      const scape = context.scapes[agent.index]!;
+      scape.addStatCollector(stat.count(`${agent.name}.count`));
       for (const attribute of agent.attributeList) {
         const index = attribute.index;
         const spec = attribute.spec;
@@ -499,22 +557,26 @@ class Compiler {
         if (spec.type === 'int' || spec.type === 'real') {
           const statistics = recordedStatistics(spec.record) as Statistic[];
           if (statistics.length > 0) {
-            sim.data.measure(scape, id, (a) => (a as SpecAgent).v[index]!, { statistics });
+            scape.addStatCollector(
+              stat.measure(id, (a) => (a as SpecAgent).v[index]!, { statistics }),
+            );
           }
         } else if (spec.type === 'boolean') {
           if (spec.record === true) {
-            sim.data.count(scape, id, (a) => (a as SpecAgent).v[index] !== 0);
+            scape.addStatCollector(stat.count(id, (a) => (a as SpecAgent).v[index] !== 0));
           }
         } else if (spec.type === 'state' && spec.record === true) {
           spec.states.forEach((state, value) => {
-            sim.data.count(scape, `${id}.${state}`, (a) => (a as SpecAgent).v[index] === value);
+            scape.addStatCollector(
+              stat.count(`${id}.${state}`, (a) => (a as SpecAgent).v[index] === value),
+            );
           });
         }
       }
     }
   }
 
-  #views(sim: Simulation, world: World, types: readonly CompiledType[]): void {
+  #views(root: RootScape, context: ModelContext, types: readonly CompiledType[]): void {
     const colorOf = (type: CompiledType): ((agent: SpecAgent) => Color) => {
       const fixed = PALETTE[type.info.index % PALETTE.length]!;
       return type.color ?? (() => fixed);
@@ -537,10 +599,11 @@ class Compiler {
           }),
         );
         const shape = space.occupants.map((o) => o.spec.style?.shape).find((s) => s);
-        sim.addView(
+        const cellScape = context.grids[space.index]!.scape;
+        cellScape.addView(
           gridView<SpecCell, SpecOccupant>({
             title,
-            grid: world.grids[space.index]!,
+            scape: cellScape,
             cellColor: (cell) => cellColor(cell),
             occupantColor: (occupant) => occupantColors.get(occupant.kind)?.(occupant),
             ...(shape ? { occupantShape: shape } : {}),
@@ -550,11 +613,12 @@ class Compiler {
         for (const point of space.points) {
           const type = types[point.index]!;
           const hidden = type.hidden;
-          sim.addView(
+          const pointScape = context.scapes[point.index] as unknown as Scape<SpecPoint>;
+          pointScape.addView(
             continuousView<SpecPoint>({
               title:
                 space.points.length > 1 ? `${title}: ${point.spec.label ?? point.name}` : title,
-              scape: world.scapes[point.index] as unknown as ContinuousScape<SpecPoint>,
+              scape: pointScape,
               color: colorOf(type),
               ...(hidden ? { radius: (agent: SpecPoint) => (hidden(agent) ? 0 : 1) } : {}),
             }),
@@ -562,18 +626,19 @@ class Compiler {
         }
       } else {
         const nodes = this.#info.agents.get(spec.nodes)!;
-        sim.addView(
+        const graph = context.networks[space.index]! as unknown as Graph<SpecAgent>;
+        graph.scape.addView(
           networkView<SpecAgent>({
             title,
-            nodes: world.scapes[nodes.index] as unknown as Scape<SpecAgent>,
-            network: world.networks[space.index] as unknown as Network<SpecAgent>,
+            nodes: context.scapes[nodes.index] as unknown as Scape<SpecAgent>,
+            graph,
             color: colorOf(types[nodes.index]!),
           }),
         );
       }
     }
     for (const chart of this.spec.charts ?? []) {
-      sim.addView(
+      root.addView(
         chart.kind === 'timeSeries'
           ? timeSeriesView({ title: chart.title, series: chart.series })
           : barsView({ title: chart.title, series: chart.series }),
@@ -673,7 +738,7 @@ class Compiler {
             if (cell) (f.self as SpecOccupant).moveTo(cell);
           }
         : (f) => {
-            const cell = (choose(f) as SpecOccupant | undefined)?.cell;
+            const cell = (choose(f) as SpecOccupant | undefined)?.hostCell;
             if (cell) (f.self as SpecOccupant).moveTo(cell);
           };
     }
@@ -690,10 +755,10 @@ class Compiler {
         const other = target(f) as SpecPoint | undefined;
         if (!other || !other.alive) return;
         const d = distance(f);
-        const scape = f.world.scapes[index] as unknown as ContinuousScape<SpecPoint>;
+        const space = f.context.scapes[index]!.space as unknown as Continuous2D<SpecPoint>;
         const agent = f.self as SpecPoint;
-        if (d >= 0) scape.moveToward(agent, other, d);
-        else scape.moveAway(agent, other, -d);
+        if (d >= 0) space.moveToward(agent, other, d);
+        else space.moveAway(agent, other, -d);
       };
     }
     if ('die' in action) {
@@ -709,16 +774,16 @@ class Compiler {
       return connect
         ? (f) => {
             const agent = other(f);
-            if (agent) f.world.networks[index]!.connect(f.self!, agent);
+            if (agent) f.context.networks[index]!.connect(f.self!, agent);
           }
         : (f) => {
             const agent = other(f);
-            if (agent) f.world.networks[index]!.disconnect(f.self!, agent);
+            if (agent) f.context.networks[index]!.disconnect(f.self!, agent);
           };
     }
     if ('stop' in action) {
       const reason = action.stop;
-      return (f) => f.world.sim.stop(reason);
+      return (f) => f.context.root.stop(reason);
     }
     throw new Error(`Internal error: unknown action ${actionKind(action)}`);
   }
@@ -774,13 +839,13 @@ class Compiler {
     if (type.role === 'occupant') {
       const gridIndex = space!.index;
       make = (f) => {
-        const grid = f.world.grids[gridIndex]!;
+        const grid = f.context.grids[gridIndex]!;
         let cell: SpecCell | undefined;
         if (at === 'random') {
           cell = randomFreeCell(grid, f.random);
         } else {
           const creator = f.self!;
-          const own = creatorIsCell ? (creator as SpecCell) : (creator as SpecOccupant).cell;
+          const own = creatorIsCell ? (creator as SpecCell) : (creator as SpecOccupant).hostCell;
           if (!own) return undefined;
           if (at === 'here') {
             cell = grid.multiOccupancy || own.isAvailable ? own : undefined;
@@ -789,41 +854,41 @@ class Compiler {
           }
         }
         if (!cell) return undefined;
-        f.world.pendingCell = cell;
-        return new SpecOccupant(kind, f.world);
+        f.context.pendingCell = cell;
+        return new SpecOccupant(kind, f.context);
       };
     } else if (type.role === 'point') {
       const spaceIndex = space!.index;
       make = (f) => {
         if (at === 'here') {
           const creator = f.self as SpecPoint;
-          return new SpecPoint(kind, f.world, creator.x, creator.y);
+          return new SpecPoint(kind, f.context, creator.x, creator.y);
         }
-        const world = f.world;
+        const context = f.context;
         return new SpecPoint(
           kind,
-          world,
-          f.random.float() * world.widths[spaceIndex]!,
-          f.random.float() * world.heights[spaceIndex]!,
+          context,
+          f.random.float() * context.widths[spaceIndex]!,
+          f.random.float() * context.heights[spaceIndex]!,
         );
       };
     } else {
-      make = (f) => new SpecPlain(kind, f.world);
+      make = (f) => new SpecPlain(kind, f.context);
     }
 
     const createOne = (f: Frame): boolean => {
       for (let i = 0; i < overrides.length; i++) values[i] = overrides[i]!.value(f);
       const agent = make(f);
       if (!agent) return false;
-      const world = f.world;
-      world.overrideKind = overrides.length > 0 ? kind : undefined;
-      world.overrideSlots = slots;
-      world.overrideValues = values;
+      const context = f.context;
+      context.overrideKind = overrides.length > 0 ? kind : undefined;
+      context.overrideSlots = slots;
+      context.overrideValues = values;
       try {
-        world.scapes[typeIndex]!.add(agent);
+        context.scapes[typeIndex]!.add(agent);
       } finally {
-        world.overrideKind = undefined;
-        world.pendingCell = undefined;
+        context.overrideKind = undefined;
+        context.pendingCell = undefined;
       }
       return true;
     };
@@ -873,7 +938,7 @@ class Compiler {
     const originIsCell = originInfo?.role === 'cell';
     const originCell = (o: SpecAgent | undefined): SpecCell | undefined => {
       if (!o || !o.alive) return undefined;
-      return originIsCell ? (o as SpecCell) : (o as SpecOccupant).cell;
+      return originIsCell ? (o as SpecCell) : (o as SpecOccupant).hostCell;
     };
     /** Visits the occupants of the target type on a cell, other than the origin. */
     const occupantsOf = (f: Frame, cell: SpecCell, o: SpecAgent, visit: Visit): boolean => {
@@ -891,7 +956,7 @@ class Compiler {
       case 'all':
         each = (f, visit) => {
           const o = origin?.(f);
-          const members = f.world.scapes[targetIndex]!.members as readonly SpecAgent[];
+          const members = f.context.scapes[targetIndex]!.members as readonly SpecAgent[];
           for (let i = 0; i < members.length; i++) {
             const agent = members[i]!;
             if (agent === o || !agent.alive) continue;
@@ -905,7 +970,7 @@ class Compiler {
           const o = origin!(f);
           const cell = originCell(o);
           if (!cell) return;
-          const neighbors = f.world.grids[gridIndex]!.neighbors(cell);
+          const neighbors = f.context.grids[gridIndex]!.neighbors(cell);
           for (let i = 0; i < neighbors.length; i++) {
             const neighbor = neighbors[i]!;
             if (targetIsCell) {
@@ -937,7 +1002,7 @@ class Compiler {
             const o = origin!(f);
             const cell = originCell(o);
             if (!cell) return;
-            const cells = f.world.grids[gridIndex]!.within(cell, radius!(f), WITH_ORIGIN);
+            const cells = f.context.grids[gridIndex]!.findWithin(cell, radius!(f), WITH_ORIGIN);
             for (let i = 0; i < cells.length; i++) {
               const found = cells[i]!;
               if (targetIsCell) {
@@ -951,8 +1016,9 @@ class Compiler {
           each = (f, visit) => {
             const o = origin!(f) as SpecPoint | undefined;
             if (!o || !o.alive) return;
-            const scape = f.world.scapes[targetIndex] as unknown as ContinuousScape<SpecPoint>;
-            const found = scape.within(o, radius!(f));
+            const space = f.context.scapes[targetIndex]!
+              .space as unknown as Continuous2D<SpecPoint>;
+            const found = space.findWithin(o, radius!(f));
             for (let i = 0; i < found.length; i++) {
               if (consider(f, found[i]!, visit)) return;
             }
@@ -965,7 +1031,7 @@ class Compiler {
         each = (f, visit) => {
           const o = origin!(f);
           if (!o || !o.alive) return;
-          const linked = f.world.networks[networkIndex]!.neighbors(o) as readonly SpecAgent[];
+          const linked = f.context.networks[networkIndex]!.neighbors(o) as readonly SpecAgent[];
           for (let i = 0; i < linked.length; i++) {
             const agent = linked[i]!;
             if (agent.alive && consider(f, agent, visit)) return;
@@ -1018,7 +1084,7 @@ class Compiler {
       start = (f) => {
         from = selection.origin!(f);
       };
-      score = (f) => distance(f.world, from!, f.refs[slot]!);
+      score = (f) => distance(f.context, from!, f.refs[slot]!);
       sign = -1;
     } else if ('max' in pick) {
       score = asNum(this.#expr(pick.max, selection.scope, REAL));
@@ -1053,19 +1119,22 @@ class Compiler {
   }
 
   /** Distance between agents of two types sharing a grid or continuous space. */
-  #distanceFn(a: AgentInfo, b: AgentInfo): (world: World, x: SpecAgent, y: SpecAgent) => number {
+  #distanceFn(
+    a: AgentInfo,
+    b: AgentInfo,
+  ): (context: ModelContext, x: SpecAgent, y: SpecAgent) => number {
     const space = a.space!;
     const index = space.index;
     if (space.spec.kind === 'grid') {
       const cellOf = (role: AgentInfo['role']) =>
         role === 'cell'
           ? (agent: SpecAgent) => agent as SpecCell
-          : (agent: SpecAgent) => (agent as SpecOccupant).cell!;
+          : (agent: SpecAgent) => (agent as SpecOccupant).hostCell!;
       const cellA = cellOf(a.role);
       const cellB = cellOf(b.role);
-      return (world, x, y) => world.grids[index]!.distance(cellA(x), cellB(y));
+      return (context, x, y) => context.grids[index]!.distance(cellA(x), cellB(y));
     }
-    return (world, x, y) => world.continuous[index]!.distance(x as SpecPoint, y as SpecPoint);
+    return (context, x, y) => context.continuous[index]!.distance(x as SpecPoint, y as SpecPoint);
   }
 
   // ───────────────────────────────── Expressions ─────────────────────────
@@ -1093,18 +1162,18 @@ class Compiler {
     const resolved = resolution.value;
     switch (resolved.kind) {
       case 'tick':
-        return numCode(INT, (f) => f.world.sim.tick);
+        return numCode(INT, (f) => f.context.root.period);
       case 'param': {
         const index = resolved.parameter.index;
         return resolved.type.kind === 'boolean'
-          ? boolCode((f) => f.world.params[index] !== 0)
-          : numCode(resolved.type, (f) => f.world.params[index]!);
+          ? boolCode((f) => f.context.params[index] !== 0)
+          : numCode(resolved.type, (f) => f.context.params[index]!);
       }
       case 'spaceSize': {
         const index = resolved.space.index;
         return resolved.dimension === 'width'
-          ? numCode(resolved.type, (f) => f.world.widths[index]!)
-          : numCode(resolved.type, (f) => f.world.heights[index]!);
+          ? numCode(resolved.type, (f) => f.context.widths[index]!)
+          : numCode(resolved.type, (f) => f.context.heights[index]!);
       }
       case 'local': {
         const slot = resolved.variable.slot;
@@ -1161,7 +1230,7 @@ class Compiler {
     }
     for (let i = 0; i < cellSteps; i++) {
       const previous = fn;
-      fn = (f) => (previous(f) as SpecOccupant | undefined)?.cell;
+      fn = (f) => (previous(f) as SpecOccupant | undefined)?.hostCell;
     }
     return fn;
   }
@@ -1237,7 +1306,7 @@ class Compiler {
       const distance = this.#distanceFn(agentA, agentB);
       const left = asRef(a!);
       const right = asRef(b!);
-      return numCode(REAL, (f) => distance(f.world, left(f)!, right(f)!));
+      return numCode(REAL, (f) => distance(f.context, left(f)!, right(f)!));
     }
 
     const codes = args.map((arg) => this.#expr(arg, scope));

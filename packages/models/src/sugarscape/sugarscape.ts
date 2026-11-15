@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  Array2DVonNeumann,
   bool,
-  Cell,
+  CellOccupant,
   colors,
   defineModel,
   gradient,
-  GridScape,
   gridView,
   histogramView,
+  HostCell,
   int,
-  Occupant,
   real,
   rgb,
   Scape,
+  stat,
   timeSeriesView,
+  type Array2D,
 } from '@metascape/engine';
 
 /** The highest sugar capacity of any cell. */
@@ -24,7 +26,7 @@ const DX = [0, -1, 1, 0] as const;
 const DY = [-1, 0, 0, 1] as const;
 
 /** One site of the Sugarscape: a sugar capacity and the sugar currently on it. */
-export class SugarCell extends Cell {
+export class SugarCell extends HostCell {
   /** The most sugar this cell can hold, 0 to {@link MAX_CAPACITY}. */
   capacity: number;
   /** The sugar available to harvest now. */
@@ -67,9 +69,9 @@ export interface WalkerSettings {
 
 /**
  * An Epstein-Axtell agent: it has a fixed vision and metabolism and a store of
- * sugar, and each tick moves by rule M, harvests, and pays its metabolism.
+ * sugar, and each period moves by rule M, harvests, and pays its metabolism.
  */
-export class Walker extends Occupant<SugarCell> {
+export class Walker extends CellOccupant<SugarCell> {
   vision = 0;
   metabolism = 0;
   sugar = 0;
@@ -78,7 +80,7 @@ export class Walker extends Occupant<SugarCell> {
 
   constructor(
     private readonly settings: WalkerSettings,
-    private readonly sugarGrid: GridScape<SugarCell>,
+    private readonly land: Scape<SugarCell>,
   ) {
     super();
   }
@@ -90,7 +92,7 @@ export class Walker extends Occupant<SugarCell> {
     this.metabolism = random.int(s.metabolismMin, s.metabolismMax + 1);
     this.sugar = random.int(s.sugarMin, s.sugarMax + 1);
     if (s.replacement) this.maxAge = random.int(s.ageMin, s.ageMax + 1);
-    const home = this.sugarGrid.randomAvailableCell();
+    const home = this.land.findRandom((cell) => cell.isAvailable);
     if (home) this.moveTo(home);
     else this.die();
   }
@@ -102,7 +104,7 @@ export class Walker extends Occupant<SugarCell> {
     this.age++;
     if (this.sugar <= 0 || this.age > this.maxAge) {
       this.die();
-      if (this.settings.replacement) (this.scape as Scape<Walker>).spawn();
+      if (this.settings.replacement) this.scape.newAgent();
     }
   }
 
@@ -110,11 +112,15 @@ export class Walker extends Occupant<SugarCell> {
    * Looks along the four lattice directions up to the vision, picks the
    * unoccupied cell (or the current one) with the most sugar, nearest first
    * and at random among equals, moves there and eats all its sugar.
+   *
+   * Rule M is defined on the lattice, and the order in which it looks (every
+   * direction at one distance before the next distance) decides which random
+   * draws break ties, so it reads the lattice directly.
    */
   private move(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
-    const grid = this.sugarGrid;
+    const grid = this.land.space as Array2D<SugarCell>;
     let best = here;
     let bestSugar = here.sugar;
     let bestDistance = 0;
@@ -183,14 +189,14 @@ export const sugarscape = defineModel({
   ],
   parameters: {
     width: int(50, {
-      group: 'World',
+      group: 'Landscape',
       min: 10,
       max: 200,
       label: 'Width',
       description: 'Number of columns.',
     }),
     height: int(50, {
-      group: 'World',
+      group: 'Landscape',
       min: 10,
       max: 200,
       label: 'Height',
@@ -198,11 +204,11 @@ export const sugarscape = defineModel({
     }),
     growback: real(1, {
       live: true,
-      group: 'World',
+      group: 'Landscape',
       min: 0,
       max: 4,
       label: 'Growback',
-      description: 'Sugar each cell regrows per tick, up to its capacity.',
+      description: 'Sugar each cell regrows per period, up to its capacity.',
     }),
     agents: int(400, {
       group: 'Agents',
@@ -230,14 +236,14 @@ export const sugarscape = defineModel({
       min: 1,
       max: 10,
       label: 'Metabolism min',
-      description: 'Lowest sugar eaten per tick.',
+      description: 'Lowest sugar eaten per period.',
     }),
     metabolismMax: int(4, {
       group: 'Agents',
       min: 1,
       max: 10,
       label: 'Metabolism max',
-      description: 'Highest sugar eaten per tick.',
+      description: 'Highest sugar eaten per period.',
     }),
     sugarMin: int(5, {
       group: 'Agents',
@@ -275,8 +281,8 @@ export const sugarscape = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     for (const [low, high, what] of [
       [p.visionMin, p.visionMax, 'vision'],
       [p.metabolismMin, p.metabolismMax, 'metabolism'],
@@ -289,55 +295,67 @@ export const sugarscape = defineModel({
       throw new RangeError('Sugarscape: more agents than cells');
     }
 
-    const land = sim.addScape(
-      new GridScape<SugarCell>({
+    const land = root.add(
+      new Scape<SugarCell>({
         name: 'land',
-        width: p.width,
-        height: p.height,
-        wrap: true,
-        neighborhood: 'vonNeumann',
-        order: 'sequential',
-        create: (x, y) => new SugarCell(capacityAt(x, y, p.width, p.height)),
+        space: new Array2DVonNeumann<SugarCell>(),
+        extent: [p.width, p.height],
+        periodic: true,
+        prototypeAgent: (index) =>
+          new SugarCell(
+            capacityAt(index % p.width, Math.floor(index / p.width), p.width, p.height),
+          ),
       }),
     );
-    land.addRule('growback', (cell) => {
-      // Read each tick, so it can be changed while the model runs.
-      cell.sugar = Math.min(cell.capacity, cell.sugar + sim.parameters.growback);
-    });
+    land.addRule(
+      'growback',
+      (cell) => {
+        // Read each period, so it can be changed while the model runs.
+        cell.sugar = Math.min(cell.capacity, cell.sugar + root.parameters.growback);
+      },
+      { randomExecution: false, causesRemoval: false },
+    );
 
-    const agents = sim.addScape(
+    const agents = root.add(
       new Scape<Walker>({
         name: 'agents',
         size: p.agents,
-        create: () => new Walker(p, land),
+        prototypeAgent: () => new Walker(p, land),
       }),
     );
     agents.addRule('move-eat-die', (walker) => walker.act());
 
-    const data = sim.data;
-    data.count(agents, 'population');
-    data.measure(agents, 'vision', (a) => a.vision, { statistics: ['mean'] });
-    data.measure(agents, 'metabolism', (a) => a.metabolism, { statistics: ['mean'] });
-    data.measure(agents, 'wealth', (a) => a.sugar, { statistics: ['mean', 'sum', 'max'] });
-    data.distribution(agents, 'wealthDistribution', (a) => a.sugar, {
-      bins: 25,
-      min: 0,
-      max: 250,
-    });
+    agents.addStatCollector(stat.count('population'));
+    agents.addStatCollector(stat.measure('vision', (a) => a.vision, { statistics: ['mean'] }));
+    agents.addStatCollector(
+      stat.measure('metabolism', (a) => a.metabolism, { statistics: ['mean'] }),
+    );
+    agents.addStatCollector(
+      stat.measure('wealth', (a) => a.sugar, { statistics: ['mean', 'sum', 'max'] }),
+    );
+    agents.addStatCollector(
+      stat.distribution('wealthDistribution', (a) => a.sugar, {
+        bins: 25,
+        min: 0,
+        max: 250,
+      }),
+    );
     let scratch = new Float64Array(Math.max(1, p.agents));
-    data.value('gini', () => {
-      const members = agents.members;
-      if (members.length > scratch.length) scratch = new Float64Array(members.length * 2);
-      for (let i = 0; i < members.length; i++) scratch[i] = members[i]!.sugar;
-      scratch.subarray(0, members.length).sort();
-      return gini(scratch, members.length);
-    });
+    agents.addStatCollector(
+      stat.value('gini', () => {
+        const members = agents.members;
+        if (members.length > scratch.length) scratch = new Float64Array(members.length * 2);
+        for (let i = 0; i < members.length; i++) scratch[i] = members[i]!.sugar;
+        scratch.subarray(0, members.length).sort();
+        return gini(scratch, members.length);
+      }),
+    );
 
     const sugarColor = gradient(rgb(40, 36, 24), colors.yellow, rgb(255, 240, 150));
-    sim.addView(
+    land.addView(
       gridView<SugarCell, Walker>({
         title: 'Sugarscape',
-        grid: land,
+        scape: land,
         legend: [
           { color: colors.red, label: 'Agent', mark: 'agent' },
           { color: sugarColor(1), label: 'Most sugar' },
@@ -349,24 +367,24 @@ export const sugarscape = defineModel({
         occupantShape: 'circle',
       }),
     );
-    sim.addView(
+    agents.addView(
       timeSeriesView({
         title: 'Population',
         series: ['population'],
         colors: { population: colors.red },
       }),
     );
-    sim.addView(
+    agents.addView(
       timeSeriesView({
         title: 'Mean vision and metabolism',
         series: ['vision.mean', 'metabolism.mean'],
         colors: { 'vision.mean': colors.blue, 'metabolism.mean': colors.orange },
       }),
     );
-    sim.addView(
+    agents.addView(
       histogramView({ title: 'Wealth distribution', distribution: 'wealthDistribution' }),
     );
-    sim.addView(
+    agents.addView(
       timeSeriesView({
         title: 'Gini coefficient',
         series: ['gini'],

@@ -17,7 +17,7 @@ export const epidemic = defineModel({
     copyright: epidemicCopyright,
   },
   parameters: cityParameters({ individualCount: 1500, initialInfectionProbability: 0.05 }),
-  build(sim) {
-    buildCity(sim, sim.parameters);
+  build(root) {
+    buildCity(root, root.parameters);
   },
 });

@@ -8,9 +8,10 @@ import {
   int,
   ParameterError,
   real,
+  RootScape,
   Scape,
-  Simulation,
-  timeAt,
+  Singleton,
+  stat,
   type Model,
   type ParameterSchema,
 } from './index';
@@ -31,8 +32,8 @@ function hosting<A extends Agent>(
     name: 'test',
     parameters: {},
     scape: undefined as unknown as Scape<A>,
-    build(sim: Simulation) {
-      model.scape = sim.addScape(scape());
+    build(root: RootScape) {
+      model.scape = root.add(scape());
     },
   };
   return model;
@@ -41,7 +42,10 @@ function hosting<A extends Agent>(
 const walkers = (
   size: number,
   options: Partial<ConstructorParameters<typeof Scape<Walker>>[0]> = {},
-) => new Scape<Walker>({ name: 'walkers', size, create: () => new Walker(), ...options });
+) => new Scape<Walker>({ name: 'walkers', size, prototypeAgent: () => new Walker(), ...options });
+
+/** For rules that visit their agents in order of joining. */
+const inOrder = { randomExecution: false } as const;
 
 describe('parameters', () => {
   const model = defineModel({
@@ -56,10 +60,10 @@ describe('parameters', () => {
   });
 
   it('applies defaults and overrides with inferred types', () => {
-    const sim = new Simulation(model, { parameters: { width: 20, neighbourhood: 'vonNeumann' } });
-    const width: number = sim.parameters.width;
-    const neighbourhood: 'moore' | 'vonNeumann' = sim.parameters.neighbourhood;
-    expect([width, sim.parameters.density, sim.parameters.wrap, neighbourhood]).toEqual([
+    const root = new RootScape(model, { parameters: { width: 20, neighbourhood: 'vonNeumann' } });
+    const width: number = root.parameters.width;
+    const neighbourhood: 'moore' | 'vonNeumann' = root.parameters.neighbourhood;
+    expect([width, root.parameters.density, root.parameters.wrap, neighbourhood]).toEqual([
       20,
       0.5,
       true,
@@ -68,7 +72,7 @@ describe('parameters', () => {
   });
 
   it('rejects values that do not fit the schema', () => {
-    const run = (parameters: object) => () => new Simulation(model, { parameters } as never);
+    const run = (parameters: object) => () => new RootScape(model, { parameters } as never);
     expect(run({ width: 0 })).toThrow(ParameterError);
     expect(run({ width: 2.5 })).toThrow(ParameterError);
     expect(run({ density: 2 })).toThrow(ParameterError);
@@ -79,15 +83,15 @@ describe('parameters', () => {
 });
 
 describe('initialization', () => {
-  it('populates, initializes, then runs initial rules, leaving tick at 0', () => {
+  it('populates, initializes, then runs initial rules, leaving the period at 0', () => {
     const log: string[] = [];
     const model = hosting(() =>
       walkers(3).addInitialRule('place', (walker) => {
         log.push(`place ${walker.id} initialized=${walker.initialized}`);
       }),
     );
-    const sim = new Simulation(model, { seed: 1 });
-    expect(sim.tick).toBe(0);
+    const root = new RootScape(model, { seed: 1 });
+    expect(root.period).toBe(0);
     expect(model.scape.size).toBe(3);
     expect(model.scape.members.map((walker) => walker.id)).toEqual([0, 1, 2]);
     expect(log).toHaveLength(3);
@@ -98,15 +102,15 @@ describe('initialization', () => {
     let seen = -1;
     class Late extends Agent {
       override initialize(): void {
-        seen = this.sim.scape('second').size;
+        seen = this.root.findScape('second').size;
       }
     }
-    new Simulation({
+    new RootScape({
       name: 'two',
       parameters: {},
-      build(sim) {
-        sim.addScape(new Scape({ name: 'first', size: 1, create: () => new Late() }));
-        sim.addScape(new Scape({ name: 'second', size: 4, create: () => new Agent() }));
+      build(root) {
+        root.add(new Scape({ name: 'first', size: 1, prototypeAgent: () => new Late() }));
+        root.add(new Scape({ name: 'second', size: 4, prototypeAgent: () => new Agent() }));
       },
     });
     expect(seen).toBe(4);
@@ -114,35 +118,36 @@ describe('initialization', () => {
 
   it('rejects duplicate scape names and late scapes', () => {
     const model = hosting(() => walkers(0));
-    const sim = new Simulation(model);
-    expect(() => sim.addScape(walkers(0))).toThrow(/while the model is built/);
+    const root = new RootScape(model);
+    expect(() => root.add(walkers(0))).toThrow(/while the model is built/);
     expect(
       () =>
-        new Simulation({
+        new RootScape({
           name: 'dup',
           parameters: {},
-          build(sim) {
-            sim.addScape(walkers(0));
-            sim.addScape(walkers(0));
+          build(root) {
+            root.add(walkers(0));
+            root.add(walkers(0));
           },
         }),
     ).toThrow(/already exists/);
   });
 });
 
-describe('stepping', () => {
-  const trace = (schedule: 'byAgent' | 'byRule') => {
+describe('iterating', () => {
+  const trace = (executionOrder: 'byAgent' | 'byRule') => {
     const log: string[] = [];
     const model = hosting(() =>
-      walkers(2, { order: 'sequential', schedule })
-        .addRule('a', (walker) => log.push(`a${walker.id}`))
+      walkers(2, { executionOrder })
+        .addRule('a', (walker) => log.push(`a${walker.id}`), inOrder)
         .addRule({
           name: 'b',
+          ...inOrder,
           execute: (walker) => log.push(`b${walker.id}`),
           update: (walker) => log.push(`B${walker.id}`),
         }),
     );
-    new Simulation(model).step();
+    new RootScape(model).iterate();
     return log.join(' ');
   };
 
@@ -156,21 +161,21 @@ describe('stepping', () => {
 
   it('skips disabled rules', () => {
     const model = hosting(() => walkers(1).addRule('move', (walker) => walker.position++));
-    const sim = new Simulation(model);
+    const root = new RootScape(model);
     model.scape.rules[0]!.enabled = false;
-    sim.step();
+    root.iterate();
     expect(model.scape.members[0]!.position).toBe(0);
   });
 
-  it('visits in a fresh shuffled order each step, reproducibly', () => {
+  it('visits in a fresh shuffled order each iteration, reproducibly', () => {
     const orders = (seed: number) => {
       const seen: number[][] = [];
       let current: number[] = [];
       const model = hosting(() => walkers(20).addRule('note', (walker) => current.push(walker.id)));
-      const sim = new Simulation(model, { seed });
+      const root = new RootScape(model, { seed });
       for (let i = 0; i < 3; i++) {
         current = [];
-        sim.step();
+        root.iterate();
         seen.push(current);
       }
       return seen;
@@ -183,31 +188,34 @@ describe('stepping', () => {
   });
 
   it('activates a subset as a tour (distinct) or by draw (with replacement)', () => {
-    const counts = (sampling: 'tour' | 'draw') => {
+    const counts = (executionStyle: 'completeTour' | 'repeatedDraw') => {
       const model = hosting(() =>
-        walkers(10, { activations: 5, sampling }).addRule('move', (walker) => walker.position++),
+        walkers(10, { agentsPerIteration: 5, executionStyle }).addRule(
+          'move',
+          (walker) => walker.position++,
+        ),
       );
-      const sim = new Simulation(model, { seed: 3 });
-      sim.run(40);
+      const root = new RootScape(model, { seed: 3 });
+      root.run(40);
       return model.scape.members.map((walker) => walker.position);
     };
     const total = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
-    expect(total(counts('tour'))).toBe(200);
-    expect(total(counts('draw'))).toBe(200);
+    expect(total(counts('completeTour'))).toBe(200);
+    expect(total(counts('repeatedDraw'))).toBe(200);
 
     const oneStep = hosting(() =>
-      walkers(10, { activations: 9, sampling: 'tour' }).addRule(
+      walkers(10, { agentsPerIteration: 9, executionStyle: 'completeTour' }).addRule(
         'move',
         (walker) => walker.position++,
       ),
     );
-    new Simulation(oneStep, { seed: 3 }).step();
+    new RootScape(oneStep, { seed: 3 }).iterate();
     expect(Math.max(...oneStep.scape.members.map((walker) => walker.position))).toBe(1);
   });
 });
 
-describe('membership changes during a step', () => {
-  it('skips agents removed earlier in the step and calls removed() once', () => {
+describe('membership changes during an iteration', () => {
+  it('skips agents removed earlier in the iteration and calls removed() once', () => {
     let removals = 0;
     class Mortal extends Agent {
       acted = false;
@@ -219,52 +227,59 @@ describe('membership changes during a step', () => {
       new Scape<Mortal>({
         name: 'mortals',
         size: 4,
-        create: () => new Mortal(),
-        order: 'sequential',
+        prototypeAgent: () => new Mortal(),
       })
-        .addRule('kill next', (mortal) => {
-          mortal.acted = true;
-          const next = mortal.scape.members.find((other) => other.id === mortal.id + 1);
-          next?.die();
-          next?.die();
-        })
-        .addRule('never after death', (mortal) => expect(mortal.alive).toBe(true)),
+        .addRule(
+          'kill next',
+          (mortal) => {
+            mortal.acted = true;
+            const next = mortal.scape.members.find((other) => other.id === mortal.id + 1);
+            next?.die();
+            next?.die();
+          },
+          inOrder,
+        )
+        .addRule('never after death', (mortal) => expect(mortal.alive).toBe(true), inOrder),
     );
-    const sim = new Simulation(model);
-    sim.step();
+    const root = new RootScape(model);
+    root.iterate();
     expect(model.scape.members.map((mortal) => mortal.id)).toEqual([0, 2]);
     expect(model.scape.size).toBe(2);
     expect(removals).toBe(2);
     expect(model.scape.members.every((mortal) => mortal.acted && mortal.alive)).toBe(true);
   });
 
-  it('initializes agents added mid-run at once but first steps them next tick', () => {
+  it('initializes agents added mid-run at once but first iterates them next period', () => {
     const model = hosting(() =>
-      walkers(1, { order: 'sequential' })
-        .addInitialRule('mark', (walker) => (walker.position = 100))
-        .addRule('move and breed', (walker) => {
-          walker.position++;
-          if (walker.sim.tick === 1) walker.scape.spawn();
-        }),
+      walkers(1)
+        .addInitialRule('mark', (walker) => (walker.position = 100), inOrder)
+        .addRule(
+          'move and breed',
+          (walker) => {
+            walker.position++;
+            if (walker.root.period === 1) walker.scape.newAgent();
+          },
+          inOrder,
+        ),
     );
-    const sim = new Simulation(model);
-    sim.step();
+    const root = new RootScape(model);
+    root.iterate();
     const [parent, child] = model.scape.members;
     expect([parent!.position, child!.position, child!.initialized]).toEqual([101, 100, true]);
-    sim.step();
+    root.iterate();
     expect([parent!.position, child!.position]).toEqual([102, 101]);
   });
   it('moves an agent from one scape to another without leaving it in the first', () => {
-    const sim = new Simulation({
+    const root = new RootScape({
       name: 'two scapes',
       parameters: {},
-      build(s) {
-        s.addScape(walkers(2));
-        s.addScape(new Scape<Walker>({ name: 'elsewhere' }));
+      build(r) {
+        r.add(walkers(2));
+        r.add(new Scape<Walker>({ name: 'elsewhere' }));
       },
     });
-    const home = sim.scape('walkers') as Scape<Walker>;
-    const away = sim.scape('elsewhere') as Scape<Walker>;
+    const home = root.findScape('walkers') as Scape<Walker>;
+    const away = root.findScape('elsewhere') as Scape<Walker>;
     const mover = home.members[0]!;
     mover.die();
     away.add(mover);
@@ -275,40 +290,44 @@ describe('membership changes during a step', () => {
   });
 });
 
-describe('run control and observers', () => {
-  it('stops at stopAt, reports why, and refuses to step further', () => {
+describe('run control and listeners', () => {
+  it('stops at the stop period, reports why, and refuses to iterate further', () => {
     const events: string[] = [];
     const model: Model = {
       name: 'observed',
       parameters: {},
-      build(sim) {
-        sim.addScape(walkers(1).addRule('move', (walker) => walker.position++));
-        sim.observe({
-          initialized: (s) => events.push(`init@${s.tick}`),
-          stepped: (s) => events.push(`step@${s.tick}`),
-          stopped: (s) => events.push(`stop@${s.tick}`),
+      build(root) {
+        root.add(walkers(1).addRule('move', (walker) => walker.position++));
+        root.addScapeListener({
+          scapeInitialized: (s) => events.push(`init@${s.period}`),
+          scapeIterated: (s) => events.push(`step@${s.period}`),
+          scapeStopped: (s) => events.push(`stop@${s.period}`),
         });
       },
     };
-    const sim = new Simulation(model, { stopAt: 2 });
-    expect(sim.run(10)).toBe(2);
-    expect(sim.stopped).toBe(true);
-    expect(sim.stopReason).toBe('stopAt reached');
-    expect(sim.step()).toBe(false);
+    const root = new RootScape(model, { stopPeriod: 2 });
+    expect(root.run(10)).toBe(2);
+    expect(root.stopped).toBe(true);
+    expect(root.stopReason).toBe('stopPeriod reached');
+    expect(root.iterate()).toBe(false);
     expect(events).toEqual(['init@0', 'step@1', 'step@2', 'stop@2']);
   });
 
-  it('lets a rule stop the run after the current step', () => {
+  it('lets a rule stop the run after the current iteration', () => {
     const model = hosting(() =>
-      walkers(3, { order: 'sequential' }).addRule('move', (walker) => {
-        walker.position++;
-        if (walker.sim.tick === 3) walker.sim.stop('done');
-      }),
+      walkers(3).addRule(
+        'move',
+        (walker) => {
+          walker.position++;
+          if (walker.root.period === 3) walker.root.stop('done');
+        },
+        inOrder,
+      ),
     );
-    const sim = new Simulation(model);
-    expect(sim.run(100)).toBe(3);
+    const root = new RootScape(model);
+    expect(root.run(100)).toBe(3);
     expect(model.scape.members.map((walker) => walker.position)).toEqual([3, 3, 3]);
-    expect(sim.stopReason).toBe('done');
+    expect(root.stopReason).toBe('done');
   });
 });
 
@@ -321,11 +340,11 @@ describe('determinism', () => {
           if (walker.random.chance(0.02)) walker.die();
         })
         .addRule('breed', (walker) => {
-          if (walker.random.chance(0.02)) walker.scape.spawn();
+          if (walker.random.chance(0.02)) walker.scape.newAgent();
         }),
     );
-    const sim = new Simulation(model, { seed });
-    sim.run(50);
+    const root = new RootScape(model, { seed });
+    root.run(50);
     return model.scape.members.map((walker) => `${walker.id}:${walker.position}`).join(',');
   };
 
@@ -337,50 +356,53 @@ describe('determinism', () => {
 
   it('records the seed it chose when none is given', () => {
     const model = hosting(() => walkers(0));
-    const sim = new Simulation(model);
-    expect(typeof sim.seed).toBe('number');
+    const root = new RootScape(model);
+    expect(typeof root.seed).toBe('number');
   });
 });
 
 describe('views', () => {
-  it('collects views declared while building, then those from model.views', () => {
-    const sim = new Simulation({
+  it('collects views added while building, then those from model.views', () => {
+    const root = new RootScape({
       name: 'viewed',
       parameters: {},
-      build(sim) {
-        sim.addView({ type: 'timeSeries', title: 'declared', series: [] });
+      build(root) {
+        root.addView({ type: 'timeSeries', title: 'declared', series: [] });
       },
       views: () => [{ type: 'bars', title: 'from model', series: [] }],
     });
-    expect(sim.views.map((view) => view.title)).toEqual(['declared', 'from model']);
-    expect(sim.views).toBe(sim.views);
-    expect(() => sim.addView({ type: 'bars', title: 'late', series: [] })).toThrow(
+    expect(root.allViews.map((view) => view.title)).toEqual(['declared', 'from model']);
+    expect(root.allViews).toBe(root.allViews);
+    expect(() => root.addView({ type: 'bars', title: 'late', series: [] })).toThrow(
       /while the model/,
     );
   });
 });
 
-describe('setup callbacks', () => {
-  it('run after population and initial rules, before the first data sample', () => {
+describe('rules of the model as a whole', () => {
+  it('run after the initial rules of the scapes before them, before the first statistics', () => {
     const log: string[] = [];
-    const sim = new Simulation({
+    const root = new RootScape({
       name: 'setup',
       parameters: {},
-      build(sim) {
-        const scape = sim.addScape(
-          new Scape<Walker>({ name: 'walkers', size: 2, create: () => new Walker() }),
+      build(root) {
+        const scape = root.add(
+          new Scape<Walker>({ name: 'walkers', size: 2, prototypeAgent: () => new Walker() }),
         );
         scape.addInitialRule('mark', (walker) => (walker.position = 1));
-        sim.setup(() => {
+        const whole = root.add(new Scape({ name: 'whole', space: new Singleton() }));
+        whole.addInitialRule('set up', () => {
           log.push(`setup sees ${scape.members.map((walker) => walker.position).join(',')}`);
           for (const walker of scape) walker.position = 5;
         });
-        sim.data.measure(scape, 'position', (walker) => walker.position);
+        scape.addStatCollector(stat.measure('position', (walker) => walker.position));
       },
     });
     expect(log).toEqual(['setup sees 1,1']);
-    expect(sim.data.latest('position.mean')).toBe(5);
-    expect(() => sim.setup(() => {})).toThrow(/while the model/);
+    expect(root.data.latest('position.mean')).toBe(5);
+    expect(() => root.add(new Scape({ name: 'late', space: new Singleton() }))).toThrow(
+      /while the model/,
+    );
   });
 });
 
@@ -388,35 +410,40 @@ describe('live parameters', () => {
   const model = defineModel({
     name: 'live',
     parameters: { rate: real(1, { min: 0, live: true }), size: int(3) },
-    time: { unit: 'year', originOf: (p) => 800 + p.size },
-    build(sim) {
+    period: { name: 'year', startOf: (p) => 800 + p.size },
+    build(root) {
       let total = 0;
-      sim.data.value('total', () => total);
-      sim.observe({ stepped: () => void (total += sim.parameters.rate) });
+      root.addStatCollector(stat.value('total', () => total));
+      root.addScapeListener({ scapeIterated: () => void (total += root.parameters.rate) });
     },
   });
 
   it('changes a live parameter mid-run and the model sees it', () => {
-    const sim = new Simulation(model, { seed: 1 });
-    sim.step();
-    sim.setParameter('rate', 5);
-    sim.step();
-    sim.step(); // data is sampled before this test's observer adds to the total
-    expect(sim.data.latest('total')).toBe(6);
-    expect(Object.isFrozen(sim.parameters)).toBe(true);
+    const root = new RootScape(model, { seed: 1 });
+    root.iterate();
+    root.setParameter('rate', 5);
+    root.iterate();
+    root.iterate(); // statistics are collected before this test's listener adds to the total
+    expect(root.data.latest('total')).toBe(6);
+    expect(Object.isFrozen(root.parameters)).toBe(true);
   });
 
-  it('refuses parameters that are not live, unknown names and bad values', () => {
-    const sim = new Simulation(model, { seed: 1 });
-    expect(() => sim.setParameter('size', 4)).toThrow(ParameterError);
-    expect(() => sim.setParameter('nope', 4)).toThrow(/Unknown/);
-    expect(() => sim.setParameter('rate', -1)).toThrow(/at least 0/);
-    expect(sim.parameters.rate).toBe(1);
+  it('sets any parameter at any time, refusing unknown names and bad values', () => {
+    const root = new RootScape(model, { seed: 1 });
+    root.setParameter('size', 4);
+    expect(root.parameters.size).toBe(4);
+    expect(() => root.setParameter('size', 4.5)).toThrow(ParameterError);
+    expect(() => root.setParameter('nope', 4)).toThrow(/Unknown/);
+    expect(() => root.setParameter('rate', -1)).toThrow(/at least 0/);
+    expect(root.parameters.rate).toBe(1);
   });
 
-  it('maps ticks onto the model time scale', () => {
-    const sim = new Simulation(model, { seed: 1 });
-    expect(timeAt(sim, 0)).toBe(803);
-    expect(timeAt(sim, 10)).toBe(813);
+  it('counts periods from the start period of the model', () => {
+    const root = new RootScape(model, { seed: 1 });
+    expect(root.period).toBe(803);
+    expect(root.iteration).toBe(0);
+    root.run(10);
+    expect(root.period).toBe(813);
+    expect(root.iteration).toBe(10);
   });
 });

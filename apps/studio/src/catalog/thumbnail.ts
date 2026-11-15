@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Color, Simulation, ViewSpec } from '@metascape/engine';
-import { DEFAULT_PALETTE, historyDepth, paintGrid } from '@metascape/react';
+import type { Color, RootScape, ViewSpec } from '@metascape/engine';
+import { DEFAULT_PALETTE, historyDepth, latticeOf, paintGrid } from '@metascape/react';
 
 /*
  * Draws a small picture of a model's main view without a browser, for the
@@ -77,14 +77,14 @@ export function primaryView(views: readonly ViewSpec[]): ViewSpec | undefined {
 }
 
 /**
- * Runs a simulation for a while and draws its main view. A one-row lattice is
- * drawn as its history, one row per tick, as the Workbench shows it.
+ * Runs a model for a while and draws its main view. A one-row lattice is
+ * drawn as its history, one row per period, as the Workbench shows it.
  */
-export function renderThumbnail(sim: Simulation, ticks: number): Picture | undefined {
-  const view = primaryView(sim.views);
+export function renderThumbnail(root: RootScape, iterations: number): Picture | undefined {
+  const view = primaryView(root.allViews);
   if (!view) return undefined;
-  if (view.type === 'grid' && view.grid.height === 1) {
-    const width = view.grid.width;
+  if (view.type === 'grid' && latticeOf(view).height === 1) {
+    const width = latticeOf(view).width;
     const depth = Math.min(historyDepth(width), 160);
     const pixels = new Uint32Array(width * depth);
     const row = new Uint32Array(width);
@@ -96,21 +96,22 @@ export function renderThumbnail(sim: Simulation, ticks: number): Picture | undef
       rows = Math.min(depth, rows + 1);
     };
     record();
-    for (let i = 1; i < depth && sim.step(); i++) record();
+    for (let i = 1; i < depth && root.iterate(); i++) record();
     const rgba = new Uint8Array(pixels.buffer.slice(0, width * rows * 4));
     return { width, height: rows, rgba, pixelated: true };
   }
-  sim.run(ticks);
+  root.run(iterations);
   if (view.type === 'grid') {
-    const { width, height } = view.grid;
+    const { width, height } = latticeOf(view);
     const pixels = new Uint32Array(width * height);
     paintGrid(view, pixels);
     return { width, height, rgba: new Uint8Array(pixels.buffer), pixelated: true };
   }
   if (view.type === 'continuous') {
     const { scape } = view;
-    const scale = SIZE / scape.width;
-    const height = Math.max(1, Math.round(scape.height * scale));
+    const [spaceWidth = 1, spaceHeight = 1] = scape.extent;
+    const scale = SIZE / spaceWidth;
+    const height = Math.max(1, Math.round(spaceHeight * scale));
     const picture = canvas(SIZE, height, view.background ?? BACKGROUND);
     for (const agent of scape.members) {
       const color = view.color?.(agent) ?? DEFAULT_PALETTE[0]!;
@@ -133,7 +134,7 @@ export function renderThumbnail(sim: Simulation, ticks: number): Picture | undef
     };
     const index = new Map(members.map((agent, i) => [agent, i]));
     members.forEach((agent, i) => {
-      for (const other of view.network.neighbors(agent)) {
+      for (const other of view.graph.neighbors(agent)) {
         const j = index.get(other);
         if (j === undefined || j < i) continue;
         line(picture.set, ...at(i), ...at(j), LINE, 0.35);
@@ -149,9 +150,9 @@ export function renderThumbnail(sim: Simulation, ticks: number): Picture | undef
     const width = SIZE;
     const height = Math.round(SIZE * 0.62);
     const picture = canvas(width, height, BACKGROUND);
-    const ticks = sim.data.ticks;
-    const count = sim.data.sampleCount;
-    const series = view.series.map((id) => sim.data.values(id).subarray(0, count));
+    const periods = root.data.periods;
+    const count = root.data.sampleCount;
+    const series = view.series.map((id) => root.data.values(id).subarray(0, count));
     let low = Infinity;
     let high = -Infinity;
     for (const values of series) {
@@ -163,14 +164,16 @@ export function renderThumbnail(sim: Simulation, ticks: number): Picture | undef
     }
     if (!Number.isFinite(low) || count < 2) return picture;
     if (high === low) high = low + 1;
-    const last = ticks[count - 1]! || 1;
+    // Measured from the first period, so a model that starts at year 800 draws as one starting at 0.
+    const first = periods[0]!;
+    const last = periods[count - 1]! - first || 1;
     const pad = 10;
     series.forEach((values, s) => {
       const color = view.colors?.[view.series[s]!] ?? DEFAULT_PALETTE[s % DEFAULT_PALETTE.length]!;
       for (let i = 1; i < count; i++) {
         const [a, b] = [values[i - 1]!, values[i]!];
         if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-        const x = (k: number): number => pad + (ticks[k]! / last) * (width - pad * 2);
+        const x = (k: number): number => pad + ((periods[k]! - first) / last) * (width - pad * 2);
         const y = (v: number): number =>
           height - pad - ((v - low) / (high - low)) * (height - pad * 2);
         line(picture.set, x(i - 1), y(a), x(i), y(b), color, 1);

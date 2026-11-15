@@ -7,7 +7,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, NuTech Solutions,Inc., Metascape LLC, and contributors.
 // All rights reserved. Used under the BSD license in LICENSES/ascape-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Cell, type GridScape, type Random } from '@metascape/engine';
+import { type Array2D, HostCell, type Random } from '@metascape/engine';
 
 /** Which Ascape lattice a Bionland step lives on. */
 export type LatticeKind = 'moore' | 'vonNeumann' | 'ring';
@@ -78,7 +78,7 @@ function stepAway(o: number, t: number, e: number): number {
  * result may be `from` itself. Moore and von Neumann lattices behave alike
  * here, since both are periodic.
  */
-export function cellToward<C extends Cell>(grid: GridScape<C>, from: C, to: C): C {
+export function cellToward<C extends HostCell>(grid: Array2D<C>, from: C, to: C): C {
   if (from === to) return from;
   const x = stepToward(from.x, to.x, grid.width);
   const y = grid.height === 1 ? 0 : stepToward(from.y, to.y, grid.height);
@@ -91,8 +91,8 @@ export function cellToward<C extends Cell>(grid: GridScape<C>, from: C, to: C): 
  * axis-aligned alternatives are tried in random order. Where `from === to`
  * a random neighbor is returned, whether free or not.
  */
-export function cellAway<C extends Cell>(
-  grid: GridScape<C>,
+export function cellAway<C extends HostCell>(
+  grid: Array2D<C>,
   from: C,
   to: C,
   ring: boolean,
@@ -117,8 +117,8 @@ export function cellAway<C extends Cell>(
  * strictly below `vision` are searched outward; on a ring, positions up to
  * `vision` steps away. A random one of the nearest matches is returned.
  */
-export function nearestMatch<C extends Cell>(
-  grid: GridScape<C>,
+export function nearestMatch<C extends HostCell>(
+  grid: Array2D<C>,
   origin: C,
   condition: (cell: C) => boolean,
   vision: number,
@@ -163,8 +163,8 @@ function nearlyEqual(a: number, b: number): boolean {
  * columns only on a von Neumann lattice (Ascape's "line of sight"), and
  * ring distance on a ring.
  */
-export function maximumWithin<C extends Cell>(
-  grid: GridScape<C>,
+export function maximumWithin<C extends HostCell>(
+  grid: Array2D<C>,
   origin: C,
   value: (cell: C) => number,
   vision: number,

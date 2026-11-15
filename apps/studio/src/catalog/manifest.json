@@ -257,7 +257,7 @@
       "id": "brookings-simple",
       "name": "Simple",
       "collection": "Brookings Institution models (from Ascape)",
-      "description": "The smallest Ascape example: one agent whose happiness doubles every tick and an environment that sometimes breaks it.",
+      "description": "The smallest Ascape example: one agent whose happiness doubles every period and an environment that sometimes breaks it.",
       "tags": [
         "tutorial"
       ],
@@ -473,7 +473,7 @@
         "lattice"
       ],
       "parameterCount": 6,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "thumb": {
         "file": "thumbs/schelling-segregation.png",
         "width": 40,
@@ -509,7 +509,7 @@
       "name": "Heatbugs",
       "familyId": "metascape-examples",
       "summary": "Bugs that like a certain warmth give off heat and huddle into clusters that wander and dissolve.",
-      "description": "The Heatbugs model from the Swarm simulation system (Santa Fe Institute, Minar, Burkhart, Langton and Askenazi, 1996). Bugs radiate heat and try to sit at a preferred temperature, while the heat diffuses and evaporates across a torus. No bug is told to cluster, yet the swarm gathers into warm clumps that drift about as each bug seeks the right temperature, a standard illustration of self-organization from purely local rules.",
+      "description": "The Heatbugs model from the Swarm toolkit (Santa Fe Institute, Minar, Burkhart, Langton and Askenazi, 1996). Bugs radiate heat and try to sit at a preferred temperature, while the heat diffuses and evaporates across a torus. No bug is told to cluster, yet the swarm gathers into warm clumps that drift about as each bug seeks the right temperature, a standard illustration of self-organization from purely local rules.",
       "tags": [
         "ecology",
         "emergence"
@@ -540,7 +540,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 3,
+      "ruleCount": 4,
       "thumb": {
         "file": "thumbs/wolf-sheep-predation.png",
         "width": 40,
@@ -562,7 +562,7 @@
         "lattice"
       ],
       "parameterCount": 13,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "thumb": {
         "file": "thumbs/demographic-prisoner-s-dilemma.png",
         "width": 30,
@@ -606,7 +606,7 @@
         "network"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "thumb": {
         "file": "thumbs/epidemic-sir-on-a-small-world-network.png",
         "width": 192,
@@ -643,8 +643,8 @@
       "id": "sugarscape-ii-2-unit-growback",
       "name": "Sugarscape II-2: Unit growback",
       "familyId": "brookings-sugarscape",
-      "summary": "As II-1, but sugar grows back one unit per tick, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
-      "description": "As II-1, but sugar grows back one unit per tick, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "summary": "As II-1, but sugar grows back one unit per period, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "description": "As II-1, but sugar grows back one unit per period, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
       "tags": [
         "resources",
         "economics",
@@ -744,8 +744,8 @@
       "id": "sugarscape-ii-6-migration-from-a-corner",
       "name": "Sugarscape II-6: Migration from a corner",
       "familyId": "brookings-sugarscape",
-      "summary": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 ticks.",
-      "description": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 ticks.",
+      "summary": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 periods.",
+      "description": "Agents with long vision start packed into a 20 by 20 corner of a landscape with flatter peaks and migrate across it in waves; the run stops after 50 periods.",
       "tags": [
         "resources",
         "economics",
@@ -755,7 +755,7 @@
         "lattice"
       ],
       "parameterCount": 10,
-      "ruleCount": 6,
+      "ruleCount": 7,
       "authors": "Joshua M. Epstein and Robert Axtell",
       "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_6",
       "thumb": {
@@ -769,8 +769,8 @@
       "id": "sugarscape-ii-7-seasons",
       "name": "Sugarscape II-7: Seasons",
       "familyId": "brookings-sugarscape",
-      "summary": "Sugar grows back one unit per tick in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision migrate…",
-      "description": "Sugar grows back one unit per tick in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision migrate between them.",
+      "summary": "Sugar grows back one unit per period in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision…",
+      "description": "Sugar grows back one unit per period in the summer half of the landscape and slowly in the winter half, the seasons alternating; agents with long vision migrate between them.",
       "tags": [
         "resources",
         "economics",
@@ -844,8 +844,8 @@
       "id": "sugarscape-spice-ii-2-sugar-and-spice-unit-growback",
       "name": "Sugarscape Spice II-2: Sugar and spice, unit growback",
       "familyId": "brookings-sugarscape",
-      "summary": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per tick; as in the legacy code, spice is not grown back at all.",
-      "description": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per tick; as in the legacy code, spice is not grown back at all.",
+      "summary": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per period; as in the legacy code, spice is not grown back at all.",
+      "description": "As Spice II-1, with the cell rules replaced by sugar growback of one unit per period; as in the legacy code, spice is not grown back at all.",
       "tags": [
         "resources",
         "economics",
@@ -919,8 +919,8 @@
       "id": "sugarscape-iii-6-cultural-transmission",
       "name": "Sugarscape III-6: Cultural transmission",
       "familyId": "brookings-sugarscape",
-      "summary": "Agents carry an 11-bit cultural tag; each tick they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share.",
-      "description": "Agents carry an 11-bit cultural tag; each tick they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share. Agents are blue or red by the majority of their bits.",
+      "summary": "Agents carry an 11-bit cultural tag; each period they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share.",
+      "description": "Agents carry an 11-bit cultural tag; each period they flip one random bit of each neighbor to match their own, and children inherit the bits their parents share. Agents are blue or red by the majority of their bits.",
       "tags": [
         "resources",
         "economics",
@@ -944,8 +944,8 @@
       "id": "sugarscape-iv-1-sugar-and-spice-no-trade",
       "name": "Sugarscape IV-1: Sugar and spice, no trade",
       "familyId": "brookings-sugarscape",
-      "summary": "Agents need sugar and spice, which grow back one unit per tick on separate peaks, and die when they run out of either.",
-      "description": "Agents need sugar and spice, which grow back one unit per tick on separate peaks, and die when they run out of either. There is no trade.",
+      "summary": "Agents need sugar and spice, which grow back one unit per period on separate peaks, and die when they run out of either.",
+      "description": "Agents need sugar and spice, which grow back one unit per period on separate peaks, and die when they run out of either. There is no trade.",
       "tags": [
         "resources",
         "economics",
@@ -1195,7 +1195,7 @@
       "name": "Artificial Anasazi: Long House Valley (LHV)",
       "familyId": "brookings-anasazi",
       "summary": "Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water…",
-      "description": "Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The simulated number of households is charted against the archaeological record, which grows and then collapses around AD 1300.",
+      "description": "Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The modelled number of households is charted against the archaeological record, which grows and then collapses around AD 1300.",
       "tags": [
         "archaeology",
         "demography",
@@ -1205,7 +1205,7 @@
         "lattice"
       ],
       "parameterCount": 24,
-      "ruleCount": 5,
+      "ruleCount": 6,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHV",
       "thumb": {
@@ -1230,7 +1230,7 @@
         "lattice"
       ],
       "parameterCount": 24,
-      "ruleCount": 5,
+      "ruleCount": 6,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVGreedy",
       "thumb": {
@@ -1255,7 +1255,7 @@
         "lattice"
       ],
       "parameterCount": 26,
-      "ruleCount": 11,
+      "ruleCount": 12,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVDisaggregate",
       "thumb": {
@@ -1280,7 +1280,7 @@
         "lattice"
       ],
       "parameterCount": 26,
-      "ruleCount": 11,
+      "ruleCount": 12,
       "authors": "Robert L. Axtell, Joshua M. Epstein, Jeffrey S. Dean, George J. Gumerman, Alan C. Swedlund and colleagues",
       "portedFrom": "Ascape 5.6.1, edu.brook.aa.LHVClan",
       "thumb": {
@@ -1410,7 +1410,7 @@
       "name": "Civil Violence: Model I, Run 3",
       "familyId": "brookings-civil-violence",
       "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
-      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy erodes by 0.01 every third tick while jailed citizens stay jailed.",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy erodes by 0.01 every third period while jailed citizens stay jailed.",
       "tags": [
         "conflict"
       ],
@@ -1433,7 +1433,7 @@
       "name": "Civil Violence: Model I, Run 4",
       "familyId": "brookings-civil-violence",
       "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
-      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy is cut from 0.90 to 0.65 after tick 75.",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view. Legitimacy is cut from 0.90 to 0.65 after period 75.",
       "tags": [
         "conflict"
       ],
@@ -1721,7 +1721,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelOne",
       "thumb": {
@@ -1745,7 +1745,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure2",
       "thumb": {
@@ -1769,7 +1769,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure3",
       "thumb": {
@@ -1793,7 +1793,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelTwo",
       "thumb": {
@@ -1817,7 +1817,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure6",
       "thumb": {
@@ -1841,7 +1841,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure7",
       "thumb": {
@@ -1865,7 +1865,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure8",
       "thumb": {
@@ -1889,7 +1889,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.Figure9",
       "thumb": {
@@ -1913,7 +1913,7 @@
         "plane"
       ],
       "parameterCount": 7,
-      "ruleCount": 1,
+      "ruleCount": 2,
       "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
       "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelPeyton",
       "thumb": {
@@ -2190,8 +2190,8 @@
       "id": "spatial-ipd-ga-pd2dgamultiple",
       "name": "Spatial IPD (GA): PD2DGAMultiple",
       "familyId": "brookings-spatial-ipd",
-      "summary": "Batch variant (35 runs of 1000 ticks in the legacy sweep) with random and preference play.",
-      "description": "Batch variant (35 runs of 1000 ticks in the legacy sweep) with random and preference play. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
+      "summary": "Batch variant (35 runs of 1000 periods in the legacy sweep) with random and preference play.",
+      "description": "Batch variant (35 runs of 1000 periods in the legacy sweep) with random and preference play. Players on a lattice play an iterated Prisoner's Dilemma against neighbors with a genetic-algorithm strategy: each carries a chromosome that maps the remembered last rounds to a move. Rich players clone onto neighboring sites, and chromosomes mutate and cross over with neighbors.",
       "tags": [
         "game theory",
         "evolution"
@@ -2224,7 +2224,7 @@
         "lattice"
       ],
       "parameterCount": 17,
-      "ruleCount": 10,
+      "ruleCount": 11,
       "authors": "Miles T. Parker",
       "portedFrom": "Ascape 5.6.1, name.milesparker.spatialipd.PD2DGAMultipleTo",
       "thumb": {
@@ -2565,8 +2565,8 @@
       "id": "simple",
       "name": "Simple",
       "familyId": "brookings-simple",
-      "summary": "The smallest Ascape tutorial model: one agent whose happiness doubles every tick up to a ceiling, and any other agents, which each have a one in ten chance per…",
-      "description": "The smallest Ascape tutorial model: one agent whose happiness doubles every tick up to a ceiling, and any other agents, which each have a one in ten chance per tick of resetting that happiness. The lattice is part of the model but stays empty.",
+      "summary": "The smallest Ascape tutorial model: one agent whose happiness doubles every period up to a ceiling, and any other agents, which each have a one in ten chance…",
+      "description": "The smallest Ascape tutorial model: one agent whose happiness doubles every period up to a ceiling, and any other agents, which each have a one in ten chance per period of resetting that happiness. The lattice is part of the model but stays empty.",
       "tags": [
         "tutorial"
       ],
@@ -2610,8 +2610,8 @@
       "id": "bionland-step-b",
       "name": "Bionland: Step B",
       "familyId": "ascape-bionland",
-      "summary": "The bions now take a random walk each tick, one step to a random neighboring site when it is free, on light gray tiles.",
-      "description": "The bions now take a random walk each tick, one step to a random neighboring site when it is free, on light gray tiles.",
+      "summary": "The bions now take a random walk each period, one step to a random neighboring site when it is free, on light gray tiles.",
+      "description": "The bions now take a random walk each period, one step to a random neighboring site when it is free, on light gray tiles.",
       "tags": [
         "tutorial",
         "ecology"
@@ -2794,8 +2794,8 @@
       "id": "bionland-step-j",
       "name": "Bionland: Step J",
       "familyId": "ascape-bionland",
-      "summary": "Tile energy now spreads: each tile takes the average of its neighbors every tick.",
-      "description": "Tile energy now spreads: each tile takes the average of its neighbors every tick. The chart now counts bions.",
+      "summary": "Tile energy now spreads: each tile takes the average of its neighbors every period.",
+      "description": "Tile energy now spreads: each tile takes the average of its neighbors every period. The chart now counts bions.",
       "tags": [
         "tutorial",
         "ecology"
@@ -2919,7 +2919,7 @@
         "plane"
       ],
       "parameterCount": 6,
-      "ruleCount": 0,
+      "ruleCount": 1,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.Model_Q",
       "thumb": {
         "file": "thumbs/bionland-step-q.png",
@@ -3001,8 +3001,8 @@
       "id": "bionland-data-run-full-model",
       "name": "Bionland: Data Run (Full Model)",
       "familyId": "ascape-bionland",
-      "summary": "The full model, set to stop after 50 ticks as the legacy data-collecting launcher did.",
-      "description": "The full model, set to stop after 50 ticks as the legacy data-collecting launcher did.",
+      "summary": "The full model, set to stop after 50 periods as the legacy data-collecting launcher did.",
+      "description": "The full model, set to stop after 50 periods as the legacy data-collecting launcher did.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3011,7 +3011,7 @@
         "strip"
       ],
       "parameterCount": 9,
-      "ruleCount": 21,
+      "ruleCount": 22,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData",
       "thumb": {
         "file": "thumbs/bionland-data-run-full-model.png",
@@ -3024,8 +3024,8 @@
       "id": "bionland-data-run-n",
       "name": "Bionland: Data Run N",
       "familyId": "ascape-bionland",
-      "summary": "Step M on a 10 x 10 lattice, set to stop after 2000 ticks as the legacy data-collecting launcher did.",
-      "description": "Step M on a 10 x 10 lattice, set to stop after 2000 ticks as the legacy data-collecting launcher did.",
+      "summary": "Step M on a 10 x 10 lattice, set to stop after 2000 periods as the legacy data-collecting launcher did.",
+      "description": "Step M on a 10 x 10 lattice, set to stop after 2000 periods as the legacy data-collecting launcher did.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3034,7 +3034,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 27,
+      "ruleCount": 28,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_N",
       "thumb": {
         "file": "thumbs/bionland-data-run-n.png",
@@ -3047,8 +3047,8 @@
       "id": "bionland-data-run-o",
       "name": "Bionland: Data Run O",
       "familyId": "ascape-bionland",
-      "summary": "Step M on a 10 x 10 lattice, set to stop after 500 ticks as the legacy data-collecting launcher did.",
-      "description": "Step M on a 10 x 10 lattice, set to stop after 500 ticks as the legacy data-collecting launcher did.",
+      "summary": "Step M on a 10 x 10 lattice, set to stop after 500 periods as the legacy data-collecting launcher did.",
+      "description": "Step M on a 10 x 10 lattice, set to stop after 500 periods as the legacy data-collecting launcher did.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3057,7 +3057,7 @@
         "lattice"
       ],
       "parameterCount": 9,
-      "ruleCount": 27,
+      "ruleCount": 28,
       "portedFrom": "Ascape 5.6.1, org.ascape.examples.bionland.ModelData_O",
       "thumb": {
         "file": "thumbs/bionland-data-run-o.png",
@@ -3139,8 +3139,8 @@
       "id": "stupidmodel-2",
       "name": "StupidModel 2",
       "familyId": "amp-stupid-model",
-      "summary": "Bugs move as in StupidModel 1 and also grow by one each tick; their colour fades from white to red with size.",
-      "description": "Bugs move as in StupidModel 1 and also grow by one each tick; their colour fades from white to red with size.",
+      "summary": "Bugs move as in StupidModel 1 and also grow by one each period; their colour fades from white to red with size.",
+      "description": "Bugs move as in StupidModel 1 and also grow by one each period; their colour fades from white to red with size.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3163,8 +3163,8 @@
       "id": "stupidmodel-3",
       "name": "StupidModel 3",
       "familyId": "amp-stupid-model",
-      "summary": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per tick.",
-      "description": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per tick. Bugs neither eat nor look for food.",
+      "summary": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per period.",
+      "description": "As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per period. Bugs neither eat nor look for food.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3187,8 +3187,8 @@
       "id": "stupidmodel-5",
       "name": "StupidModel 5",
       "familyId": "amp-stupid-model",
-      "summary": "Habitats accumulate food by a draw in [0, 0.5) per tick and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
-      "description": "Habitats accumulate food by a draw in [0, 0.5) per tick and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
+      "summary": "Habitats accumulate food by a draw in [0, 0.5) per period and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
+      "description": "Habitats accumulate food by a draw in [0, 0.5) per period and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.",
       "tags": [
         "tutorial",
         "ecology"
@@ -3211,8 +3211,8 @@
       "id": "wiki-example",
       "name": "Wiki Example",
       "familyId": "amp-wiki-example",
-      "summary": "Individuals of random ages scattered over a bounded city grid each tick move next to a randomly chosen individual of the same age within their vision, so…",
-      "description": "Individuals of random ages scattered over a bounded city grid each tick move next to a randomly chosen individual of the same age within their vision, so same-aged individuals gradually cluster together.",
+      "summary": "Individuals of random ages scattered over a bounded city grid each period move next to a randomly chosen individual of the same age within their vision, so…",
+      "description": "Individuals of random ages scattered over a bounded city grid each period move next to a randomly chosen individual of the same age within their vision, so same-aged individuals gradually cluster together.",
       "tags": [
         "tutorial"
       ],
@@ -3255,8 +3255,8 @@
       "id": "demographic-prisoner-s-dilemma-amp",
       "name": "Demographic Prisoner's Dilemma (AMP)",
       "familyId": "amp-demographic-pd",
-      "summary": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every tick; wealthy players have children,…",
-      "description": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every tick; wealthy players have children, poor or old ones die, and strategies are inherited with some mutation.",
+      "summary": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every period; wealthy players have…",
+      "description": "Players wander a torus of von Neumann neighbours, each playing a one-shot Prisoner's Dilemma with a random neighbour every period; wealthy players have children, poor or old ones die, and strategies are inherited with some mutation.",
       "tags": [
         "game theory",
         "demography"
@@ -3381,7 +3381,7 @@
         "lattice"
       ],
       "parameterCount": 18,
-      "ruleCount": 400,
+      "ruleCount": 401,
       "authors": "Miles Parker",
       "portedFrom": "Eclipse AMP, EpidemicPeriods.java (subclass of the generated Region of EpidemicRegional.metaabm)",
       "thumb": {
@@ -3472,7 +3472,7 @@
         "lattice"
       ],
       "parameterCount": 4,
-      "ruleCount": 2,
+      "ruleCount": 3,
       "thumb": {
         "file": "thumbs/data-schelling.png",
         "width": 30,
@@ -3493,7 +3493,7 @@
         "network"
       ],
       "parameterCount": 8,
-      "ruleCount": 4,
+      "ruleCount": 5,
       "thumb": {
         "file": "thumbs/data-epidemic.png",
         "width": 192,
@@ -3514,7 +3514,7 @@
         "lattice"
       ],
       "parameterCount": 8,
-      "ruleCount": 3,
+      "ruleCount": 4,
       "thumb": {
         "file": "thumbs/data-forager.png",
         "width": 40,
@@ -3535,7 +3535,7 @@
         "plane"
       ],
       "parameterCount": 8,
-      "ruleCount": 6,
+      "ruleCount": 7,
       "thumb": {
         "file": "thumbs/data-pursuit.png",
         "width": 192,

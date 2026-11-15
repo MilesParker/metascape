@@ -7,7 +7,7 @@ import { seriesGrid, toggled, type ChartChoice } from './chart-customization';
 export interface ChartCustomizerProps {
   /** The chart's title, for labelling. */
   readonly title: string;
-  /** Every series the simulation records, whether or not any chart shows it. */
+  /** Every series the model records, whether or not any chart shows it. */
   readonly recorded: readonly Series[];
   /** What the chart shows now. */
   readonly choice: ChartChoice;

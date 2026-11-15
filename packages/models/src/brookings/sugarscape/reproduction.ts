@@ -35,8 +35,8 @@ function reproduce<A extends Breeder>(
     if (!agent.isFertile()) break;
     const mate = neighbors[index - 1]!;
     if (agent.female === mate.female || !mate.isFertile()) continue;
-    const agentCell = agent.cell;
-    const mateCell = mate.cell;
+    const agentCell = agent.hostCell;
+    const mateCell = mate.hostCell;
     if (!agentCell || !mateCell) continue;
     if (!isNeighborAvailable(agentCell) && !isNeighborAvailable(mateCell)) continue;
     const child = agent.newOfSameKind() as A;

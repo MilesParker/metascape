@@ -1,26 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Scape, type ScapeOptions } from '../../scape';
-import { hasPosition, writePosition, type PointAgent } from './point-agent';
+import { hasPosition, writePosition, type LocatedAgent } from '../located-agent';
+import {
+  dimensions,
+  memberCount,
+  Space,
+  type Displacement,
+  type FindOptions,
+  type Geometry,
+  type Point,
+  type SpaceSetup,
+} from './space';
 
-/** A plain point, accepted wherever an agent's position is needed. */
-export interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
-/** A vector between two points. */
-export interface Displacement {
-  readonly dx: number;
-  readonly dy: number;
-}
-
-export interface ContinuousScapeOptions<A extends PointAgent> extends ScapeOptions<A> {
-  /** Width of the rectangle; positions are in [0, width). */
-  readonly width: number;
-  /** Height of the rectangle; positions are in [0, height). */
-  readonly height: number;
-  /** True (default) for a torus; false clamps positions to the rectangle. */
-  readonly wrap?: boolean;
+export interface Continuous2DOptions {
   /** Edge length hint for the spatial index. Default: a sixteenth of the shorter side. */
   readonly cellSize?: number;
 }
@@ -33,37 +24,87 @@ function justBelow(limit: number): number {
 }
 
 /**
- * A rectangular continuous space `[0, width) x [0, height)`, by default a torus.
+ * A rectangular continuous space `[0, width) x [0, height)`, by default a
+ * torus (`periodic`). The scape's extent gives the width and height, and its
+ * size the number of members created at the start.
  *
- * Neighbor queries use a uniform-grid index that follows agents as they move,
- * join and die. Query results are always in ascending agent `id` order.
+ * Distance is straight-line length. An agent has no neighbors as such: ask
+ * for those within a distance. Queries use a uniform-grid index that follows
+ * agents as they move, join and die, and their results are always in
+ * ascending agent `id` order.
  */
-export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A> {
-  readonly width: number;
-  readonly height: number;
-  readonly wrap: boolean;
+export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A> {
+  readonly geometry: Geometry = 'continuous2d';
 
-  readonly #cols: number;
-  readonly #rows: number;
-  readonly #cells: Set<A>[];
+  readonly #cellSize: number | undefined;
+  #width = 0;
+  #height = 0;
+  #count = 0;
+  #cols = 1;
+  #rows = 1;
+  #cells: Set<A>[] = [];
   readonly #cellOf = new Map<A, number>();
 
-  constructor(options: ContinuousScapeOptions<A>) {
-    super(options);
-    const { width, height } = options;
+  constructor(options: Continuous2DOptions = {}) {
+    super();
+    this.#cellSize = options.cellSize;
+  }
+
+  protected override configure(setup: SpaceSetup): void {
+    const name = this.scape.name;
+    const [width, height] = dimensions(setup.extent) ?? [Number.NaN, Number.NaN];
     if (!(width > 0) || !(height > 0) || !Number.isFinite(width) || !Number.isFinite(height)) {
-      throw new RangeError(`Scape "${this.name}": width and height must be positive and finite`);
+      throw new RangeError(
+        `Scape "${name}": the width and height of its extent must be positive and finite`,
+      );
     }
-    const cellSize = options.cellSize ?? Math.min(width, height) / 16;
+    const cellSize = this.#cellSize ?? Math.min(width, height) / 16;
     if (!(cellSize > 0) || !Number.isFinite(cellSize)) {
-      throw new RangeError(`Scape "${this.name}": cellSize must be positive and finite`);
+      throw new RangeError(`Scape "${name}": cellSize must be positive and finite`);
     }
-    this.width = width;
-    this.height = height;
-    this.wrap = options.wrap ?? true;
+    const count = setup.size === undefined ? 0 : memberCount(setup);
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError(`Scape "${name}": size must be a non-negative integer`);
+    }
+    this.#width = width;
+    this.#height = height;
+    this.#count = count;
     this.#cols = Math.max(1, Math.min(MAX_CELLS_PER_AXIS, Math.floor(width / cellSize)));
     this.#rows = Math.max(1, Math.min(MAX_CELLS_PER_AXIS, Math.floor(height / cellSize)));
     this.#cells = Array.from({ length: this.#cols * this.#rows }, () => new Set<A>());
+  }
+
+  /** Width of the rectangle; positions are in [0, width). */
+  get width(): number {
+    return this.#width;
+  }
+
+  /** Height of the rectangle; positions are in [0, height). */
+  get height(): number {
+    return this.#height;
+  }
+
+  /** Whether the edges join up; the same as `periodic`. */
+  get wrap(): boolean {
+    return this.periodic;
+  }
+
+  override get extent(): readonly number[] {
+    return [this.#width, this.#height];
+  }
+
+  /** How many members the space creates when the model is created. */
+  get initialSize(): number {
+    return this.#count;
+  }
+
+  populate(): void {
+    for (let i = 0; i < this.#count; i++) this.scape.newAgent();
+  }
+
+  /** Nothing: in a continuous space agents are near each other, not next to each other. */
+  neighbors(): readonly A[] {
+    return [];
   }
 
   /** Wraps (torus) or clamps (bounded) a point into the rectangle. */
@@ -71,7 +112,7 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
     return { x: this.#normalizeAxis(x, this.width), y: this.#normalizeAxis(y, this.height) };
   }
 
-  /** A uniformly random point in the rectangle, drawn from this scape's random stream. */
+  /** A uniformly random point in the rectangle, drawn from the scape's random stream. */
   randomPoint(): Point {
     const random = this.random;
     return { x: random.float() * this.width, y: random.float() * this.height };
@@ -104,21 +145,38 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
    * All other live agents within `radius` (inclusive) of an agent or point,
    * in ascending `id` order. An agent origin is never part of the result.
    */
-  within(origin: Point, radius: number, condition?: (agent: A) => boolean): A[] {
+  findWithin(
+    origin: Point,
+    radius: number,
+    options?: FindOptions<A> | ((agent: A) => boolean),
+  ): A[] {
+    const { condition, includeSelf } =
+      typeof options === 'function' ? { condition: options } : (options ?? {});
     const found = this.#collect(origin, radius, condition);
+    if (includeSelf && this.#cellOf.has(origin as A) && (!condition || condition(origin as A))) {
+      found.push(origin as A);
+    }
     return found.sort((a, b) => a.id - b.id);
   }
 
   /** The number of other live agents within `radius` of an agent or point. */
-  countWithin(origin: Point, radius: number, condition?: (agent: A) => boolean): number {
-    return this.#collect(origin, radius, condition).length;
+  override countWithin(
+    origin: Point,
+    radius: number,
+    options?: FindOptions<A> | ((agent: A) => boolean),
+  ): number {
+    return this.findWithin(origin, radius, options).length;
   }
 
   /**
    * The nearest other live agent, optionally matching a condition and within
    * `maxRadius`. Exact ties go to the lowest `id`. `undefined` if there is none.
    */
-  nearest(origin: Point, condition?: (agent: A) => boolean, maxRadius?: number): A | undefined {
+  override findNearest(
+    origin: Point,
+    condition?: (agent: A) => boolean,
+    maxRadius?: number,
+  ): A | undefined {
     const limit = Math.min(
       maxRadius ?? Infinity,
       this.wrap ? Math.hypot(this.width, this.height) / 2 : Math.hypot(this.width, this.height),
@@ -144,7 +202,7 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
    * Moves an agent toward a target along the shortest path, by at most
    * `distance` and never past the target. Returns the distance moved.
    */
-  moveToward(agent: A, target: Point, distance: number): number {
+  override moveToward(agent: A, target: Point, distance: number): number {
     const { dx, dy } = this.displacement(agent, target);
     const length = Math.hypot(dx, dy);
     if (length <= distance) {
@@ -156,7 +214,7 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
   }
 
   /** Moves an agent directly away from a target by `distance`. Returns the distance moved. */
-  moveAway(agent: A, target: Point, distance: number): number {
+  override moveAway(agent: A, target: Point, distance: number): number {
     const { dx, dy } = this.displacement(agent, target);
     const length = Math.hypot(dx, dy);
     if (length === 0) return 0;
@@ -164,8 +222,8 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
     return distance;
   }
 
-  /** Moves an agent to a point (normalized) and updates the index. Used by `PointAgent.moveTo`. */
-  relocate(agent: A, x: number, y: number): void {
+  /** Moves an agent to a point (normalized) and updates the index. Used by `agent.moveTo`. */
+  override moveTo(agent: A, x: number, y: number): void {
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
       throw new RangeError(`Cannot move to (${x}, ${y})`);
     }
@@ -174,13 +232,13 @@ export class ContinuousScape<A extends PointAgent = PointAgent> extends Scape<A>
     if (agent.alive) this.#index(agent);
   }
 
-  protected override onAdded(agent: A): void {
+  override added(agent: A): void {
     const point = hasPosition(agent) ? this.normalize(agent.x, agent.y) : this.randomPoint();
     writePosition(agent, point.x, point.y);
     this.#index(agent);
   }
 
-  protected override onRemoved(agent: A): void {
+  override removed(agent: A): void {
     const cell = this.#cellOf.get(agent);
     if (cell !== undefined) this.#cells[cell]?.delete(agent);
     this.#cellOf.delete(agent);

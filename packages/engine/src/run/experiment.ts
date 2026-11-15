@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { ParameterSchema, ParameterValue, ParameterValues } from '../parameters';
 import { Random } from '../random';
-import { Simulation, type Model } from '../simulation';
+import { RootScape, type Model } from '../root';
 
 /** A value that can appear in a result row. */
 export type ExperimentValue = number | string | boolean;
@@ -14,9 +14,9 @@ export interface RunInfo {
   readonly replicate: number;
   /** The seed this run used (derived from the experiment's base seed). */
   readonly seed: number;
-  /** Ticks executed. */
-  readonly ticks: number;
-  /** Why the run ended: the model's stop reason, `'stopped'` if it gave none, or `'maxTicks'`. */
+  /** Iterations executed. */
+  readonly iterations: number;
+  /** Why the run ended: the model's stop reason, `'stopped'` if it gave none, or `'maxIterations'`. */
   readonly stopReason: string;
 }
 
@@ -45,15 +45,15 @@ export interface ExperimentDesign<S extends ParameterSchema> {
   readonly replicates?: number;
   /** Base seed from which each run's seed is derived. Default 0. */
   readonly seed?: number | string;
-  /** Each run stops at this many ticks if it has not stopped itself. */
-  readonly maxTicks: number;
+  /** Each run ends after this many iterations if it has not stopped itself. */
+  readonly maxIterations: number;
   /** Reads the outcome of a finished run into named columns. */
-  measure(sim: Simulation<S>): Record<string, ExperimentValue>;
-  /** Called on each fresh simulation before it runs, for example to attach observers. */
-  setup?(sim: Simulation<S>): void;
+  measure(root: RootScape<S>): Record<string, ExperimentValue>;
+  /** Called on each fresh root before it runs, for example to add listeners. */
+  prepare?(root: RootScape<S>): void;
 }
 
-const BUILT_IN_COLUMNS = ['run', 'replicate', 'seed', 'ticks', 'stopReason'];
+const BUILT_IN_COLUMNS = ['run', 'replicate', 'seed', 'iterations', 'stopReason'];
 
 /**
  * The inclusive list `start, start + step, ...` up to `end`, free of
@@ -148,8 +148,8 @@ export function experimentRuns<S extends ParameterSchema>(
   if (!Number.isInteger(replicates) || replicates < 1) {
     throw new RangeError('replicates must be a positive integer');
   }
-  if (!Number.isInteger(design.maxTicks) || design.maxTicks < 0) {
-    throw new RangeError('maxTicks must be a non-negative integer');
+  if (!Number.isInteger(design.maxIterations) || design.maxIterations < 0) {
+    throw new RangeError('maxIterations must be a non-negative integer');
   }
   for (const name of Object.keys(model.parameters)) {
     if (BUILT_IN_COLUMNS.includes(name)) {
@@ -181,19 +181,19 @@ function* generate<S extends ParameterSchema>(
     for (let replicate = 0; replicate < replicates; replicate++) {
       const run = point * replicates + replicate;
       const seed = new Random(`${baseSeed}/${run}`).uint32();
-      const sim = new Simulation(model, {
+      const root = new RootScape(model, {
         seed,
         parameters: overrides as Partial<ParameterValues<S>>,
       });
-      design.setup?.(sim);
-      sim.run(design.maxTicks);
-      yield makeRow(sim, design, run, replicate, seed);
+      design.prepare?.(root);
+      root.run(design.maxIterations);
+      yield makeRow(root, design, run, replicate, seed);
     }
   }
 }
 
 function makeRow<S extends ParameterSchema>(
-  sim: Simulation<S>,
+  root: RootScape<S>,
   design: ExperimentDesign<S>,
   run: number,
   replicate: number,
@@ -203,11 +203,11 @@ function makeRow<S extends ParameterSchema>(
     run,
     replicate,
     seed,
-    ticks: sim.tick,
-    stopReason: sim.stopped ? (sim.stopReason ?? 'stopped') : 'maxTicks',
-    ...(sim.parameters as Readonly<Record<string, ExperimentValue>>),
+    iterations: root.iteration,
+    stopReason: root.stopped ? (root.stopReason ?? 'stopped') : 'maxIterations',
+    ...(root.parameters as Readonly<Record<string, ExperimentValue>>),
   };
-  for (const [key, value] of Object.entries(design.measure(sim))) {
+  for (const [key, value] of Object.entries(design.measure(root))) {
     if (Object.hasOwn(row, key)) {
       throw new Error(`Measure "${key}" collides with a built-in or parameter column`);
     }

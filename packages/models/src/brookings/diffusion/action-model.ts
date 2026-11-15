@@ -5,13 +5,15 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  GridScape,
-  gridView,
-  real,
-  timeSeriesView,
+  Array2DMoore,
   type Color,
+  gridView,
   type Provenance,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import { ACTION_COLORS, ActionCell, type ActionSettings } from './action-cell';
 
@@ -121,19 +123,18 @@ export interface ActionModelOptions {
  * decide their action. The legacy statistics count each action in the upper and
  * lower half of the lattice, with one chart for each half.
  */
-export function buildActionModel(sim: Simulation, options: ActionModelOptions): void {
+export function buildActionModel(root: RootScape, options: ActionModelOptions): void {
   const { span, settings, palette, labels, chartColors } = options;
-  const cells = sim.addScape(
-    new GridScape<ActionCell>({
+  const cells = root.add(
+    new Scape<ActionCell>({
       name: 'cells',
-      width: span,
-      height: span,
-      wrap: true,
-      neighborhood: 'moore',
+      space: new Array2DMoore<ActionCell>(),
+      extent: [span, span],
+      periodic: true,
+      prototypeAgent: () => new ActionCell(),
       // setExecutionStyle(REPEATED_DRAW); setAgentsPerIteration(25).
-      activations: 25,
-      sampling: 'draw',
-      create: () => new ActionCell(),
+      agentsPerIteration: 25,
+      executionStyle: 'repeatedDraw',
     }),
   );
   cells.addRule('Decide action', (cell) => cell.decideAction(settings));
@@ -145,18 +146,18 @@ export function buildActionModel(sim: Simulation, options: ActionModelOptions): 
   labels.forEach((label, action) => {
     const aboveId = `${label} Above`;
     const belowId = `${label} Below`;
-    sim.data.count(cells, aboveId, (cell) => cell.action === action && cell.isAbove);
-    sim.data.count(cells, belowId, (cell) => cell.action === action && !cell.isAbove);
+    cells.addStatCollector(stat.count(aboveId, (cell) => cell.action === action && cell.isAbove));
+    cells.addStatCollector(stat.count(belowId, (cell) => cell.action === action && !cell.isAbove));
     above.push(aboveId);
     below.push(belowId);
     aboveColors[aboveId] = chartColors[action] ?? palette[action] ?? 0;
     belowColors[belowId] = chartColors[action] ?? palette[action] ?? 0;
   });
 
-  sim.addView(
+  root.addView(
     gridView<ActionCell>({
       title: 'Cells',
-      grid: cells,
+      scape: cells,
       cellColor: (cell) => palette[cell.action] ?? ACTION_COLORS[0] ?? 0,
       legend: labels.map((label, action) => ({
         color: palette[action] ?? ACTION_COLORS[0] ?? 0,
@@ -164,6 +165,6 @@ export function buildActionModel(sim: Simulation, options: ActionModelOptions): 
       })),
     }),
   );
-  sim.addView(timeSeriesView({ title: 'Action Above', series: above, colors: aboveColors }));
-  sim.addView(timeSeriesView({ title: 'Action Below', series: below, colors: belowColors }));
+  root.addView(timeSeriesView({ title: 'Action Above', series: above, colors: aboveColors }));
+  root.addView(timeSeriesView({ title: 'Action Below', series: below, colors: belowColors }));
 }

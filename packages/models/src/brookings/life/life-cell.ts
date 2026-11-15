@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Cell, rgb, type Color, type Provenance } from '@metascape/engine';
+import { type Color, HostCell, type Provenance, rgb } from '@metascape/engine';
 
 /** Who devised Life, and the article that introduced it. */
 export const LIFE_AUTHORS = 'John H. Conway';
@@ -33,7 +33,7 @@ export const ALIVE: Color = rgb(255, 255, 255);
  * field (renamed, because `alive` is the engine's membership flag) and `next`
  * the legacy `nextAlive`.
  */
-export class LifeCell extends Cell {
+export class LifeCell extends HostCell {
   on = false;
   next = false;
 

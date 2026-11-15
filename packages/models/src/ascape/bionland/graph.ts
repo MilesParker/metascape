@@ -10,15 +10,17 @@
 import {
   Agent,
   bool,
+  type Color,
   int,
-  Network,
+  type Model,
+  Graph,
   networkView,
+  type Random,
   real,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
-  type Color,
-  type Model,
-  type Random,
 } from '@metascape/engine';
 import { BIONLAND_COPYRIGHT, SPECIES, SPECIES_COLORS } from './lattice-model';
 
@@ -90,7 +92,7 @@ export class GraphBion extends Agent {
 /** The shared world of a graph step. */
 export interface GraphWorld {
   readonly graph: Scape<GraphNode>;
-  readonly network: Network<GraphNode>;
+  readonly network: Graph<GraphNode>;
   readonly minVision: number;
   readonly maxVision: number;
 }
@@ -100,7 +102,7 @@ export interface GraphWorld {
  * random one of the matching nodes nearest to the origin (never the origin).
  */
 export function nearestNode(
-  network: Network<GraphNode>,
+  network: Graph<GraphNode>,
   origin: GraphNode,
   condition: (node: GraphNode) => boolean,
   maxDepth: number,
@@ -127,7 +129,7 @@ export function nearestNode(
 }
 
 /** Number of links on the shortest path from one node to another, or NaN if there is none. */
-export function pathLength(network: Network<GraphNode>, from: GraphNode, to: GraphNode): number {
+export function pathLength(network: Graph<GraphNode>, from: GraphNode, to: GraphNode): number {
   if (from === to) return 0;
   const visited = new Set<GraphNode>([from]);
   let frontier: GraphNode[] = [from];
@@ -149,7 +151,7 @@ export function pathLength(network: Network<GraphNode>, from: GraphNode, to: Gra
 
 /** Ascape `findCellTowardBFS`: the out-neighbor with the shortest path to the target (origin if none). */
 export function nodeToward(
-  network: Network<GraphNode>,
+  network: Graph<GraphNode>,
   origin: GraphNode,
   target: GraphNode,
   random: Random,
@@ -170,7 +172,7 @@ export function nodeToward(
 
 /** Ascape `findCellAwayBFS`: the out-neighbor farthest from the target (unreachable counts as 0). */
 export function nodeAway(
-  network: Network<GraphNode>,
+  network: Graph<GraphNode>,
   origin: GraphNode,
   target: GraphNode,
   random: Random,
@@ -247,7 +249,7 @@ function graphModel(settings: GraphSettings): Model {
         min: 0,
         max: 1,
         label: 'Probability of changing neighbors',
-        description: 'Chance per tick that a node drops its links and rebuilds them.',
+        description: 'Chance per period that a node drops its links and rebuilds them.',
       }),
       ...(settings.smallWorld
         ? {
@@ -260,8 +262,8 @@ function graphModel(settings: GraphSettings): Model {
           }
         : {}),
     },
-    build(sim) {
-      const p = sim.parameters as Readonly<Record<string, number | boolean | string>>;
+    build(root) {
+      const p = root.parameters as Readonly<Record<string, number | boolean | string>>;
       const initialScapeSize = p['initialScapeSize'] as number;
       const minVision = p['minVision'] as number;
       const maxVision = Math.max(minVision, p['maxVision'] as number);
@@ -269,7 +271,8 @@ function graphModel(settings: GraphSettings): Model {
       const directed = p['directedGraph'] as boolean;
       const buildProbability = p['probBuildLink'] as number;
       const changeProbability = p['probChangeNeighbors'] as number;
-      const network = new Network<GraphNode>({ directed: true });
+      // The links are the space of the scape of nodes.
+      const network = new Graph<GraphNode>({ directed: true });
 
       const addLink = (from: GraphNode, to: GraphNode, oneWay: boolean): void => {
         network.connect(from, to);
@@ -287,10 +290,11 @@ function graphModel(settings: GraphSettings): Model {
 
       const graph = new Scape<GraphNode>({
         name: 'Graph',
+        space: network,
         size: graphSize,
-        create: () => new GraphNode(),
+        prototypeAgent: () => new GraphNode(),
         // Ascape: graph.setExecutionOrder(RULE_ORDER)
-        schedule: 'byRule',
+        executionOrder: 'byRule',
       });
       if (!settings.smallWorld) {
         graph.addInitialRule({
@@ -307,14 +311,14 @@ function graphModel(settings: GraphSettings): Model {
           }
         },
       });
-      sim.addScape(graph);
+      root.add(graph);
 
       const world: GraphWorld = { graph, network, minVision, maxVision };
       const bions = SPECIES.map((name, species) => {
         const scape = new Scape<GraphBion>({
           name,
           size: initialScapeSize,
-          create: () => new GraphBion(species, world),
+          prototypeAgent: () => new GraphBion(species, world),
         });
         scape.addInitialRule({
           name: 'Move To Random Location',
@@ -328,36 +332,42 @@ function graphModel(settings: GraphSettings): Model {
           name: `Move Away ${SPECIES[(species + 2) % 3]}`,
           execute: (b) => b.chase((species + 2) % 3, false),
         });
-        return sim.addScape(scape);
+        return root.add(scape);
       });
 
       if (settings.smallWorld) {
         const edgeRatio = p['randomEdgeRatio'] as number;
         // Ascape GraphSmallWorld.initialize: a ring of two-way links, then random one-way links.
-        sim.setup(() => {
-          const nodes = graph.members;
-          nodes.forEach((cell, i) => {
-            if (i > 0) addLink(cell, nodes[i - 1] as GraphNode, false);
-            if (i === nodes.length - 1 && i > 0) addLink(cell, nodes[0] as GraphNode, false);
-          });
-          if (edgeRatio > 0) {
-            for (const cell of nodes) {
-              if (graph.random.float() <= edgeRatio) {
-                const choices = nodes.filter((n) => n !== cell && !network.isConnected(cell, n));
-                if (choices.length > 0) addLink(cell, graph.random.pick(choices), true);
+        root.add(new Scape({ name: 'Small world', space: new Singleton() })).addInitialRule(
+          'Wire',
+          () => {
+            const nodes = graph.members;
+            nodes.forEach((cell, i) => {
+              if (i > 0) addLink(cell, nodes[i - 1] as GraphNode, false);
+              if (i === nodes.length - 1 && i > 0) addLink(cell, nodes[0] as GraphNode, false);
+            });
+            if (edgeRatio > 0) {
+              for (const cell of nodes) {
+                if (graph.random.float() <= edgeRatio) {
+                  const choices = nodes.filter((n) => n !== cell && !network.isConnected(cell, n));
+                  if (choices.length > 0) addLink(cell, graph.random.pick(choices), true);
+                }
               }
             }
-          }
-        });
+          },
+          { randomExecution: false },
+        );
       }
 
-      bions.forEach((scape, i) => sim.data.count(scape, SPECIES[i] as string));
-      sim.data.value('Links', () => graph.members.reduce((sum, n) => sum + network.degree(n), 0));
-      sim.addView(
+      bions.forEach((scape, i) => scape.addStatCollector(stat.count(SPECIES[i] as string)));
+      root.addStatCollector(
+        stat.value('Links', () => graph.members.reduce((sum, n) => sum + network.degree(n), 0)),
+      );
+      root.addView(
         networkView<GraphNode>({
           title: 'Graph',
           nodes: graph,
-          network,
+          graph: network,
           color: (node) =>
             node.occupant ? (SPECIES_COLORS[node.occupant.species] as Color) : 0xffffff,
           layout: 'circle',
@@ -371,7 +381,7 @@ function graphModel(settings: GraphSettings): Model {
           ],
         }),
       );
-      sim.addView(timeSeriesView({ title: 'Links', series: ['Links'] }));
+      root.addView(timeSeriesView({ title: 'Links', series: ['Links'] }));
     },
   };
 }

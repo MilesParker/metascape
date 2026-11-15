@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Agent, ScapeSettings, Simulation } from '@metascape/engine';
+import type { Agent, ScapeSettings, RootScape } from '@metascape/engine';
 import type { GhostRun } from '@metascape/react';
 import { create } from 'zustand';
 import { readLocal, writeLocal } from '../lib/storage';
 
 /** A change made while a run was going, marked on the charts. */
 export interface Intervention {
-  readonly tick: number;
+  /** The period the change was made at. */
+  readonly period: number;
   readonly label: string;
   readonly kind: 'parameter' | 'rule';
   /** What was changed, such as a parameter name; repeated changes to it close together merge. */
   readonly key?: string;
 }
 
-/** Changes to the same thing within this many ticks count as one, as when a slider is dragged. */
-const MERGE_TICKS = 15;
+/** Changes to the same thing within this many periods count as one, as when a slider is dragged. */
+const MERGE_PERIODS = 15;
 
 export type RailTab = 'parameters' | 'rules' | 'about';
 
 const RAIL_TABS: readonly RailTab[] = ['parameters', 'rules', 'about'];
 
 interface Selection {
-  readonly sim: Simulation;
+  readonly root: RootScape;
   readonly agent: Agent;
 }
 
@@ -91,12 +92,12 @@ export const useWorkbench = create<WorkbenchState>((set) => ({
         last &&
         intervention.key !== undefined &&
         last.key === intervention.key &&
-        intervention.tick - last.tick <= MERGE_TICKS
+        intervention.period - last.period <= MERGE_PERIODS
       ) {
         return {
           interventions: [
             ...state.interventions.slice(0, -1),
-            { ...intervention, tick: last.tick },
+            { ...intervention, period: last.period },
           ],
         };
       }

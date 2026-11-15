@@ -25,9 +25,9 @@ describe('ModelRunner', () => {
     expect(apply).toHaveProperty('disabled', false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Step' }));
-    expect(screen.getByTestId('ms-tick').textContent).toBe('1');
+    expect(screen.getByTestId('ms-period').textContent).toBe('1');
     fireEvent.click(apply);
-    expect(screen.getByTestId('ms-tick').textContent).toBe('0');
+    expect(screen.getByTestId('ms-period').textContent).toBe('0');
     expect(screen.getByRole('button', { name: 'Apply and restart' })).toHaveProperty(
       'disabled',
       true,

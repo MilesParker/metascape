@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: EPL-2.0
-import { timeAt } from '@metascape/engine';
 import {
   formatNumber,
   humanize,
@@ -18,14 +17,14 @@ import type { Session } from './session';
 
 const MAX_POSITION = 100;
 
-/** Ticks per second in words: "30 ticks/s", "Max". */
+/** Periods per second in words: "30 periods/s", "Max". */
 export function speedText(speed: number, unit: string): string {
   return Number.isFinite(speed) ? `${speed} ${unit}/s` : 'Max';
 }
 
 /** Why the run ended, or undefined while it can go on. */
 function endReason(session: Session): { text: string; failed: boolean } | undefined {
-  const { snapshot, sim, runner } = session;
+  const { snapshot, root, runner } = session;
   if (runner.failed) {
     const error = runner.error;
     return {
@@ -34,12 +33,12 @@ function endReason(session: Session): { text: string; failed: boolean } | undefi
     };
   }
   if (snapshot.state !== 'stopped') return undefined;
-  return { text: `Ended: ${sim.stopReason ?? 'the model stopped'}`, failed: false };
+  return { text: `Ended: ${root.stopReason ?? 'the model stopped'}`, failed: false };
 }
 
-/** Runs until a tick, then pauses. */
-function runUntil(runner: Session['runner'], tick: number): void {
-  runner.pauseAt = tick;
+/** Runs until a period, then pauses. */
+function runUntil(runner: Session['runner'], period: number): void {
+  runner.pausePeriod = period;
   runner.start();
 }
 
@@ -51,19 +50,17 @@ function Clock({
   readonly session: Session;
   readonly large: boolean;
 }): ReactElement {
-  const { sim, runner } = session;
-  const unit = timeUnit(sim);
-  const scale = sim.model.time;
-  const now = timeAt(sim, sim.tick);
-  const step = scale?.step ?? 1;
+  const { root, runner } = session;
+  const unit = timeUnit(root);
+  const scale = root.model.period;
+  const now = root.period;
   const [text, setText] = useState('');
-  const target = Number(text);
-  const tick = Math.round((target - timeAt(sim, 0)) / step);
-  const valid = text.trim() !== '' && Number.isFinite(target) && tick > sim.tick;
+  const target = Math.round(Number(text));
+  const valid = text.trim() !== '' && Number.isFinite(target) && target > root.period;
   const ended = session.snapshot.state === 'stopped';
   const go = (): void => {
     if (!valid) return;
-    runUntil(runner, tick);
+    runUntil(runner, target);
     setText('');
   };
   const readout = (
@@ -84,9 +81,9 @@ function Clock({
             className="flex items-baseline gap-2 rounded-md px-1.5 py-0.5 hover:bg-line/50"
           >
             {readout}
-            {sim.model.time && (
+            {scale && (
               <span className="hidden font-mono text-2xs text-faint tnum sm:inline">
-                tick {sim.tick}
+                iteration {root.iteration}
               </span>
             )}
           </button>
@@ -108,7 +105,7 @@ function Clock({
               id="run-to"
               inputMode="numeric"
               value={text}
-              placeholder={formatNumber(now + step * 100)}
+              placeholder={formatNumber(now + 100)}
               onChange={(event) => setText(event.target.value)}
               aria-invalid={text !== '' && !valid}
               className="font-mono tnum"
@@ -125,7 +122,7 @@ function Clock({
 
 function Seed({ session }: { readonly session: Session }): ReactElement {
   const [draft, setDraft] = useState<string | undefined>(undefined);
-  const seed = String(session.sim.seed);
+  const seed = String(session.root.seed);
   return (
     <Popover onOpenChange={() => setDraft(undefined)}>
       <Tip label="The same seed and settings give the same run">
@@ -193,9 +190,9 @@ export function Transport({
   readonly session: Session;
   readonly large?: boolean;
 }): ReactElement {
-  const { runner, sim, snapshot, parameters } = session;
-  const [position, setPosition] = useState(() => speedToPosition(runner.ticksPerSecond));
-  const unit = timeUnit(sim);
+  const { runner, root, snapshot, parameters } = session;
+  const [position, setPosition] = useState(() => speedToPosition(runner.iterationsPerSecond));
+  const unit = timeUnit(root);
   const running = snapshot.state === 'running';
   const ended = snapshot.state === 'stopped';
   const canStep = snapshot.state === 'ready' || snapshot.state === 'paused';

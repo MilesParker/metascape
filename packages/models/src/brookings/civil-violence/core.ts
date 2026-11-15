@@ -5,22 +5,25 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  type Array2D,
+  Array2DMoore,
+  CellOccupant,
+  type Color,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
   mix,
-  Occupant,
-  real,
-  rgb,
-  Scape,
-  timeSeriesView,
-  type Color,
   type Model,
   type Provenance,
-  type Simulation,
+  real,
+  rgb,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import {
   ACTIVE,
@@ -106,7 +109,7 @@ export function rebellionParameters(d: CvDefaults = {}) {
       max: NEVER_RELEASED,
       label: 'Jail term',
       description:
-        'Maximum jail term in ticks; each term is drawn uniformly from 0 to this. 2147483647 means never released.',
+        'Maximum jail term in periods; each term is drawn uniformly from 0 to this. 2147483647 means never released.',
     }),
   };
 }
@@ -120,7 +123,7 @@ export function intergroupParameters(d: CvDefaults = {}) {
       min: 0,
       max: 1,
       label: 'Fission probability',
-      description: 'Chance per tick that a citizen with a free neighboring site clones itself.',
+      description: 'Chance per period that a citizen with a free neighboring site clones itself.',
     }),
     deathAge: int(d.deathAge ?? 200, {
       group: 'Groups',
@@ -148,7 +151,7 @@ export function intergroupParameters(d: CvDefaults = {}) {
       min: 0,
       max: 1,
       label: 'Evaporation of history',
-      description: 'Fraction of past distrust carried over each tick.',
+      description: 'Fraction of past distrust carried over each period.',
     }),
   };
 }
@@ -164,13 +167,13 @@ export interface CvVariant {
   readonly startTargetCopDensity?: number;
   /** Which scaled series the population chart carries besides the counts. */
   readonly chartExtra?: 'legitimacy' | 'copDensity';
-  /** Called after each tick's data sample and cop adjustment (legacy `scapeIterated`). */
+  /** Called after each period's data sample and cop adjustment (legacy `scapeIterated`). */
   readonly afterIteration?: (world: CvWorld, iteration: number) => void;
 }
 
 const BACKGROUND = rgb(237, 230, 214);
 
-function occupantColor(o: Occupant<Cell>, intergroup: boolean): Color | undefined {
+function occupantColor(o: CellOccupant<HostCell>, intergroup: boolean): Color | undefined {
   if (o instanceof Cop) return colors.black;
   if (o instanceof Citizen) {
     if (o.state !== QUIESCENT) return colors.red;
@@ -183,7 +186,7 @@ function occupantColor(o: Occupant<Cell>, intergroup: boolean): Color | undefine
 
 /** Builds the world, rules, data and views shared by every Civil Violence model. */
 export function buildCivilViolence(
-  sim: Simulation,
+  root: RootScape,
   settings: () => CvSettings,
   variant: CvVariant,
 ): void {
@@ -192,25 +195,24 @@ export function buildCivilViolence(
     throw new RangeError('Initial population density plus initial cop density must not exceed 1');
   }
   const intergroup = variant.kind === 'intergroup';
-  const lattice = sim.addScape(
-    new GridScape<Cell>({
+  const lattice = root.add(
+    new Scape<HostCell>({
       name: 'lattice',
-      width: s.width,
-      height: s.height,
-      wrap: true,
-      neighborhood: 'moore',
+      space: new Array2DMoore<HostCell>(),
+      extent: [s.width, s.height],
+      periodic: true,
     }),
   );
-  const world = new CvWorld(lattice, settings);
+  const world = new CvWorld(lattice.space as Array2D<HostCell>, settings);
   if (variant.startTargetCopDensity !== undefined)
     world.targetCopDensity = variant.startTargetCopDensity;
   const sites = s.width * s.height;
 
-  const people = sim.addScape(
+  const people = root.add(
     new Scape<Citizen>({
       name: 'people',
       size: Math.trunc(sites * s.initialPopulationDensity),
-      create: () => (intergroup ? new CitizenBlueGreen(world) : new Citizen(world)),
+      prototypeAgent: () => (intergroup ? new CitizenBlueGreen(world) : new Citizen(world)),
     }),
   );
   if (variant.citizensMove !== false) people.addRule('Random Walk', (c) => c.randomWalk());
@@ -229,81 +231,94 @@ export function buildCivilViolence(
     people.addRule('Attack Other Retribution', (c) => (c as CitizenBlueGreen).attackOther());
   }
 
-  const cops = sim.addScape(
+  const cops = root.add(
     new Scape<Cop>({
       name: 'cops',
       size: Math.trunc(sites * s.initialCopDensity),
-      create: () => new Cop(world),
+      prototypeAgent: () => new Cop(world),
     }),
   );
   cops.addRule('Patrol', (c) => c.patrol());
   cops.addRule('Random Walk', (c) => c.randomWalk());
 
-  // Legacy initial rule "move to random location", people first, then cops. Done here
-  // rather than as an initial rule so that cloned citizens are not re-placed.
-  sim.setup(() => {
-    for (const c of people.members) c.moveToRandomLocation();
-    for (const c of cops.members) c.moveToRandomLocation();
-  });
+  // Legacy initial rule "move to random location", people first, then cops. A rule of the
+  // model as a whole rather than of each scape, so that cloned citizens are not re-placed.
+  root.add(new Scape({ name: 'Placement', space: new Singleton() })).addInitialRule(
+    'Move to random location',
+    () => {
+      for (const c of people.members) c.moveToRandomLocation();
+      for (const c of cops.members) c.moveToRandomLocation();
+    },
+    { randomExecution: false },
+  );
 
   const matchTargetCopDensity = (): void => {
     const target = (): number => Math.trunc(world.targetCopDensity * sites);
     while (cops.size !== target()) {
       if (cops.size < target()) {
-        cops.spawn().moveToRandomLocation();
+        cops.newAgent().moveToRandomLocation();
       }
-      if (cops.size > target()) cops.randomMember()!.die();
+      if (cops.size > target()) cops.findRandom()!.die();
     }
   };
 
-  const data = sim.data;
+  const data = root.data;
   const nonJailed = (c: Citizen): boolean => c.state !== IN_JAIL;
-  data.count(people, 'Active', (c) => c.state === ACTIVE);
-  data.count(people, 'Quiescent', (c) => c.state === QUIESCENT);
-  data.count(people, 'Jailed', (c) => c.state === IN_JAIL);
-  data.count(people, 'Non-Jailed', nonJailed);
-  data.count(cops, 'Cops');
-  data.measure(people, 'Risk Aversion', (c) => c.riskAversion, { statistics: ['mean'] });
-  data.measure(people, 'Grievance', (c) => c.grievance, { statistics: ['mean'] });
-  data.measure(people, 'Non-Jailed Risk Aversion', (c) => c.riskAversion, {
-    statistics: ['mean'],
-    when: nonJailed,
-  });
-  data.measure(people, 'Non-Jailed Grievance', (c) => c.grievance, {
-    statistics: ['mean'],
-    when: nonJailed,
-  });
+  people.addStatCollector(stat.count('Active', (c) => c.state === ACTIVE));
+  people.addStatCollector(stat.count('Quiescent', (c) => c.state === QUIESCENT));
+  people.addStatCollector(stat.count('Jailed', (c) => c.state === IN_JAIL));
+  people.addStatCollector(stat.count('Non-Jailed', nonJailed));
+  cops.addStatCollector(stat.count('Cops'));
+  people.addStatCollector(
+    stat.measure('Risk Aversion', (c) => c.riskAversion, { statistics: ['mean'] }),
+  );
+  people.addStatCollector(stat.measure('Grievance', (c) => c.grievance, { statistics: ['mean'] }));
+  people.addStatCollector(
+    stat.measure('Non-Jailed Risk Aversion', (c) => c.riskAversion, {
+      statistics: ['mean'],
+      when: nonJailed,
+    }),
+  );
+  people.addStatCollector(
+    stat.measure('Non-Jailed Grievance', (c) => c.grievance, {
+      statistics: ['mean'],
+      when: nonJailed,
+    }),
+  );
   const ratio = (part: string, whole: string): number => {
     const w = data.latest(whole);
     return w !== 0 ? data.latest(part) / w : 0;
   };
-  data.value('Active Ratio', () => ratio('Active', 'Non-Jailed'));
-  data.value('Quiescent Ratio', () => ratio('Quiescent', 'Non-Jailed'));
-  data.value(
-    'Tension',
-    () =>
-      (data.latest('Non-Jailed Grievance.mean') * data.latest('Quiescent Ratio')) /
-      data.latest('Non-Jailed Risk Aversion.mean'),
+  root.addStatCollector(stat.value('Active Ratio', () => ratio('Active', 'Non-Jailed')));
+  root.addStatCollector(stat.value('Quiescent Ratio', () => ratio('Quiescent', 'Non-Jailed')));
+  root.addStatCollector(
+    stat.value(
+      'Tension',
+      () =>
+        (data.latest('Non-Jailed Grievance.mean') * data.latest('Quiescent Ratio')) /
+        data.latest('Non-Jailed Risk Aversion.mean'),
+    ),
   );
-  data.value('Legitimacy', () => world.legitimacy * 1000);
-  data.value('Cop Density', () => world.targetCopDensity * 10000);
+  root.addStatCollector(stat.value('Legitimacy', () => world.legitimacy * 1000));
+  root.addStatCollector(stat.value('Cop Density', () => world.targetCopDensity * 10000));
 
-  if (intergroup) declareGroupData(sim, world, people);
+  if (intergroup) declareGroupData(root, world, people);
 
-  sim.observe({
-    stepped: (running) => {
+  // The legacy model's `scapeIterated`: once each iteration's statistics are collected.
+  root.addScapeListener({
+    scapeIterated: () => {
       matchTargetCopDensity();
-      variant.afterIteration?.(world, running.tick);
+      variant.afterIteration?.(world, root.iteration);
       world.killsByBlue = 0;
       world.killsByGreen = 0;
     },
   });
 
   const background = BACKGROUND;
-  sim.addView(
-    gridView<Cell, Occupant<Cell>>({
+  root.addView(
+    gridView<HostCell, CellOccupant<HostCell>>({
       title: 'Agent View',
-      grid: lattice,
+      scape: lattice,
       background,
       legend: intergroup
         ? [
@@ -321,10 +336,10 @@ export function buildCivilViolence(
       occupantShape: 'circle',
     }),
   );
-  sim.addView(
-    gridView<Cell, Occupant<Cell>>({
+  root.addView(
+    gridView<HostCell, CellOccupant<HostCell>>({
       title: 'Grievance View',
-      grid: lattice,
+      scape: lattice,
       background,
       legend: [
         { color: colors.red, label: 'Citizen with full grievance' },
@@ -348,7 +363,7 @@ export function buildCivilViolence(
       : variant.chartExtra === 'copDensity'
         ? ['Active', 'Jailed', 'Cop Density']
         : ['Active', 'Quiescent', 'Jailed'];
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Population Chart',
       series: population,
@@ -363,7 +378,7 @@ export function buildCivilViolence(
       },
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Measures Chart',
       series: intergroup
@@ -391,8 +406,8 @@ export function buildCivilViolence(
 }
 
 /** Model II's per-group counts, ratios, tension, kills and recorded legitimacies. */
-function declareGroupData(sim: Simulation, world: CvWorld, people: Scape<Citizen>): void {
-  const data = sim.data;
+function declareGroupData(root: RootScape, world: CvWorld, people: Scape<Citizen>): void {
+  const data = root.data;
   const groupOf = (c: Citizen): number => (c as CitizenBlueGreen).group;
   const names: [string, number][] = [
     ['Blue', BLUE],
@@ -401,56 +416,66 @@ function declareGroupData(sim: Simulation, world: CvWorld, people: Scape<Citizen
   for (const [name, group] of names) {
     const mine = (c: Citizen): boolean => groupOf(c) === group;
     const mineNonJailed = (c: Citizen): boolean => mine(c) && c.state !== IN_JAIL;
-    data.count(people, name, mine);
-    data.count(people, `${name} Quiescent`, (c) => mine(c) && c.state === QUIESCENT);
-    data.count(people, `${name} Active`, (c) => mine(c) && c.state === ACTIVE);
-    data.count(people, `${name} Non-Jailed`, mineNonJailed);
-    data.measure(people, `${name} Non-Jailed Risk Aversion`, (c) => c.riskAversion, {
-      statistics: ['mean'],
-      when: mineNonJailed,
-    });
-    data.measure(people, `${name} Non-Jailed Grievance`, (c) => c.grievance, {
-      statistics: ['mean'],
-      when: mineNonJailed,
-    });
+    people.addStatCollector(stat.count(name, mine));
+    people.addStatCollector(
+      stat.count(`${name} Quiescent`, (c) => mine(c) && c.state === QUIESCENT),
+    );
+    people.addStatCollector(stat.count(`${name} Active`, (c) => mine(c) && c.state === ACTIVE));
+    people.addStatCollector(stat.count(`${name} Non-Jailed`, mineNonJailed));
+    people.addStatCollector(
+      stat.measure(`${name} Non-Jailed Risk Aversion`, (c) => c.riskAversion, {
+        statistics: ['mean'],
+        when: mineNonJailed,
+      }),
+    );
+    people.addStatCollector(
+      stat.measure(`${name} Non-Jailed Grievance`, (c) => c.grievance, {
+        statistics: ['mean'],
+        when: mineNonJailed,
+      }),
+    );
     const part = (p: string): number => {
       const w = data.latest(`${name} Non-Jailed`);
       return w !== 0 ? data.latest(`${name} ${p}`) / w : 0;
     };
-    data.value(`${name} Active Ratio`, () => part('Active'));
-    data.value(`${name} Quiescent Ratio`, () => part('Quiescent'));
-    data.value(
-      `${name} Tension`,
-      () =>
-        data.latest(`${name} Non-Jailed Grievance.mean`) /
-        (1 -
-          data.latest(`${name} Quiescent Ratio`) *
-            data.latest(`${name} Non-Jailed Risk Aversion.mean`)),
+    root.addStatCollector(stat.value(`${name} Active Ratio`, () => part('Active')));
+    root.addStatCollector(stat.value(`${name} Quiescent Ratio`, () => part('Quiescent')));
+    root.addStatCollector(
+      stat.value(
+        `${name} Tension`,
+        () =>
+          data.latest(`${name} Non-Jailed Grievance.mean`) /
+          (1 -
+            data.latest(`${name} Quiescent Ratio`) *
+              data.latest(`${name} Non-Jailed Risk Aversion.mean`)),
+      ),
     );
   }
-  data.value('Greens Killed By Blue', () => world.killsByBlue);
-  data.value('Blues Killed By Green', () => world.killsByGreen);
-  data.value('[Calculate Legitimacy]', () => {
-    const evaporation = world.settings.evaporation;
-    // Legacy quirk kept: the guards test the other group's count than the divisor.
-    if (sim.tick > 1) {
-      const blue = data.latest('Blue');
-      const green = data.latest('Green');
-      if (green !== 0)
-        world.greenDistrust = world.killsByGreen / blue + evaporation * world.greenDistrust;
-      else world.greenDistrust = evaporation * world.greenDistrust;
-      world.greenDistrust = Math.min(1, world.greenDistrust);
-      world.greenLegitimacy = 1 - world.greenDistrust;
-      if (blue !== 0)
-        world.blueDistrust = world.killsByBlue / green + evaporation * world.blueDistrust;
-      else world.blueDistrust = evaporation * world.blueDistrust;
-      world.blueDistrust = Math.min(1, world.blueDistrust);
-      world.blueLegitimacy = 1 - world.blueDistrust;
-    }
-    return 0;
-  });
-  data.value('Blue Legitimacy', () => world.blueLegitimacy);
-  data.value('Green Legitimacy', () => world.greenLegitimacy);
+  root.addStatCollector(stat.value('Greens Killed By Blue', () => world.killsByBlue));
+  root.addStatCollector(stat.value('Blues Killed By Green', () => world.killsByGreen));
+  root.addStatCollector(
+    stat.value('[Calculate Legitimacy]', () => {
+      const evaporation = world.settings.evaporation;
+      // Legacy quirk kept: the guards test the other group's count than the divisor.
+      if (root.iteration > 1) {
+        const blue = data.latest('Blue');
+        const green = data.latest('Green');
+        if (green !== 0)
+          world.greenDistrust = world.killsByGreen / blue + evaporation * world.greenDistrust;
+        else world.greenDistrust = evaporation * world.greenDistrust;
+        world.greenDistrust = Math.min(1, world.greenDistrust);
+        world.greenLegitimacy = 1 - world.greenDistrust;
+        if (blue !== 0)
+          world.blueDistrust = world.killsByBlue / green + evaporation * world.blueDistrust;
+        else world.blueDistrust = evaporation * world.blueDistrust;
+        world.blueDistrust = Math.min(1, world.blueDistrust);
+        world.blueLegitimacy = 1 - world.blueDistrust;
+      }
+      return 0;
+    }),
+  );
+  root.addStatCollector(stat.value('Blue Legitimacy', () => world.blueLegitimacy));
+  root.addStatCollector(stat.value('Green Legitimacy', () => world.greenLegitimacy));
 }
 
 /** What a model file supplies for one legacy class. */
@@ -498,7 +523,7 @@ function following<P extends object>(
 }
 
 /**
- * The parameters the agents read afresh each tick, so they can change while
+ * The parameters the agents read afresh each period, so they can change while
  * a model runs. A model lists fewer where the others show no effect in a
  * short run (Model I Run 1 is too calm for most of them to matter).
  */
@@ -542,11 +567,11 @@ export function defineRebellionModel(
     description: spec.description,
     provenance: provenance(spec),
     parameters: withLive(rebellionParameters(defaults), live),
-    build(sim) {
+    build(root) {
       buildCivilViolence(
-        sim as unknown as Simulation,
+        root as unknown as RootScape,
         following(
-          () => sim.parameters,
+          () => root.parameters,
           (p) => ({
             ...p,
             fissionProbability: 0,
@@ -573,11 +598,11 @@ export function defineIntergroupModel(
     description: spec.description,
     provenance: provenance(spec),
     parameters: withLive(intergroupParameters(defaults), live),
-    build(sim) {
+    build(root) {
       buildCivilViolence(
-        sim as unknown as Simulation,
+        root as unknown as RootScape,
         following(
-          () => sim.parameters,
+          () => root.parameters,
           (p) => ({ ...p }),
         ),
         spec.variant,

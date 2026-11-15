@@ -1,38 +1,42 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  Array2DVonNeumann,
   barsView,
   bool,
-  Cell,
+  CellOccupant,
   colors,
   defineModel,
-  GridScape,
   gridView,
   int,
-  Occupant,
   real,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
+  type HostCell,
 } from '@metascape/engine';
 
 /** A fixed-strategy player of the Demographic Prisoner's Dilemma. */
-export class Player extends Occupant {
+export class Player extends CellOccupant {
   /** The strategy is inherited (with possible mutation) and never changes. */
   readonly cooperator: boolean;
   wealth: number;
   age = 0;
 
-  constructor(cooperator: boolean, wealth: number) {
+  constructor(cooperator: boolean, wealth: number, hostScape: Scape<HostCell>) {
     super();
     this.cooperator = cooperator;
     this.wealth = wealth;
+    this.hostScape = hostScape;
   }
 
-  /** Places an initial player on a random empty cell; offspring are placed by their parent. */
+  /**
+   * Places the player on a random empty cell of its host scape, or removes it
+   * if there is none. Offspring are then moved next to their parent.
+   */
   override initialize(): void {
-    if (this.cell) return;
-    const cell = (this.sim.scape('grid') as GridScape).randomAvailableCell();
-    if (cell) this.moveTo(cell);
-    else this.die();
+    if (this.hostCell) return;
+    this.moveToRandomLocation();
   }
 }
 
@@ -102,24 +106,10 @@ const parameters = {
     min: 0,
     max: 10000,
     label: 'Maximum age',
-    description: 'Agents die of old age after this many ticks; 0 means they never do.',
+    description: 'Agents die of old age after this many periods; 0 means they never do.',
   }),
   moves: bool(true, { label: 'Agents move', description: 'Whether agents move before playing.' }),
 } as const;
-
-/** The free neighbors of a cell, picked from without allocating. */
-function randomFreeNeighbor(cell: Cell, pick: (n: number) => number): Cell | undefined {
-  const neighbors = cell.neighbors;
-  let free = 0;
-  for (let i = 0; i < neighbors.length; i++) if (neighbors[i]!.isAvailable) free++;
-  if (free === 0) return undefined;
-  let choice = pick(free);
-  for (let i = 0; i < neighbors.length; i++) {
-    if (!neighbors[i]!.isAvailable) continue;
-    if (choice-- === 0) return neighbors[i];
-  }
-  return undefined;
-}
 
 export const prisonersDilemma = defineModel({
   name: "Demographic Prisoner's Dilemma",
@@ -129,43 +119,32 @@ export const prisonersDilemma = defineModel({
   description:
     "Joshua Epstein's Demographic Prisoner's Dilemma (Zones of Cooperation in Demographic Prisoner's Dilemma, Complexity, 1998). Fixed-strategy cooperators and defectors wander a torus, play a Prisoner's Dilemma with each neighbor, die when their wealth is negative or they are old, and reproduce when rich. Because play is local and offspring appear next to their parents, clusters of cooperators can survive and grow even though defection pays better in any single encounter.",
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const grid = sim.addScape(
-      new GridScape({
+  build(root) {
+    const p = root.parameters;
+    const grid = root.add(
+      new Scape<HostCell>({
         name: 'grid',
-        width: p.size,
-        height: p.size,
-        wrap: true,
-        neighborhood: 'vonNeumann',
+        space: new Array2DVonNeumann(),
+        extent: [p.size, p.size],
+        periodic: true,
       }),
     );
     const initial = Math.min(p.initialAgents, p.size * p.size);
-    const players: Scape<Player> = sim.addScape(
+    const players: Scape<Player> = root.add(
       new Scape<Player>({
         name: 'players',
         size: initial,
-        create: () => new Player(players.random.chance(p.cooperatorShare), p.initialWealth),
+        prototypeAgent: () =>
+          new Player(players.random.chance(p.cooperatorShare), p.initialWealth, grid),
       }),
     );
-
-    const pickFree = (n: number): number => players.random.int(0, n);
 
     players.addRule({
       name: 'move and play',
       execute(player) {
-        const here = player.cell;
-        if (!here) return;
-        if (p.moves) {
-          const target = randomFreeNeighbor(here, pickFree);
-          if (target) player.moveTo(target);
-        }
-        const cell = player.cell;
-        if (!cell) return;
-        const neighbors = cell.neighbors;
-        for (let i = 0; i < neighbors.length; i++) {
-          const other = neighbors[i]!.occupant as Player | undefined;
-          if (!other) continue;
+        if (!player.hostCell) return;
+        if (p.moves) player.randomWalkAvailable();
+        for (const other of player.neighbors) {
           let mine: number;
           let theirs: number;
           if (player.cooperator) {
@@ -188,37 +167,39 @@ export const prisonersDilemma = defineModel({
           player.die();
           return;
         }
-        if (player.wealth > p.birthThreshold && player.cell) {
-          const target = randomFreeNeighbor(player.cell, pickFree);
+        if (player.wealth > p.birthThreshold && player.hostCell) {
+          const target = player.hostCell.findRandomAvailableNeighbor(player.random);
           if (!target) return;
           const cooperator = players.random.chance(p.mutation)
             ? !player.cooperator
             : player.cooperator;
           player.wealth -= p.endowment;
-          const child = players.add(new Player(cooperator, p.endowment));
+          const child = players.add(new Player(cooperator, p.endowment, grid));
           child.moveTo(target);
         }
       },
     });
 
-    sim.data.count(players, 'cooperators', (a) => a.cooperator);
-    sim.data.count(players, 'defectors', (a) => !a.cooperator);
-    sim.data.measure(players, 'wealth', (a) => a.wealth, { statistics: ['mean'] });
+    players.addStatCollector(stat.count('cooperators', (a) => a.cooperator));
+    players.addStatCollector(stat.count('defectors', (a) => !a.cooperator));
+    players.addStatCollector(stat.measure('wealth', (a) => a.wealth, { statistics: ['mean'] }));
 
-    sim.observe({
-      stepped(s) {
-        if (players.size === 0) s.stop('extinct');
+    root.add(new Scape({ name: 'extinction', space: new Singleton() })).addRule(
+      'stop when extinct',
+      () => {
+        if (players.size === 0) root.stop('extinct');
       },
-    });
+      { randomExecution: false, causesRemoval: false },
+    );
 
     const sides = {
       cooperators: colors.blue,
       defectors: colors.red,
     };
-    sim.addView(
-      gridView<Cell, Player>({
+    grid.addView(
+      gridView<HostCell, Player>({
         title: 'Torus',
-        grid,
+        scape: grid,
         background: 0xffffff,
         legend: [
           { color: colors.blue, label: 'Cooperator', mark: 'agent' },
@@ -228,7 +209,7 @@ export const prisonersDilemma = defineModel({
         occupantShape: 'square',
       }),
     );
-    sim.addView(
+    players.addView(
       timeSeriesView({
         title: 'Population by strategy',
         series: ['cooperators', 'defectors'],
@@ -236,7 +217,7 @@ export const prisonersDilemma = defineModel({
         yMin: 0,
       }),
     );
-    sim.addView(
+    players.addView(
       barsView({
         title: 'Cooperators and defectors',
         series: ['cooperators', 'defectors'],

@@ -5,17 +5,17 @@ import {
   type ParameterSchema,
   type RunnerOptions,
   type RunnerState,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 /** What {@link useRunnerState} reports about a runner at one moment. */
 export interface RunnerSnapshot<S extends ParameterSchema = ParameterSchema> {
   readonly state: RunnerState;
-  /** The tick of the current simulation. */
-  readonly tick: number;
-  /** The current simulation; a new object after every restart. */
-  readonly sim: Simulation<S>;
+  /** The current period of the model. */
+  readonly period: number;
+  /** The root of the current run; a new object after every restart. */
+  readonly root: RootScape<S>;
   /** The exception that stopped the runner, if any. */
   readonly error: unknown;
   /** Counts frames, restarts and state changes; changes whenever anything may have changed. */
@@ -46,9 +46,9 @@ function readSnapshot<S extends ParameterSchema>(runner: Runner<S>): RunnerSnaps
   if (
     previous &&
     !store.dirty &&
-    previous.sim === runner.sim &&
+    previous.root === runner.root &&
     previous.state === runner.state &&
-    previous.tick === runner.sim.tick &&
+    previous.period === runner.root.period &&
     previous.error === runner.error
   ) {
     return previous as unknown as RunnerSnapshot<S>;
@@ -56,8 +56,8 @@ function readSnapshot<S extends ParameterSchema>(runner: Runner<S>): RunnerSnaps
   store.dirty = false;
   const next: RunnerSnapshot = {
     state: runner.state,
-    tick: runner.sim.tick,
-    sim: runner.sim as unknown as Simulation,
+    period: runner.root.period,
+    root: runner.root as unknown as RootScape,
     error: runner.error,
     frame: store.frame,
   };

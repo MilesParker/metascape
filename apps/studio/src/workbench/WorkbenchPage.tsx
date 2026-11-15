@@ -50,7 +50,7 @@ function useMediaQuery(query: string): boolean {
 function Inspector({ session }: { readonly session: Session }): ReactElement | null {
   const selection = useWorkbench((state) => state.selection);
   const select = useWorkbench((state) => state.select);
-  if (selection?.sim !== session.sim) return null;
+  if (selection?.root !== session.root) return null;
   return (
     <section
       aria-label="Inspector"
@@ -231,7 +231,7 @@ function saveImage(session: Session): void {
   context.fillRect(0, 0, out.width, out.height);
   context.drawImage(canvas, 0, 0);
   out.toBlob((blob) => {
-    if (blob) download(`${session.entry.id}-${session.sim.tick}.png`, blob);
+    if (blob) download(`${session.entry.id}-${session.root.period}.png`, blob);
   });
 }
 
@@ -247,7 +247,7 @@ function ExportMenu({ session }: { readonly session: Session }): ReactElement {
         <MenuItem onSelect={copyLink}>Copy link</MenuItem>
         <MenuItem onSelect={() => saveImage(session)}>Image (PNG)</MenuItem>
         <MenuItem
-          onSelect={() => download(`${session.entry.id}-data.csv`, session.sim.data.toCSV())}
+          onSelect={() => download(`${session.entry.id}-data.csv`, session.root.data.toCSV())}
         >
           Data (CSV)
         </MenuItem>
@@ -263,7 +263,7 @@ function useWorkbenchCommands(session: Session, toggleRail: () => void): void {
   const position = pathPosition(entry);
   const running = session.snapshot.state === 'running';
   const speedBy = (steps: number): void => {
-    const next = Math.max(0, Math.min(100, speedToPosition(runner.ticksPerSecond) + steps));
+    const next = Math.max(0, Math.min(100, speedToPosition(runner.iterationsPerSecond) + steps));
     runner.setSpeed(positionToSpeed(next));
   };
   const commands: Command[] = [
@@ -357,7 +357,7 @@ function useWorkbenchCommands(session: Session, toggleRail: () => void): void {
       id: 'export-csv',
       label: 'Data (CSV)',
       group: 'Export',
-      run: () => download(`${entry.id}-data.csv`, session.sim.data.toCSV()),
+      run: () => download(`${entry.id}-data.csv`, session.root.data.toCSV()),
     },
   ];
   if (position?.previous) {
@@ -424,7 +424,7 @@ function Workbench({ session }: { readonly session: Session }): ReactElement {
   const selection = useWorkbench((state) => state.selection);
   const [railOpen, setRailOpen] = useState(true);
   const hasDock =
-    splitViews(session.sim.views).charts.length > 0 || session.charts.added.length > 0;
+    splitViews(session.root.allViews).charts.length > 0 || session.charts.added.length > 0;
   const sideBySide = landscape;
   const layoutKey = `layout:${entry.id}:${sideBySide ? 'beside' : 'below'}`;
   const saved = readLocal<{ dock?: number; rail?: number } | undefined>(layoutKey, undefined);

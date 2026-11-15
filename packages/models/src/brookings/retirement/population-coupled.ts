@@ -27,7 +27,7 @@ export const populationCoupled = defineModel({
     note: 'The legacy coupling code is dead (its person class is replaced when the scape is created, and it would fail if it ran), so the behaviour ported is that of Population. The legacy fractionCoupled property therefore has no effect and is not a parameter.',
   },
   parameters: networkParameters,
-  build(sim) {
-    buildPopulation(sim, sim.parameters, 'random-by-age');
+  build(root) {
+    buildPopulation(root, root.parameters, 'random-by-age');
   },
 });

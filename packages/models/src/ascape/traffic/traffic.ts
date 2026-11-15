@@ -5,18 +5,20 @@
 // All rights reserved. Used under the BSD license in LICENSES/ascape-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
+  type Array2D,
+  Array2DMoore,
+  CellOccupant,
+  colors,
   defineModel,
-  GridScape,
   gridView,
-  Occupant,
+  HostCell,
   real,
   rgb,
-  Scape,
-  timeSeriesView,
-  colors,
+  type RootScape,
   type Rule,
-  type Simulation,
+  Scape,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 
 /** Length of the highway in cells (legacy `highway.setExtent(80, 6)`). */
@@ -45,9 +47,9 @@ export interface CarSettings {
 }
 
 /** A tile of road. Legacy `RoadTile`: neighbours along and across the highway. */
-export class RoadTile extends Cell {
+export class RoadTile extends HostCell {
   #at(x: number, y: number): RoadTile {
-    return this.grid.at(x, y) as RoadTile;
+    return (this.scape.space as unknown as Array2D<RoadTile>).at(x, y) as RoadTile;
   }
 
   /** The tile in the lane to the left (lower lane index), or undefined at the edge. */
@@ -57,26 +59,29 @@ export class RoadTile extends Cell {
 
   /** The tile in the lane to the right, or undefined at the edge. */
   cellRight(): RoadTile | undefined {
-    return this.y + 1 < this.grid.height ? this.#at(this.x, this.y + 1) : undefined;
+    return this.y + 1 < (this.scape.space as unknown as Array2D).height
+      ? this.#at(this.x, this.y + 1)
+      : undefined;
   }
 
   /** The tile `distance` ahead (default 1), wrapping once round the road. */
   cellAhead(distance = 1): RoadTile {
     let x = this.x + distance;
-    if (x >= this.grid.width) x -= this.grid.width;
+    if (x >= (this.scape.space as unknown as Array2D).width)
+      x -= (this.scape.space as unknown as Array2D).width;
     return this.#at(x, this.y);
   }
 
   /** The tile `distance` behind, wrapping once round the road. */
   cellBehind(distance: number): RoadTile {
     let x = this.x - distance;
-    if (x < 0) x += this.grid.width;
+    if (x < 0) x += (this.scape.space as unknown as Array2D).width;
     return this.#at(x, this.y);
   }
 }
 
 /** A car. Legacy `Car`. */
-export class Car extends Occupant<RoadTile> {
+export class Car extends CellOccupant<RoadTile> {
   mode: Mode = 'coasting';
   actualSpeed = 0;
   /** Position within the current cell, in 0..160. */
@@ -122,7 +127,7 @@ export class Car extends Occupant<RoadTile> {
    * LAST occupied one (the farthest, not the nearest), then reports it if the
    * gap, measured with the location offsets, is within `distance`.
    */
-  carAhead(distance: number, tile: RoadTile | undefined = this.cell): Car | undefined {
+  carAhead(distance: number, tile: RoadTile | undefined = this.hostCell): Car | undefined {
     if (!tile) return undefined;
     let nearest: Car | undefined;
     let cells: number;
@@ -135,7 +140,7 @@ export class Car extends Occupant<RoadTile> {
   }
 
   /** Legacy `carBehind`, with the same keep-the-last quirk as {@link carAhead}. */
-  carBehind(distance: number, tile: RoadTile | undefined = this.cell): Car | undefined {
+  carBehind(distance: number, tile: RoadTile | undefined = this.hostCell): Car | undefined {
     if (!tile) return undefined;
     let nearest: Car | undefined;
     let cells: number;
@@ -158,7 +163,7 @@ export class Car extends Occupant<RoadTile> {
 
   /** Legacy `changeLanes`. */
   changeLanes(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const safe = this.safeDistance;
     if (this.behavior === 'cooperator') {
@@ -197,7 +202,7 @@ export class Car extends Occupant<RoadTile> {
 
   /** Legacy `Car.movement`: adjust speed, advance, and hop to the next tile at 160. */
   movement(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const candidate = here.cellAhead();
     if (this.carAhead(this.safeDistance) === undefined) {
@@ -254,25 +259,25 @@ export const parameters = {
     min: 0,
     max: 50,
     label: 'Minimum acceleration',
-    description: "Lower bound of cars' acceleration per tick.",
+    description: "Lower bound of cars' acceleration per period.",
   }),
   maxAcceleration: real(3, {
     min: 0,
     max: 50,
     label: 'Maximum acceleration',
-    description: "Upper bound of cars' acceleration per tick.",
+    description: "Upper bound of cars' acceleration per period.",
   }),
   minDeceleration: real(2, {
     min: 0,
     max: 50,
     label: 'Minimum deceleration',
-    description: "Lower bound of cars' braking per tick.",
+    description: "Lower bound of cars' braking per period.",
   }),
   maxDeceleration: real(4, {
     min: 0,
     max: 50,
     label: 'Maximum deceleration',
-    description: "Upper bound of cars' braking per tick.",
+    description: "Upper bound of cars' braking per period.",
   }),
   portionCooperator: real(0, {
     min: 0,
@@ -303,27 +308,27 @@ export const trafficModel = defineModel({
     note: 'Traffic Model, Miles T. Parker (2002), as titled in the Ascape About text. No further authors or citation are given in the sources.',
   },
   parameters,
-  build(sim: Simulation<typeof parameters>) {
-    const p = sim.parameters;
-    const highway = sim.addScape(
-      new GridScape<RoadTile>({
+  build(root: RootScape<typeof parameters>) {
+    const p = root.parameters;
+    const highway = root.add(
+      new Scape<RoadTile>({
         name: 'Highway',
-        width: HIGHWAY_LENGTH,
-        height: LANES,
-        wrap: false,
-        create: () => new RoadTile(),
+        space: new Array2DMoore<RoadTile>(),
+        extent: [HIGHWAY_LENGTH, LANES],
+        periodic: false,
+        prototypeAgent: () => new RoadTile(),
       }),
     );
     const settings: CarSettings = { ...p };
-    const cars = sim.addScape(
+    const cars = root.add(
       new Scape<Car>({
         name: 'Cars',
         size: Math.trunc(HIGHWAY_LENGTH * LANES * p.trafficDensity),
-        create: () => new Car(settings),
+        prototypeAgent: () => new Car(settings),
       }),
     );
     cars.addInitialRule('Move To Random Location', (car) => {
-      const cell = highway.randomAvailableCell();
+      const cell = highway.findRandom((cell) => cell.isAvailable);
       if (cell) car.moveTo(cell);
       else car.die();
     });
@@ -331,13 +336,13 @@ export const trafficModel = defineModel({
     const laneChanging: Rule<Car> = { name: 'Lane Changing', execute: (car) => car.changeLanes() };
     cars.addRule(laneChanging);
 
-    sim.data.measure(cars, 'speed', (car) => car.actualSpeed);
-    sim.data.measure(cars, 'frustration', (car) => car.desiredSpeed - car.actualSpeed);
+    cars.addStatCollector(stat.measure('speed', (car) => car.actualSpeed));
+    cars.addStatCollector(stat.measure('frustration', (car) => car.desiredSpeed - car.actualSpeed));
 
-    sim.addView(
+    root.addView(
       gridView<RoadTile, Car>({
         title: 'Helicopter View',
-        grid: highway,
+        scape: highway,
         cellColor: () => colors.gray,
         occupantColor: (car) => (car.mode === 'decelerating' ? colors.red : car.color),
         occupantShape: 'square',
@@ -348,7 +353,7 @@ export const trafficModel = defineModel({
         ],
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Frustration',
         series: ['speed.mean', 'frustration.mean'],

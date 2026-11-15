@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { timeAt, type Simulation, type ViewSpec } from '@metascape/engine';
+import { type RootScape, type ViewSpec } from '@metascape/engine';
 import {
   choiceOf,
   humanize,
@@ -61,23 +61,16 @@ export function download(name: string, content: Blob | string, type = 'text/csv'
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** The recorded series of a chart as CSV, with the model's time beside each tick. */
-export function chartCsv(sim: Simulation, ids: readonly string[]): string {
-  const unit = timeUnit(sim).singular;
-  const header = [
-    'tick',
-    ...(sim.model.time ? [unit] : []),
-    ...ids.map((id) => seriesLabel(sim, id)),
-  ];
+/** The collected series of a chart as CSV, one line per period. */
+export function chartCsv(root: RootScape, ids: readonly string[]): string {
+  const unit = timeUnit(root).singular;
+  const header = [unit, ...ids.map((id) => seriesLabel(root, id))];
   const quote = (text: string): string =>
     /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   const lines = [header.map(quote).join(',')];
-  const columns = ids.map((id) => sim.data.values(id));
-  for (let i = 0; i < sim.data.sampleCount; i++) {
-    const tick = sim.data.ticks[i]!;
-    lines.push(
-      [tick, ...(sim.model.time ? [timeAt(sim, tick)] : []), ...columns.map((c) => c[i])].join(','),
-    );
+  const columns = ids.map((id) => root.data.values(id));
+  for (let i = 0; i < root.data.sampleCount; i++) {
+    lines.push([root.data.periods[i]!, ...columns.map((c) => c[i])].join(','));
   }
   return `${lines.join('\n')}\n`;
 }
@@ -90,7 +83,7 @@ function ChartMenu({
   readonly session: Session;
   readonly view: ShownView;
 }): ReactElement | null {
-  const { sim, charts, setCharts, entry } = session;
+  const { root, charts, setCharts, entry } = session;
   const spec = view.spec;
   const ids = 'series' in spec ? spec.series : [];
   const customizable = isCustomizable(spec);
@@ -98,7 +91,7 @@ function ChartMenu({
   const saveCsv = (): void =>
     download(
       `${entry.id}-${spec.title.replace(/\W+/g, '-').toLowerCase()}.csv`,
-      chartCsv(sim, ids),
+      chartCsv(root, ids),
     );
   if (!customizable) {
     return (
@@ -115,7 +108,7 @@ function ChartMenu({
     );
   }
   const choice = choiceOf(spec);
-  const grid = seriesGrid(sim.data.series);
+  const grid = seriesGrid(root.data.series);
   const shown = new Set(choice.series);
   const change = (next: ChartChoice): void =>
     setCharts(
@@ -243,13 +236,13 @@ export function ChartCard({
   readonly view: ShownView;
   readonly className?: string;
 }): ReactElement {
-  const { sim, frame, entry } = session;
+  const { root, frame, entry } = session;
   const interventions = useWorkbench((state) => state.interventions);
   const ghost = useWorkbench((state) => state.ghost);
   const showGhost = useWorkbench((state) => state.showGhost);
   const spec = view.spec;
   const marks = useMemo(
-    () => interventions.map((i) => ({ tick: i.tick, label: i.label })),
+    () => interventions.map((i) => ({ period: i.period, label: i.label })),
     [interventions],
   );
   return (
@@ -270,7 +263,7 @@ export function ChartCard({
         <ViewBoundary>
           <ViewBody
             spec={spec}
-            sim={sim}
+            root={root}
             frame={frame}
             chart={{
               fill: true,
@@ -300,8 +293,8 @@ export function splitViews(views: readonly ViewSpec[]): { stage: number[]; chart
 
 /** The menu that adds a chart of any recorded series. */
 export function AddChart({ session }: { readonly session: Session }): ReactElement {
-  const { sim, charts, setCharts } = session;
-  const grid = seriesGrid(sim.data.series);
+  const { root, charts, setCharts } = session;
+  const grid = seriesGrid(root.data.series);
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -325,18 +318,18 @@ export function AddChart({ session }: { readonly session: Session }): ReactEleme
 
 /** The charts beside the stage, in a grid of cards that fills the dock. */
 export function ChartDock({ session }: { readonly session: Session }): ReactElement {
-  const { sim, charts } = session;
+  const { root, charts } = session;
   const ghost = useWorkbench((state) => state.ghost);
   const showGhost = useWorkbench((state) => state.showGhost);
   const setShowGhost = useWorkbench((state) => state.setShowGhost);
-  const views = useMemo(() => sim.views, [sim]);
+  const views = useMemo(() => root.allViews, [root]);
   const { charts: chartIndexes } = splitViews(views);
   const shown = useMemo(
     () =>
-      shownViews(views, charts, sim).filter(
+      shownViews(views, charts, root).filter(
         (v) => v.position === undefined || chartIndexes.includes(v.position),
       ),
-    [views, charts, sim, chartIndexes],
+    [views, charts, root, chartIndexes],
   );
   return (
     <div className="flex h-full min-h-0 flex-col bg-bg">

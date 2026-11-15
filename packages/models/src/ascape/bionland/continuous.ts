@@ -8,18 +8,21 @@
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
   bool,
-  ContinuousScape,
-  continuousView,
-  int,
-  PointAgent,
-  timeSeriesView,
   type Color,
+  Continuous2D,
+  continuousView,
   defineModel,
+  int,
+  LocatedAgent,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import { BIONLAND_COPYRIGHT, SPECIES, SPECIES_COLORS } from './lattice-model';
 
 /** A bion in continuous space, with its own vision and speed. */
-export class FreeBion extends PointAgent {
+export class FreeBion extends LocatedAgent {
   vision = 0;
   velocity = 0;
 
@@ -49,10 +52,10 @@ function nearlyEqual(a: number, b: number): boolean {
 
 /**
  * The territory: one continuous space holding all three species. Ascape
- * steps each species' scape in turn (red, then orange, then blue), each in a
- * fresh random order, so this does the same.
+ * iterates each species' scape in turn (red, then orange, then blue), each in
+ * a fresh random order; {@link Territory.iterateSpecies} does the same.
  */
-export class Territory extends ContinuousScape<FreeBion> {
+export class Territory extends Continuous2D<FreeBion> {
   /** The nearest other bion of a species within `vision`; a random one among equally near. */
   nearestOfSpecies(origin: FreeBion, species: number): FreeBion | undefined {
     let best = Number.MAX_VALUE;
@@ -112,7 +115,8 @@ export class Territory extends ContinuousScape<FreeBion> {
     bion.moveTo(bion.x - distance * Math.cos(theta), bion.y - distance * Math.sin(theta));
   }
 
-  override step(): void {
+  /** One period: each species in turn, in a fresh random order drawn from the territory's stream. */
+  iterateSpecies(): void {
     for (let species = 0; species < 3; species++) {
       const group = this.random.shuffle(this.members.filter((b) => b.species === species));
       const prey = (species + 1) % 3;
@@ -156,45 +160,55 @@ export const stepQ = defineModel({
       description: 'Whether the edges of the space join up.',
     }),
   },
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     const ranges = {
       minVision: p.minimumVision,
       maxVision: Math.max(p.minimumVision, p.maximumVision),
       minVelocity: p.minVelocity,
       maxVelocity: Math.max(p.minVelocity, p.maxVelocity),
     };
-    const territory = sim.addScape(
-      new Territory({
+    const space = new Territory();
+    const territory = root.add(
+      new Scape<FreeBion>({
         name: 'Bionland',
-        width: 600,
-        height: 600,
-        wrap: p.periodic,
+        space,
+        extent: [600, 600],
+        periodic: p.periodic,
         size: 3 * p.initialPopulationSize,
-        create: (index) => new FreeBion(Math.floor(index / p.initialPopulationSize), ranges),
+        prototypeAgent: (index) =>
+          new FreeBion(Math.floor(index / p.initialPopulationSize), ranges),
       }),
     );
+    // The species take their turns as one rule of the model as a whole.
+    root
+      .add(new Scape({ name: 'Species', space: new Singleton() }))
+      .addRule('Chase and flee', () => space.iterateSpecies(), {
+        randomExecution: false,
+      });
     SPECIES.forEach((name, species) =>
-      sim.data.count(territory, name, (b) => b.species === species),
+      territory.addStatCollector(stat.count(name, (b) => b.species === species)),
     );
-    sim.data.value('Mean distance to prey', () => {
-      let total = 0;
-      let counted = 0;
-      for (const bion of territory.members) {
-        let nearest = Infinity;
-        for (const other of territory.members) {
-          if (other.species === (bion.species + 1) % 3) {
-            nearest = Math.min(nearest, territory.distance(bion, other));
+    root.addStatCollector(
+      stat.value('Mean distance to prey', () => {
+        let total = 0;
+        let counted = 0;
+        for (const bion of territory.members) {
+          let nearest = Infinity;
+          for (const other of territory.members) {
+            if (other.species === (bion.species + 1) % 3) {
+              nearest = Math.min(nearest, space.distance(bion, other));
+            }
+          }
+          if (nearest < Infinity) {
+            total += nearest;
+            counted++;
           }
         }
-        if (nearest < Infinity) {
-          total += nearest;
-          counted++;
-        }
-      }
-      return counted === 0 ? 0 : total / counted;
-    });
-    sim.addView(
+        return counted === 0 ? 0 : total / counted;
+      }),
+    );
+    root.addView(
       continuousView<FreeBion>({
         title: 'Map',
         scape: territory,
@@ -206,6 +220,6 @@ export const stepQ = defineModel({
         radius: () => 5,
       }),
     );
-    sim.addView(timeSeriesView({ title: 'Distance to prey', series: ['Mean distance to prey'] }));
+    root.addView(timeSeriesView({ title: 'Distance to prey', series: ['Mean distance to prey'] }));
   },
 });

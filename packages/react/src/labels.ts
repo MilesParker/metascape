@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { timeAt, type Simulation, type ViewSpec } from '@metascape/engine';
+import { type RootScape, type ViewSpec } from '@metascape/engine';
 
 /**
  * Turns an identifier into words: `retiredShareOfEligible` becomes "Retired
@@ -22,27 +22,27 @@ export function humanize(text: string): string {
   return lowered.charAt(0).toUpperCase() + lowered.slice(1);
 }
 
-/** The readable label of a recorded series in a chart: the chart's own, else the recorder's, humanized. */
-export function seriesLabel(sim: Simulation, id: string, spec?: ViewSpec): string {
+/** The readable label of a collected series in a chart: the chart's own, else the series', humanized. */
+export function seriesLabel(root: RootScape, id: string, spec?: ViewSpec): string {
   const own = spec && 'labels' in spec ? spec.labels?.[id] : undefined;
   if (own) return own;
   try {
-    return humanize(sim.data.get(id).label);
+    return humanize(root.data.get(id).label);
   } catch {
     return humanize(id);
   }
 }
 
-/** The model's unit of time, singular and plural; "tick" when it declares none. */
-export function timeUnit(sim: Simulation): { singular: string; plural: string } {
-  const scale = sim.model.time;
-  if (!scale) return { singular: 'tick', plural: 'ticks' };
-  return { singular: scale.unit, plural: scale.plural ?? `${scale.unit}s` };
+/** What the model's periods are, singular and plural; "period" when it does not say. */
+export function timeUnit(root: RootScape): { singular: string; plural: string } {
+  const scale = root.model.period;
+  if (!scale) return { singular: 'period', plural: 'periods' };
+  return { singular: scale.name, plural: scale.plural ?? `${scale.name}s` };
 }
 
-/** A tick in the model's own time, as text, such as "year 1043" or "tick 12". */
-export function describeTime(sim: Simulation, tick: number): string {
-  return `${timeUnit(sim).singular} ${formatNumber(timeAt(sim, tick))}`;
+/** A period as text, such as "year 1043" or "period 12". */
+export function describeTime(root: RootScape, period: number): string {
+  return `${timeUnit(root).singular} ${formatNumber(period)}`;
 }
 
 /** Short readable text for a number: integers with digit grouping, others to four significant digits. */

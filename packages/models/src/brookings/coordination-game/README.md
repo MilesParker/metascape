@@ -39,6 +39,6 @@ Collection: Brookings Institution models (from Ascape). Licence: BSD (`LICENSES/
 - Kept: step 4 leaves `totalScore` unchanged after reproduction (only the first four remembered plays are zeroed), and the offspring starts with its parent's `totalScore` until it plays. So a parent can reproduce again straight away if it does not play (no neighbor).
 - Kept: step 5 friends are drawn with replacement from all players, so a player can have repeated friends or itself as a friend. They are never changed. The friend network view skips duplicates and self links.
 - Kept: errors are "in 101": the legacy test is `randomInRange(0, 100) >= error`, which is inclusive, so even with `error = 100` a player revises by the rule with probability 1/101.
-- Offspring added during a tick (step 4) first act in the next tick (engine rule); the Ascape strategy for mutable scapes was not examined in detail.
+- Offspring added during a period (step 4) first act in the next period (engine rule); the Ascape strategy for mutable scapes was not examined in detail.
 - Legacy players placed beyond the 900 lattice cells are killed; here `nPlayers` is limited to 900.
 - Random streams differ from Java's; runs are deterministic per seed only.

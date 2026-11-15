@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { ParameterSchema, ParameterValues } from '../parameters';
-import { Simulation, type Model } from '../simulation';
+import { ParameterError, type ParameterSchema, type ParameterValues } from '../parameters';
+import { RootScape, type Model } from '../root';
 import { PerformanceClock, TimeoutScheduler, type Clock, type Scheduler } from './scheduler';
 
 /** The lifecycle of a {@link Runner}. */
@@ -10,23 +10,23 @@ export interface RunnerOptions<S extends ParameterSchema> {
   /** Seed for the first run and for every restart. Default: a fresh seed for each run. */
   readonly seed?: number | string;
   readonly parameters?: Partial<ParameterValues<S>>;
-  /** Passed to every simulation: stop automatically once this tick has run. */
-  readonly stopAt?: number;
-  /** Target speed while running. Default 30. `Infinity` steps as fast as the frame budget allows. */
-  readonly ticksPerSecond?: number;
-  /** The most clock time one frame may spend stepping. Default 12 ms. */
+  /** Passed to every root: stop automatically once this period has been reached. */
+  readonly stopPeriod?: number;
+  /** Target speed while running. Default 30. `Infinity` iterates as fast as the frame budget allows. */
+  readonly iterationsPerSecond?: number;
+  /** The most clock time one frame may spend iterating. Default 12 ms. */
   readonly frameBudgetMs?: number;
   /** Delay between frames. Default 1000/60 ms. */
   readonly frameIntervalMs?: number;
-  /** Pause when the simulation reaches exactly this tick while running. */
-  readonly pauseAt?: number;
+  /** Pause when the model reaches exactly this period while running. */
+  readonly pausePeriod?: number;
   /**
-   * Called with every simulation the runner creates, the first one and each
+   * Called with every root the runner creates, the first one and each
    * restart's, right after it is built and before anything is shown. Use it to
    * apply run-time settings (see `SettingsStore.attach`) so they survive
    * restarts. If it throws, a restart throws and leaves the runner untouched.
    */
-  readonly onSimulation?: (sim: Simulation) => void;
+  readonly onRoot?: (root: RootScape) => void;
   readonly scheduler?: Scheduler;
   readonly clock?: Clock;
 }
@@ -43,60 +43,64 @@ interface Entry<T> {
   readonly fn: T;
 }
 
-const DEFAULT_TICKS_PER_SECOND = 30;
+const DEFAULT_ITERATIONS_PER_SECOND = 30;
 const DEFAULT_FRAME_BUDGET_MS = 12;
 const DEFAULT_FRAME_INTERVAL_MS = 1000 / 60;
-/** Absorbs floating-point error in the fractional tick accumulator. */
+/** Absorbs floating-point error in the fractional iteration accumulator. */
 const EPSILON = 1e-9;
 
-function checkSpeed(ticksPerSecond: number): void {
-  if (Number.isNaN(ticksPerSecond) || ticksPerSecond <= 0) {
-    throw new RangeError(`ticksPerSecond must be positive or Infinity, got ${ticksPerSecond}`);
+function checkSpeed(iterationsPerSecond: number): void {
+  if (Number.isNaN(iterationsPerSecond) || iterationsPerSecond <= 0) {
+    throw new RangeError(
+      `iterationsPerSecond must be positive or Infinity, got ${iterationsPerSecond}`,
+    );
   }
 }
 
 /**
- * Drives simulations of one model interactively: start, pause, step, restart,
- * and change speed, with listeners for rendering. It uses an injected
+ * Runs one model interactively: start, pause, step, restart, and change
+ * speed, with listeners for rendering. It is run-time plumbing and no part
+ * of the model: each run is a fresh root scape. It uses an injected
  * {@link Scheduler} and {@link Clock}, so it works unchanged on a browser's
  * main thread, in a worker and in Node.
  *
  * States and transitions (an invalid transition is ignored and returns `false`
  * or does nothing; it never throws):
  *
- * - `ready`: fresh simulation at its initial tick. `start()` runs it; `step()`
- *   takes one tick and leaves it `paused`.
+ * - `ready`: fresh root at its start period. `start()` runs it; `step()`
+ *   executes one iteration and leaves it `paused`.
  * - `running`: frames are scheduled. `pause()` pauses. `start()` and `step()` are ignored.
- * - `paused`: `start()` resumes; `step()` takes one tick.
- * - `stopped`: the simulation stopped itself, or an error occurred. Only
+ * - `paused`: `start()` resumes; `step()` executes one iteration.
+ * - `stopped`: the model stopped itself, or an error occurred. Only
  *   `restart()` leaves this state; `start()`, `pause()` and `step()` are ignored.
  * - `restart()` works in every state except after `dispose()`.
  *
- * While running, each frame accrues ticks from the clock time since the previous
- * frame (fractions carry over), never steps for longer than `frameBudgetMs`,
- * and drops any backlog the budget prevented it from working off. At least one
- * tick is run per frame whenever one is due. A frame ends with one call to the
- * frame listeners. With `Infinity` speed a frame steps until the budget is
- * used, so the clock must advance for the frame to end.
+ * While running, each frame accrues iterations from the clock time since the
+ * previous frame (fractions carry over), never iterates for longer than
+ * `frameBudgetMs`, and drops any backlog the budget prevented it from working
+ * off. At least one iteration is executed per frame whenever one is due. A
+ * frame ends with one call to the frame listeners. With `Infinity` speed a
+ * frame iterates until the budget is used, so the clock must advance for the
+ * frame to end.
  */
 export class Runner<S extends ParameterSchema = ParameterSchema> {
   readonly model: Model<S>;
-  /** Pause when the simulation reaches exactly this tick while running. May be changed at any time. */
-  pauseAt: number | undefined;
+  /** Pause when the model reaches exactly this period while running. May be changed at any time. */
+  pausePeriod: number | undefined;
 
-  readonly #stopAt: number | undefined;
-  readonly #onSimulation: ((sim: Simulation) => void) | undefined;
+  readonly #stopPeriod: number | undefined;
+  readonly #onRoot: ((root: RootScape) => void) | undefined;
   readonly #scheduler: Scheduler;
   readonly #clock: Clock;
   readonly #budgetMs: number;
   readonly #intervalMs: number;
-  readonly #frameListeners: Entry<(sim: Simulation<S>) => void>[] = [];
+  readonly #frameListeners: Entry<(root: RootScape<S>) => void>[] = [];
   readonly #stateListeners: Entry<(state: RunnerState) => void>[] = [];
   readonly #errorListeners: Entry<(error: unknown) => void>[] = [];
   #seed: number | string | undefined;
   #parameters: Partial<ParameterValues<S>> | undefined;
   #speed: number;
-  #sim: Simulation<S>;
+  #root: RootScape<S>;
   #state: RunnerState = 'ready';
   #error: unknown;
   #hasError = false;
@@ -105,34 +109,34 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   #lastFrameAt = 0;
   #disposed = false;
 
-  /** Creates the first simulation immediately; the runner starts `ready`. */
+  /** Creates the first root immediately; the runner starts `ready`. */
   constructor(model: Model<S>, options: RunnerOptions<S> = {}) {
     this.model = model;
     this.#seed = options.seed;
     this.#parameters = options.parameters;
-    this.#stopAt = options.stopAt;
-    this.#onSimulation = options.onSimulation;
-    this.pauseAt = options.pauseAt;
-    this.#speed = options.ticksPerSecond ?? DEFAULT_TICKS_PER_SECOND;
+    this.#stopPeriod = options.stopPeriod;
+    this.#onRoot = options.onRoot;
+    this.pausePeriod = options.pausePeriod;
+    this.#speed = options.iterationsPerSecond ?? DEFAULT_ITERATIONS_PER_SECOND;
     checkSpeed(this.#speed);
     this.#budgetMs = options.frameBudgetMs ?? DEFAULT_FRAME_BUDGET_MS;
     this.#intervalMs = options.frameIntervalMs ?? DEFAULT_FRAME_INTERVAL_MS;
     this.#scheduler = options.scheduler ?? new TimeoutScheduler();
     this.#clock = options.clock ?? new PerformanceClock();
-    this.#sim = this.#create(this.#seed, this.#parameters);
+    this.#root = this.#create(this.#seed, this.#parameters);
   }
 
-  /** The current simulation; replaced by {@link restart}. */
-  get sim(): Simulation<S> {
-    return this.#sim;
+  /** The root scape of the current run; replaced by {@link restart}. */
+  get root(): RootScape<S> {
+    return this.#root;
   }
 
   get state(): RunnerState {
     return this.#state;
   }
 
-  /** Target ticks per second. */
-  get ticksPerSecond(): number {
+  /** Target iterations per second. */
+  get iterationsPerSecond(): number {
     return this.#speed;
   }
 
@@ -163,14 +167,14 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   /**
-   * Runs exactly one tick, then calls the frame listeners. Valid when `ready`
-   * (which becomes `paused`) or `paused`; otherwise ignored. Returns whether a tick ran.
+   * Executes exactly one iteration, then calls the frame listeners. Valid when `ready`
+   * (which becomes `paused`) or `paused`; otherwise ignored. Returns whether an iteration ran.
    */
   step(): boolean {
     if (this.#disposed || (this.#state !== 'ready' && this.#state !== 'paused')) return false;
     try {
       if (this.#state === 'ready') this.#setState('paused');
-      const ran = this.#tick();
+      const ran = this.#iterate();
       this.#notifyFrame();
       return ran;
     } catch (error) {
@@ -180,10 +184,10 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   /**
-   * Discards the simulation and builds a fresh one. A seed passed to the
+   * Discards the root and builds a fresh one. A seed passed to the
    * constructor or here is reused; without one, each run gets a new seed.
    * Parameter overrides are merged over earlier ones and kept. If the new
-   * simulation cannot be built (for example an invalid parameter) the error is
+   * root cannot be built (for example an invalid parameter) the error is
    * thrown and the runner is left untouched. Ends `ready`, or `running` if it
    * was running; frame listeners are called so views can redraw.
    */
@@ -193,10 +197,10 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     const parameters = overrides.parameters
       ? { ...this.#parameters, ...overrides.parameters }
       : this.#parameters;
-    const sim = this.#create(seed, parameters);
+    const root = this.#create(seed, parameters);
     this.#seed = seed;
     this.#parameters = parameters;
-    this.#sim = sim;
+    this.#root = root;
     this.#error = undefined;
     this.#hasError = false;
     this.#accrued = 0;
@@ -215,21 +219,27 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   /**
-   * Changes a live parameter of the running simulation (see
-   * `Simulation.setParameter`) and keeps the value for later restarts. Throws
-   * a `ParameterError`, changing nothing, if the parameter is not live or the
+   * Changes a parameter of the running model that is declared `live`, one
+   * the model reads as it runs, and keeps the value for later restarts. A
+   * parameter that is not live shapes the model when it is built, so the
+   * runner refuses it here: give it to {@link restart}. Throws a
+   * `ParameterError`, changing nothing, if the parameter is not live or the
    * value does not fit. Frame listeners are called so views can update.
    */
   setParameter(name: string, value: number | string | boolean): void {
     if (this.#disposed) return;
-    this.#sim.setParameter(name, value);
+    const parameter = (this.model.parameters as ParameterSchema)[name];
+    if (parameter && !parameter.live) {
+      throw new ParameterError(`Parameter "${name}" is not live; it applies on restart`);
+    }
+    this.#root.setParameter(name, value);
     this.#parameters = { ...this.#parameters, [name]: value } as unknown as Partial<
       ParameterValues<S>
     >;
     this.#notifyFrame();
   }
 
-  /** The parameter overrides used for the current simulation and kept for restarts. */
+  /** The parameter overrides used for the current run and kept for restarts. */
   get parameterOverrides(): Partial<ParameterValues<S>> {
     return { ...this.#parameters } as Partial<ParameterValues<S>>;
   }
@@ -240,9 +250,9 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   /** Changes the target speed. Throws a `RangeError` unless positive or `Infinity`. */
-  setSpeed(ticksPerSecond: number): void {
-    checkSpeed(ticksPerSecond);
-    this.#speed = ticksPerSecond;
+  setSpeed(iterationsPerSecond: number): void {
+    checkSpeed(iterationsPerSecond);
+    this.#speed = iterationsPerSecond;
     this.#accrued = 0;
   }
 
@@ -258,7 +268,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   /** Called after each frame or manual step, and after a restart. Returns an unsubscribe function. */
-  onFrame(listener: (sim: Simulation<S>) => void): () => void {
+  onFrame(listener: (root: RootScape<S>) => void): () => void {
     return this.#subscribe(this.#frameListeners, listener);
   }
 
@@ -275,14 +285,14 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   #create(
     seed: number | string | undefined,
     parameters: Partial<ParameterValues<S>> | undefined,
-  ): Simulation<S> {
-    const sim = new Simulation(this.model, {
+  ): RootScape<S> {
+    const root = new RootScape(this.model, {
       ...(seed !== undefined && { seed }),
       ...(parameters !== undefined && { parameters }),
-      ...(this.#stopAt !== undefined && { stopAt: this.#stopAt }),
+      ...(this.#stopPeriod !== undefined && { stopPeriod: this.#stopPeriod }),
     });
-    this.#onSimulation?.(sim as unknown as Simulation);
-    return sim;
+    this.#onRoot?.(root as unknown as RootScape);
+    return root;
   }
 
   #subscribe<T>(list: Entry<T>[], fn: T): () => void {
@@ -301,7 +311,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   }
 
   #notifyFrame(): void {
-    for (const { fn } of [...this.#frameListeners]) fn(this.#sim);
+    for (const { fn } of [...this.#frameListeners]) fn(this.#root);
   }
 
   #scheduleFrame(): void {
@@ -317,15 +327,15 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     this.#cancel = undefined;
   }
 
-  /** One tick, then the state changes it implies. Returns false if the simulation had already stopped. */
-  #tick(): boolean {
-    const sim = this.#sim;
-    if (!sim.step()) {
+  /** One iteration, then the state changes it implies. Returns false if the model had already stopped. */
+  #iterate(): boolean {
+    const root = this.#root;
+    if (!root.iterate()) {
       this.#setState('stopped');
       return false;
     }
-    if (sim.stopped) this.#setState('stopped');
-    else if (this.pauseAt !== undefined && sim.tick === this.pauseAt) {
+    if (root.stopped) this.#setState('stopped');
+    else if (this.pausePeriod !== undefined && root.period === this.pausePeriod) {
       this.#cancelFrame();
       this.#setState('paused');
     }
@@ -346,7 +356,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
       }
       this.#lastFrameAt = start;
       for (let ran = 0; ran < due;) {
-        if (!this.#tick()) break;
+        if (!this.#iterate()) break;
         ran++;
         if (this.#state !== 'running') break;
         if (ran < due && this.#clock.now() - start >= this.#budgetMs) break;

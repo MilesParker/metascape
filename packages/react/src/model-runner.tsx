@@ -8,7 +8,7 @@ import {
   type ParameterValues,
   type Provenance,
   type RunnerOptions,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import { useId, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { NO_CUSTOMIZATIONS, type ChartCustomizations } from './chart-customization';
@@ -17,7 +17,7 @@ import { useRunner, useRunnerState } from './hooks';
 import { ParameterForm, type FormValue } from './parameter-form';
 import { RulesPanel } from './rules-panel';
 import { RunControls } from './run-controls';
-import { SimulationViews } from './simulation-views';
+import { ModelViews } from './model-views';
 
 /** Props of {@link ModelRunner}. */
 export interface ModelRunnerProps<S extends ParameterSchema = ParameterSchema> {
@@ -87,17 +87,17 @@ export function ModelRunner<S extends ParameterSchema>({
   const tabsId = useId();
   const runner = useRunner(model, {
     ...options,
-    onSimulation: (created) => {
-      options?.onSimulation?.(created);
+    onRoot: (created) => {
+      options?.onRoot?.(created);
       settings.attach(created);
     },
   });
-  const { sim, frame } = useRunnerState(runner);
+  const { root, frame } = useRunnerState(runner);
   const [applied, setApplied] = useState<Values>(() => ({
     ...resolveParameters(model.parameters, options?.parameters),
   }));
   const [values, setValues] = useState<Values>(applied);
-  const [picked, setPicked] = useState<{ sim: Simulation; agent: Agent } | undefined>(undefined);
+  const [picked, setPicked] = useState<{ root: RootScape; agent: Agent } | undefined>(undefined);
   const [applyError, setApplyError] = useState<string | undefined>(undefined);
 
   const apply = (): void => {
@@ -110,7 +110,7 @@ export function ModelRunner<S extends ParameterSchema>({
     }
   };
 
-  const inspected = picked?.sim === sim ? picked.agent : undefined;
+  const inspected = picked?.root === root ? picked.agent : undefined;
 
   return (
     <div className="ms-runner">
@@ -122,10 +122,10 @@ export function ModelRunner<S extends ParameterSchema>({
       <RunControls runner={runner} />
       <div className="ms-runner-body">
         <div className="ms-runner-main">
-          <SimulationViews
-            sim={sim as unknown as Simulation}
+          <ModelViews
+            root={root as unknown as RootScape}
             frame={frame}
-            onPick={(agent) => setPicked({ sim: sim as unknown as Simulation, agent })}
+            onPick={(agent) => setPicked({ root: root as unknown as RootScape, agent })}
             customizations={charts}
             onCustomizationsChange={setCharts}
           />
@@ -184,7 +184,7 @@ export function ModelRunner<S extends ParameterSchema>({
                   )}
                 </>
               ) : (
-                <RulesPanel sim={sim as unknown as Simulation} store={settings} frame={frame} />
+                <RulesPanel root={root as unknown as RootScape} store={settings} frame={frame} />
               )}
             </div>
           </section>

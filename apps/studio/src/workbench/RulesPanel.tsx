@@ -15,8 +15,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GridScape, ruleKey, type RuleSetting, type ScapeSettings } from '@metascape/engine';
-import type { RulesController, ScapeRules } from '@metascape/react';
+import { Array2D, ruleKey, type RuleSetting, type ScapeSettings } from '@metascape/engine';
+import { needsRandomOrder, type RulesController, type ScapeRules } from '@metascape/react';
 import { ChevronDown, GripVertical, RotateCcw } from 'lucide-react';
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { cn } from '../lib/cn';
@@ -25,18 +25,26 @@ import { Badge, Input, Segmented, Switch, Tip } from '../ui/primitives';
 
 /** What a scape's members are called: cells on a lattice, agents elsewhere. */
 function nounOf(scape: ScapeRules['scape']): { one: string; many: string } {
-  return scape instanceof GridScape
+  return scape.space instanceof Array2D
     ? { one: 'cell', many: 'cells' }
     : { one: 'agent', many: 'agents' };
 }
 
-/** A scape's execution settings as terse labels: "By agent · Shuffled · Complete tour". */
-export function summarizeExecution(settings: ScapeSettings, noun: string): string {
+/**
+ * A scape's execution settings as terse labels: "By agent · Shuffled · Complete tour".
+ * `shuffled` says whether its selected rules ask for a random order.
+ */
+export function summarizeExecution(
+  settings: ScapeSettings,
+  noun: string,
+  shuffled: boolean,
+): string {
+  const count = settings.agentsPerIteration;
   return [
-    settings.schedule === 'byAgent' ? 'By agent' : 'By rule',
-    settings.order === 'shuffled' ? 'Shuffled' : 'Sequential',
-    ...(settings.activations === null ? [] : [`${settings.activations} ${noun} per step`]),
-    settings.sampling === 'tour' ? 'Complete tour' : 'Repeated draw',
+    settings.executionOrder === 'byAgent' ? 'By agent' : 'By rule',
+    shuffled ? 'Shuffled' : 'In order',
+    ...(count === null ? [] : [`${count} ${noun} per iteration`]),
+    settings.executionStyle === 'completeTour' ? 'Complete tour' : 'Repeated draw',
   ].join(' · ');
 }
 
@@ -172,7 +180,7 @@ function ScapeCard({
     const to = event.over ? keys.indexOf(String(event.over.id)) : -1;
     if (from >= 0 && to >= 0 && from !== to) controller.move(scape.name, from, to);
   };
-  const count = settings.activations;
+  const count = settings.agentsPerIteration;
 
   return (
     <section
@@ -220,7 +228,9 @@ function ScapeCard({
         <ChevronDown
           className={cn('size-3.5 shrink-0 transition-transform', !open && '-rotate-90')}
         />
-        <span className="min-w-0 truncate">{summarizeExecution(settings, noun.many)}</span>
+        <span className="min-w-0 truncate">
+          {summarizeExecution(settings, noun.many, needsRandomOrder(scape))}
+        </span>
       </button>
       {open && (
         <div className="space-y-2.5 border-t border-line px-3 py-3 text-xs">
@@ -230,8 +240,8 @@ function ScapeCard({
           >
             <Segmented
               label="Execution order"
-              value={settings.schedule}
-              onChange={(schedule) => controller.change(scape.name, { schedule })}
+              value={settings.executionOrder}
+              onChange={(executionOrder) => controller.change(scape.name, { executionOrder })}
               options={[
                 { value: 'byAgent', label: 'By agent' },
                 { value: 'byRule', label: 'By rule' },
@@ -239,35 +249,21 @@ function ScapeCard({
             />
           </Setting>
           <Setting
-            label="Visit order"
-            hint={`Shuffled: a new random order each step. Sequential: the order the ${noun.many} were created in.`}
-          >
-            <Segmented
-              label="Visit order"
-              value={settings.order}
-              onChange={(order) => controller.change(scape.name, { order })}
-              options={[
-                { value: 'shuffled', label: 'Shuffled' },
-                { value: 'sequential', label: 'Sequential' },
-              ]}
-            />
-          </Setting>
-          <Setting
-            label={`${noun.many[0]!.toUpperCase()}${noun.many.slice(1)} per step`}
-            hint={`How many ${noun.many} act each step. Empty: all of them.`}
+            label={`${noun.many[0]!.toUpperCase()}${noun.many.slice(1)} per iteration`}
+            hint={`How many ${noun.many} act each iteration. Empty: all of them.`}
           >
             <Input
-              aria-label={`${noun.many} per step`}
+              aria-label={`${noun.many} per iteration`}
               inputMode="numeric"
               placeholder="All"
               value={countText ?? (count === null ? '' : String(count))}
               onChange={(event) => {
                 const text = event.target.value;
                 setCountText(text);
-                if (text.trim() === '') controller.change(scape.name, { activations: null });
+                if (text.trim() === '') controller.change(scape.name, { agentsPerIteration: null });
                 const n = Number(text);
                 if (Number.isInteger(n) && n >= 1)
-                  controller.change(scape.name, { activations: n });
+                  controller.change(scape.name, { agentsPerIteration: n });
               }}
               onBlur={() => setCountText(undefined)}
               className="h-6 w-20 text-right font-mono text-xs tnum"
@@ -275,15 +271,15 @@ function ScapeCard({
           </Setting>
           <Setting
             label="Execution style"
-            hint={`Complete tour: each ${noun.one} acts at most once a step. Repeated draw: ${noun.many} are drawn at random, so one may act several times and another not at all.`}
+            hint={`Complete tour: each ${noun.one} acts at most once an iteration. Repeated draw: ${noun.many} are drawn at random, so one may act several times and another not at all.`}
           >
             <Segmented
               label="Execution style"
-              value={settings.sampling}
-              onChange={(sampling) => controller.change(scape.name, { sampling })}
+              value={settings.executionStyle}
+              onChange={(executionStyle) => controller.change(scape.name, { executionStyle })}
               options={[
-                { value: 'tour', label: 'Complete tour' },
-                { value: 'draw', label: 'Repeated draw' },
+                { value: 'completeTour', label: 'Complete tour' },
+                { value: 'repeatedDraw', label: 'Repeated draw' },
               ]}
             />
           </Setting>

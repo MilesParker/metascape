@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import type { Cell, GridScape, Random } from '@metascape/engine';
+import type { HostCell, Array2D, Random } from '@metascape/engine';
 
 /** The largest offset along either axis that Ascape's search tables cover. */
 const REACH = 16;
@@ -40,11 +40,11 @@ const RANKS: readonly Rank[] = (() => {
  * lattice is visited once per offset, as in Ascape.
  */
 export function forEachWithin(
-  grid: GridScape<Cell>,
-  origin: Cell,
+  grid: Array2D<HostCell>,
+  origin: HostCell,
   includeSelf: boolean,
   maxDistance: number,
-  visit: (cell: Cell) => void,
+  visit: (cell: HostCell) => void,
 ): void {
   for (let r = includeSelf ? 0 : 1; r < RANKS.length; r++) {
     const rank = RANKS[r]!;
@@ -59,17 +59,17 @@ export function forEachWithin(
  * one match of the first rank that has any is chosen at random.
  */
 export function findNearest(
-  grid: GridScape<Cell>,
-  origin: Cell,
+  grid: Array2D<HostCell>,
+  origin: HostCell,
   includeSelf: boolean,
   maxDistance: number,
-  test: (cell: Cell) => boolean,
+  test: (cell: HostCell) => boolean,
   random: Random,
-): Cell | undefined {
+): HostCell | undefined {
   for (let r = includeSelf ? 0 : 1; r < RANKS.length; r++) {
     const rank = RANKS[r]!;
     if (!(rank.distance < maxDistance)) return undefined;
-    const matches: Cell[] = [];
+    const matches: HostCell[] = [];
     for (const [dx, dy] of rank.offsets) {
       const cell = grid.at(origin.x + dx, origin.y + dy)!;
       if (test(cell)) matches.push(cell);

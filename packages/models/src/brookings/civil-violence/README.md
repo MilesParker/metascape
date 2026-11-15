@@ -54,14 +54,14 @@ The legacy implementation is by Miles Parker, The Brookings Institution. Licence
   lattice and are released next to their old home (nearest free site within 16, else anywhere).
 - Jail term is uniform 0..jailTerm; `2147483647` (Java `Integer.MAX_VALUE`) means never released.
 - Rule orders: citizens walk, check jail, decide state (Model II then fission, metabolism, death,
-  attack); cops patrol then walk; people act before cops, agents in random order each tick.
-- Cop count is corrected after each tick (after the data sample) to `trunc(target * sites)`, killing
+  attack); cops patrol then walk; people act before cops, agents in random order each period.
+- Cop count is corrected after each period (after the data sample) to `trunc(target * sites)`, killing
   random cops or adding new ones, as `scapeIterated` did. Run 3, 4 and 5 change legitimacy or the
-  target at that point, so data shows the old value for one tick.
+  target at that point, so data shows the old value for one period.
 - Model II: the recorded blue and green legitimacies (distrust with evaporation) are computed from kill
   counts and are display-only; the grievance still uses the single `legitimacy`. The guards test the
   other group's count than the divisor (kept). The kill series named "Greens Killed By Blue" and
-  "Blues Killed By Green" are per tick. Computed with doubles, the legacy used floats.
+  "Blues Killed By Green" are per period. Computed with doubles, the legacy used floats.
 - `CVModelInterGroup` defaults (from live code, not comments): no cops, initial blue/green legitimacy
   0.2, evaporation 0.9, legitimacy 0.80. `CVModelII` equals it. Runs 1 to 4: see `model-ii.ts`.
 

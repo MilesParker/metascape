@@ -80,13 +80,13 @@ not models, so they are not in the family. `batch.ts` expresses each as
 `{ legacyClass, model, design }` for `runExperiment(model, design)`
 (`packages/engine/src/run/experiment.ts`): one run to the stop period, whose row
 holds the final value of every recorded series. The per-period file is not
-reproduced; use `sim.data.toCSV()` in a `setup` hook for that.
+reproduced; use `root.data.toCSV()` in a `setup` hook for that.
 
 ## Behaviour carried over from Ascape
 
 - Agents scapes run in Ascape's default `AGENT_ORDER`: a fresh random order each
-  tick, each agent runs all its rules; dead agents are skipped and newborns
-  first act next tick (engine `byAgent`, `shuffled`). Cell scapes run in
+  period, each agent runs all its rules; dead agents are skipped and newborns
+  first act next period (engine `byAgent`, `shuffled`). Cell scapes run in
   `RULE_ORDER`. The cells scape steps before the agents.
 - Vision is Ascape's von Neumann "line of sight" on a periodic 50 x 50 lattice.
   `SugarAgent.movement` takes the cell of greatest value among its own cell and
@@ -120,9 +120,9 @@ reproduced; use `sim.data.toCSV()` in a `setup` hook for that.
    becomes their fertility threshold), before the inherited values are set.
 5. `SexualAgent`/`SexualSpiceAgent` declare initial sugar ranges (50-100,
    25-50) that nothing uses; the `GAS_Base` range 0-30 applies.
-6. **`SpiceAgent.metabolism` ages agents twice per tick.** With death ages
+6. **`SpiceAgent.metabolism` ages agents twice per period.** With death ages
    60-100 and fertility only while stocks are at least the random initial
-   endowment, the IV-e … IV-i populations die out within about 60 ticks.
+   endowment, the IV-e … IV-i populations die out within about 60 periods.
 7. **Spice settings are forced.** `GAS_SpiceBase.initialize` sets sugar
    moundness 0.008, sugar metabolism 1-3 and vision 10 at every run, so these
    are not parameters of the spice models.
@@ -152,7 +152,7 @@ reproduced; use `sim.data.toCSV()` in a `setup` hook for that.
 ## Deviations
 
 - **Seasons can change while it runs.** II-7 reads the winter growback rate and the season
-  length each tick (Ascape read its bean properties when used), so both are `live`. The
+  length each period (Ascape read its bean properties when used), so both are `live`. The
   endowment ranges stay restart-only: they apply only when an agent is created, and changing
   one end of a range mid-run could cross the pair.
 - **`TradeT3` with exactly one neighbor**: the legacy code casts the neighbor
@@ -165,11 +165,11 @@ reproduced; use `sim.data.toCSV()` in a `setup` hook for that.
   run smaller populations; it is not a legacy property.
 - **Age statistic**: `GAS_Base`'s "Age" collector records the negated age; the
   port records the age.
-- **Statistics and charts**: stat collectors become `sim.data` series (`population`,
+- **Statistics and charts**: stat collectors become `root.data` series (`population`,
   `sugar`, `age`, `vision`, `sugarMetabolism`; spice models `sugar`, `spice`,
   `mrs`, `cellSugar`, `cellSpice` with variance). Pie charts become bar charts.
   Models whose legacy class had no chart get population and mean-trait charts.
-  Trade models add `trades` (per tick) and `meanLogPrice`, which the legacy code
+  Trade models add `trades` (per period) and `meanLogPrice`, which the legacy code
   had commented out. `gasII5` shows the neighbor network in a network view
   (Ascape drew it over the lattice) and records `networkLinks`; `gasIII6` counts
   `blue` and `red` agents; `gasII8` records `pollution`.

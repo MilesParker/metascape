@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Occupant, type Cell, type GridScape } from '@metascape/engine';
+import { type Array2D, CellOccupant, type HostCell } from '@metascape/engine';
 import { findNearest, forEachWithin } from './vision';
 
 /** Citizen states. */
@@ -50,7 +50,7 @@ export class CvWorld {
   /** The legitimacy parameter last seen, to notice when the user changes it. */
   #legitimacySet: number;
   targetCopDensity: number;
-  /** Kills during the current tick, reset after each tick's data sample. */
+  /** Kills during the current iteration, reset once its statistics are collected. */
   killsByBlue = 0;
   killsByGreen = 0;
   blueDistrust = 0;
@@ -59,7 +59,7 @@ export class CvWorld {
   greenLegitimacy: number;
 
   constructor(
-    readonly grid: GridScape<Cell>,
+    readonly grid: Array2D<HostCell>,
     private readonly read: () => CvSettings,
   ) {
     const settings = read();
@@ -95,22 +95,22 @@ export class CvWorld {
 }
 
 /** Base of agents standing on the lattice (legacy `CellOccupant`). */
-export class LatticeOccupant extends Occupant<Cell> {
+export class LatticeOccupant extends CellOccupant<HostCell> {
   constructor(protected readonly world: CvWorld) {
     super();
   }
 
   /** Try one random neighboring cell; move only if it is free (legacy `randomWalk`). */
-  randomWalk(): void {
-    const here = this.cell;
+  override randomWalk(): void {
+    const here = this.hostCell;
     if (!here) throw new Error('Random walk called on an agent with no location');
     const candidate = this.random.pick(here.neighbors);
     if (candidate.isAvailable) this.moveTo(candidate);
   }
 
   /** Move to a uniformly chosen unoccupied cell, or die if there is none. */
-  moveToRandomLocation(): void {
-    const target = this.world.grid.randomAvailableCell();
+  override moveToRandomLocation(): void {
+    const target = this.world.grid.findRandomAvailable();
     if (target) this.moveTo(target);
     else this.die();
   }
@@ -120,7 +120,7 @@ export class LatticeOccupant extends Occupant<Cell> {
 export class Cop extends LatticeOccupant {
   /** Jail the nearest active citizen within cop vision and move to its cell. */
   patrol(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const target = findNearest(
       this.world.grid,
@@ -147,7 +147,7 @@ export class Citizen extends LatticeOccupant {
   riskAversion = 0;
   age = 0;
   jailTermsLeft = 0;
-  oldHome: Cell | undefined;
+  oldHome: HostCell | undefined;
   protected inherited = false;
 
   override initialize(): void {
@@ -175,7 +175,7 @@ export class Citizen extends LatticeOccupant {
   /** Cops and active citizens within vision, counted in one pass. */
   protected tally(): { cops: number; active: number } {
     const tally = { cops: 0, active: 0 };
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return tally;
     forEachWithin(this.world.grid, here, false, this.world.settings.citizenVision, (cell) => {
       const o = cell.occupant;
@@ -233,7 +233,7 @@ export class Citizen extends LatticeOccupant {
     this.state = IN_JAIL;
     const term = this.world.settings.jailTerm;
     this.jailTermsLeft = term !== NEVER_RELEASED ? this.random.int(0, term + 1) : term;
-    this.oldHome = this.cell;
+    this.oldHome = this.hostCell;
     this.leave();
   }
 
@@ -273,7 +273,7 @@ export class Citizen extends LatticeOccupant {
 
   /** A clone appears on a random free neighboring cell, if there is one. */
   fission(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return;
     const free = here.neighbors.filter((n) => n.isAvailable);
     if (free.length === 0) return;
@@ -307,7 +307,7 @@ export class CitizenBlueGreen extends Citizen {
     return this.group === BLUE ? GREEN : BLUE;
   }
 
-  private isOtherGroup(cell: Cell): boolean {
+  private isOtherGroup(cell: HostCell): boolean {
     const o = cell.occupant;
     return o instanceof CitizenBlueGreen && o.group === this.otherGroup;
   }
@@ -317,7 +317,7 @@ export class CitizenBlueGreen extends Citizen {
     if (n > this.world.settings.activeThreshold) {
       this.state = ACTIVE;
       let other = 0;
-      const here = this.cell;
+      const here = this.hostCell;
       if (here) {
         forEachWithin(this.world.grid, here, false, this.world.settings.citizenVision, (c) => {
           if (this.isOtherGroup(c)) other++;
@@ -334,7 +334,7 @@ export class CitizenBlueGreen extends Citizen {
     let cops = 0;
     let active = 0;
     let other = 0;
-    const here = this.cell;
+    const here = this.hostCell;
     if (here) {
       forEachWithin(this.world.grid, here, false, this.world.settings.citizenVision, (c) => {
         const o = c.occupant;
@@ -358,7 +358,7 @@ export class CitizenBlueGreen extends Citizen {
 
   /** An active citizen kills the nearest other-group citizen in view and takes its place. */
   attackOther(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (this.state !== ACTIVE || !here) return;
     const target = findNearest(
       this.world.grid,

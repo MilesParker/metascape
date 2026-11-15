@@ -4,7 +4,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineModel, int, real, rgb, type Color, type Model } from '@metascape/engine';
+import { type Color, defineModel, int, type Model, real, rgb } from '@metascape/engine';
 import {
   actionSettings,
   buildActionModel,
@@ -72,11 +72,11 @@ function define(
     description: DESCRIPTION,
     provenance: diffusionProvenance(legacyClass, `${NOTE}${extraNote}`),
     parameters: parametersFor(span),
-    build(sim) {
-      const { span: size, beta, gamma } = sim.parameters;
-      buildActionModel(sim, {
+    build(root) {
+      const { span: size, beta, gamma } = root.parameters;
+      buildActionModel(root, {
         span: size,
-        settings: actionSettings(6, beta, gamma, sim.parameters),
+        settings: actionSettings(6, beta, gamma, root.parameters),
         palette,
         labels: LABELS,
         chartColors: CHART_COLORS,

@@ -14,7 +14,7 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
   a licence notice, but what it refers to is unexplained. Quoted in
   `packages/models/src/brookings/anasazi/README.md`.
 - **Artificial Anasazi calibration.** At the legacy defaults (harvest adjustment 1.0, nutrition
-  need 800) the simulation peaks around 1,060 households against at most 216 in the record,
+  need 800) the model peaks around 1,060 households against at most 216 in the record,
   and never reaches zero. No calibrated values were found in the legacy sources. Either a port
   bug or the defaults are not the published ones; the published parameter settings would
   settle it.
@@ -28,7 +28,7 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
   fallbacks. Declared legends, readable series labels, time units, `live` parameters, rule
   descriptions, inspector field names and things to try exist for the introductory models
   and the brief's stress models; the other families show no legend, humanized identifiers
-  and ticks. A parameter may be marked `live` only where the model reads it afresh each tick
+  and periods. A parameter may be marked `live` only where the model reads it afresh each period
   (the catalogue test checks it has an effect). Work through the ported families most used
   first (Sugarscape, Civil Violence, Anasazi), without changing model behaviour.
 - **Interventions in the address.** A link holds the starting configuration; changes made
@@ -38,7 +38,7 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
 - **Lab.** Experiments and sweeps, side-by-side runs and a model editor have a placeholder
   route in Studio.
 - **Network layout.** `layout: 'force'` is still drawn as a circle.
-- **Web Worker execution.** Simulations run on the main thread with a per-frame time budget.
+- **Web Worker execution.** Models run on the main thread with a per-frame time budget.
 
 ## Engine gaps found while porting
 
@@ -48,21 +48,42 @@ second user appears.
 - **Ascape-exact neighbourhood search:** Euclidean distance ranks with strict bounds and random
   choice within a rank (`brookings/civil-violence/vision.ts`, `ascape/bionland/lattice-space.ts`,
   `brookings/anasazi/valley.ts`, `brookings/sugarscape/ascape-space.ts`). The engine's
-  `within`/`nearest` use Chebyshev or Manhattan rings.
+  `findWithin`/`findNearest` on a lattice use Chebyshev or Manhattan rings.
 - **Ascape diffusion** (mean of neighbours, two-phase); the engine's `diffusion()` shares
   quantity out instead (`ascape/bionland/lattice-model.ts`, `brookings/sugarscape/ascape-space.ts`).
 - **Graphs with Ascape semantics:** ordered neighbour lists that allow repeats, clearing both
-  directions (`amp/markets/markets.ts`); breadth-first search over a `Network`
+  directions (`amp/markets/markets.ts`); breadth-first search over a `Graph`
   (`ascape/bionland/graph.ts`).
-- **Per-rule visit order:** one scape cannot shuffle for some rules and keep creation order for
-  others (`brookings/coordination-game/coordination-game.ts` adds a scheduling scape).
-- **Initial rules run for agents added mid-run.** Several families moved start-up logic into
-  `sim.setup` to avoid this; consider a scape option to run initial rules only at start.
+- **Per-rule random order with one tour.** Rules now say whether they need a random order
+  (`randomExecution`), but a scape draws one tour per iteration for all its rules, where Ascape
+  reshuffles for each random rule when executing by rule. The coordination game keeps its own
+  scheduling scape for that (`brookings/coordination-game/coordination-game.ts`).
+- **Initial rules run for agents added mid-run.** Several families put start-up logic in an
+  initial rule of a scape with a `Singleton` space to avoid this; consider a scape option to run
+  initial rules only at start.
 - **Views:** a grid view cannot draw a network over the lattice (Sugarscape II-5); a continuous
   view takes one scape and cannot hide agents; there is no rotating view (Retirement); grid views
   use the first occupant's shape. One-row lattices (Norms, Bionland's strips) are now drawn as
   a scrolling history by `@metascape/react`.
 - **Java-style random helpers** (`nextGaussian` with a spare value): `brookings/anasazi/java-random.ts`.
+
+## After the restructure to Ascape's architecture
+
+The engine now follows the three abstractions of Parker (2001); see `docs/architecture.md`. Every
+model gives the numbers it gave before, checked run by run against the old engine.
+
+- **The model format** still says `order` (shuffled or sequential), `schedule` and `tick`; the
+  interpreter maps them onto `randomExecution`, `executionOrder` and the period. Its schema
+  should use Ascape's terms and say which scape a rule of the model as a whole belongs to.
+- **End-of-period work after statistics.** Civil Violence and Retirement adjust state once each
+  period's statistics are collected, as their legacy models did in `scapeIterated`; they use a
+  root scape listener for it. A rule cannot run at that moment.
+- **Ported structure kept for faithful numbers.** Regional epidemic cities are agents beside
+  their map and people scapes rather than scapes standing on the regional map, and Sugarscape's
+  rule M, Boids and Schelling read their space directly, because changing either would change
+  agent ids or the order of random draws.
+- **Studio counts rules of the model as a whole** (stopping, set-up) in a model's rule count and
+  lists their scapes in the rules panel.
 
 ## Gaps in the model format (`@metascape/spec`)
 

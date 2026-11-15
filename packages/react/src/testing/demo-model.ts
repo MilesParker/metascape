@@ -1,57 +1,54 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
   Agent,
+  Array2DMoore,
   barsView,
+  CellOccupant,
   colors,
   connectRing,
+  Continuous2D,
   continuousView,
-  ContinuousScape,
   defineModel,
-  GridScape,
   gradient,
+  Graph,
   gridView,
   histogramView,
+  HostCell,
   int,
-  Network,
+  LocatedAgent,
   networkView,
-  Occupant,
-  PointAgent,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
-  Cell,
 } from '@metascape/engine';
 
 /** A cell with a fixed value, shown as shades. */
-export class Patch extends Cell {
+export class Patch extends HostCell {
   value = 0;
 }
 
 /** Wanders from cell to cell and spends energy. */
-export class Walker extends Occupant<Patch> {
+export class Walker extends CellOccupant<Patch> {
   energy = 10;
   name = 'walker';
 
   override initialize(): void {
     this.energy = this.random.int(1, 20);
-    const grid = this.sim.scape('grid') as GridScape<Patch>;
-    const cell = grid.randomAvailableCell();
+    const grid = this.root.findScape<Patch>('grid');
+    const cell = grid.findRandom((candidate) => candidate.isAvailable);
     if (cell) this.moveTo(cell);
   }
 }
 
 /** Drifts through continuous space. */
-export class Drifter extends PointAgent {
+export class Drifter extends LocatedAgent {
   heading = 0;
 }
 
 /** A node in the tiny network. */
 export class Node extends Agent {
   infected = false;
-}
-
-/** The ring of nodes, which carries its own network so views can find it. */
-export class NodeScape extends Scape<Node> {
-  readonly network = new Network<Node>();
 }
 
 const shade = gradient(0xf1f5e8, 0x9bc27a);
@@ -67,40 +64,40 @@ export const demoModel = defineModel({
   parameters: {
     walkers: int(5, { min: 0, max: 20, label: 'Walkers', description: 'How many wander.' }),
   },
-  build(sim) {
-    const grid = sim.addScape(
-      new GridScape<Patch>({
+  build(root) {
+    const grid = root.add(
+      new Scape<Patch>({
         name: 'grid',
-        width: 8,
-        height: 6,
-        wrap: true,
-        create: () => new Patch(),
+        space: new Array2DMoore<Patch>(),
+        extent: [8, 6],
+        periodic: true,
+        prototypeAgent: () => new Patch(),
       }),
     );
     grid.addInitialRule('seed', (cell) => {
       cell.value = cell.random.float();
     });
 
-    const walkers = sim.addScape(
+    const walkers = root.add(
       new Scape<Walker>({
         name: 'walkers',
-        size: sim.parameters['walkers'] as number,
-        create: () => new Walker(),
+        size: root.parameters['walkers'] as number,
+        prototypeAgent: () => new Walker(),
       }),
     );
     walkers.addRule('wander', (walker) => {
-      walker.moveToRandomAvailableNeighbor();
+      walker.randomWalkAvailable();
       walker.energy += walker.random.int(-1, 2);
     });
 
-    const space = sim.addScape(
-      new ContinuousScape<Drifter>({
+    const space = root.add(
+      new Scape<Drifter>({
         name: 'space',
-        width: 20,
-        height: 10,
-        wrap: true,
+        space: new Continuous2D<Drifter>(),
+        extent: [20, 10],
+        periodic: true,
         size: 4,
-        create: () => new Drifter(),
+        prototypeAgent: () => new Drifter(),
       }),
     );
     space.addRule('drift', (agent) => {
@@ -108,32 +105,39 @@ export const demoModel = defineModel({
       agent.moveBy(Math.cos(agent.heading) * 0.3, Math.sin(agent.heading) * 0.3);
     });
 
-    const nodes = sim.addScape(new NodeScape({ name: 'nodes', size: 6, create: () => new Node() }));
+    const nodes = root.add(
+      new Scape<Node>({
+        name: 'nodes',
+        space: new Graph<Node>(),
+        size: 6,
+        prototypeAgent: () => new Node(),
+      }),
+    );
     nodes.addInitialRule('infect', (node) => {
       node.infected = node.id % 3 === 0;
     });
-    sim.observe({
-      initialized() {
-        connectRing(nodes.network, [...nodes.members], 1);
-      },
-    });
+    root
+      .add(new Scape({ name: 'wiring', space: new Singleton() }))
+      .addInitialRule('wire ring', () =>
+        connectRing(nodes.space as Graph<Node>, [...nodes.members], 1),
+      );
 
-    sim.data.measure(walkers, 'energy', (w) => w.energy, { statistics: ['mean', 'max'] });
-    sim.data.count(walkers, 'walkers');
-    sim.data.distribution(walkers, 'energyDistribution', (w) => w.energy, {
-      bins: 5,
-      min: 0,
-      max: 25,
-    });
+    walkers.addStatCollector(
+      stat.measure('energy', (w) => w.energy, { statistics: ['mean', 'max'] }),
+    );
+    walkers.addStatCollector(stat.count('walkers'));
+    walkers.addStatCollector(
+      stat.distribution('energyDistribution', (w) => w.energy, { bins: 5, min: 0, max: 25 }),
+    );
   },
-  views(sim) {
-    const grid = sim.scape('grid') as GridScape<Patch>;
-    const space = sim.scape('space') as ContinuousScape<Drifter>;
-    const nodes = sim.scape('nodes') as NodeScape;
+  views(root) {
+    const grid = root.findScape<Patch>('grid');
+    const space = root.findScape<Drifter>('space');
+    const nodes = root.findScape<Node>('nodes');
     return [
       gridView<Patch, Walker>({
         title: 'Grid',
-        grid,
+        scape: grid,
         cellColor: (cell) => shade(cell.value),
         occupantColor: () => colors.red,
       }),
@@ -146,7 +150,7 @@ export const demoModel = defineModel({
       networkView<Node>({
         title: 'Network',
         nodes,
-        network: nodes.network,
+        graph: nodes.space as Graph<Node>,
         color: (node) => (node.infected ? colors.red : colors.blue),
       }),
       timeSeriesView({ title: 'Energy over time', series: ['energy.mean', 'energy.max'] }),

@@ -31,11 +31,11 @@ function ga(
     description: `${title} ${description}`,
     provenance: provenance(legacyClass, note),
     parameters: gaParameters,
-    build: (sim) => buildSpatialIpd(sim, options),
+    build: (root) => buildSpatialIpd(root, options),
   });
 }
 
-/** `PD2DGA`: each player plays one random occupied neighbor per tick. */
+/** `PD2DGA`: each player plays one random occupied neighbor per period. */
 export const pd2dga = ga('PD2DGA', 'Random partners.', DESCRIPTION, { plays: ['random'] });
 
 /** `PD2DGA_RANDOM`: identical to `PD2DGA`; it selects the random-neighbor rule that is already on. */
@@ -82,7 +82,7 @@ export const pd2dgaMulti = ga(
 /** `PD2DGAMultiple`: batch harness with the preference rule added to random play; see {@link pd2dgaMultipleDesign}. */
 export const pd2dgaMultiple = ga(
   'PD2DGAMultiple',
-  'Batch variant (35 runs of 1000 ticks in the legacy sweep) with random and preference play.',
+  'Batch variant (35 runs of 1000 periods in the legacy sweep) with random and preference play.',
   DESCRIPTION,
   { plays: ['random', 'preference'] },
   'Batch harness: use pd2dgaMultipleDesign with runExperiment. Unlike PD2DGA_PREFERENCE it leaves random play on. The "Play Preference" rule is supplied as for PD2DGA_PREFERENCE.',

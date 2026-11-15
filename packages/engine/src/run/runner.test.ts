@@ -1,36 +1,38 @@
 // SPDX-License-Identifier: EPL-2.0
 import { describe, expect, it } from 'vitest';
-import { defineModel, int, ParameterError, real, type Simulation } from '..';
+import { defineModel, int, ParameterError, real, Scape, Singleton, type RootScape } from '..';
 import { ManualClock, ManualScheduler, Runner, type RunnerOptions } from './index';
 
-/** A model with no agents; `onStep` runs each tick. */
-const model = (onStep?: (sim: Simulation) => void) =>
+/** A model with no agents; `onStep` is a rule of the model as a whole, executed each iteration. */
+const model = (onStep?: (root: RootScape) => void) =>
   defineModel({
     name: 'counter',
     parameters: { size: int(1) },
-    build(sim) {
-      sim.observe({ stepped: (s) => onStep?.(s) });
+    build(root) {
+      root
+        .add(new Scape({ name: 'counter', space: new Singleton() }))
+        .addRule('on step', () => onStep?.(root as unknown as RootScape));
     },
   });
 
 function rig(
   options: Partial<RunnerOptions<{ size: ReturnType<typeof int> }>> = {},
-  onStep?: (sim: Simulation, clock: ManualClock) => void,
+  onStep?: (root: RootScape, clock: ManualClock) => void,
 ) {
   const clock = new ManualClock();
   const scheduler = new ManualScheduler(clock);
   const runner = new Runner(
-    model((sim) => onStep?.(sim, clock)),
+    model((root) => onStep?.(root, clock)),
     { seed: 1, scheduler, clock, frameIntervalMs: 20, ...options },
   );
   return { clock, scheduler, runner };
 }
 
 describe('Runner states', () => {
-  it('starts ready at tick 0 with a simulation', () => {
+  it('starts ready at iteration 0 with a root', () => {
     const { runner, scheduler } = rig();
     expect(runner.state).toBe('ready');
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root.period).toBe(0);
     expect(scheduler.pending).toBe(0);
   });
 
@@ -57,26 +59,26 @@ describe('Runner states', () => {
     runner.start();
     expect(scheduler.pending).toBe(1);
     expect(runner.step()).toBe(false);
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root.period).toBe(0);
     runner.pause();
     runner.pause();
     expect(runner.state).toBe('paused');
   });
 
-  it('step runs one tick from ready (becoming paused) and from paused', () => {
+  it('step runs one iteration from ready (becoming paused) and from paused', () => {
     const { runner } = rig();
     const states: string[] = [];
     runner.onStateChange((s) => states.push(s));
     expect(runner.step()).toBe(true);
     expect(runner.state).toBe('paused');
-    expect(runner.sim.tick).toBe(1);
+    expect(runner.root.period).toBe(1);
     expect(runner.step()).toBe(true);
-    expect(runner.sim.tick).toBe(2);
+    expect(runner.root.period).toBe(2);
     expect(states).toEqual(['paused']);
   });
 
   it('a stopped runner ignores start, pause and step, but restarts', () => {
-    const { runner, scheduler } = rig({ stopAt: 1 });
+    const { runner, scheduler } = rig({ stopPeriod: 1 });
     runner.step();
     expect(runner.state).toBe('stopped');
     runner.start();
@@ -86,7 +88,7 @@ describe('Runner states', () => {
     expect(scheduler.pending).toBe(0);
     runner.restart();
     expect(runner.state).toBe('ready');
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root.period).toBe(0);
   });
 
   it('restart ends ready from paused and running stays running', () => {
@@ -98,27 +100,27 @@ describe('Runner states', () => {
     scheduler.runNext();
     runner.restart();
     expect(runner.state).toBe('running');
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root.period).toBe(0);
     expect(scheduler.pending).toBe(1);
   });
 
   it('stops when the model stops itself', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 60 }, (sim) => {
-      if (sim.tick === 3) sim.stop('done');
+    const { runner, scheduler } = rig({ iterationsPerSecond: 60 }, (root) => {
+      if (root.period === 3) root.stop('done');
     });
     runner.start();
     scheduler.runFrames(10);
     expect(runner.state).toBe('stopped');
-    expect(runner.sim.tick).toBe(3);
-    expect(runner.sim.stopReason).toBe('done');
+    expect(runner.root.period).toBe(3);
+    expect(runner.root.stopReason).toBe('done');
     expect(scheduler.pending).toBe(0);
   });
 
-  it('stops at stopAt', () => {
-    const { runner, scheduler } = rig({ stopAt: 5, ticksPerSecond: 600 });
+  it('stops at stopPeriod', () => {
+    const { runner, scheduler } = rig({ stopPeriod: 5, iterationsPerSecond: 600 });
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(5);
+    expect(runner.root.period).toBe(5);
     expect(runner.state).toBe('stopped');
   });
 
@@ -129,27 +131,27 @@ describe('Runner states', () => {
       defineModel({
         name: 'early',
         parameters: {},
-        build(sim) {
-          sim.stop();
+        build(root) {
+          root.stop();
         },
       }),
-      { scheduler, clock, ticksPerSecond: 600 },
+      { scheduler, clock, iterationsPerSecond: 600 },
     );
     runner.start();
     scheduler.runNext();
     expect(runner.state).toBe('stopped');
   });
 
-  it('pauseAt pauses exactly at that tick and resumes past it', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 300, pauseAt: 4 });
+  it('pausePeriod pauses exactly at that iteration and resumes past it', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 300, pausePeriod: 4 });
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(4);
+    expect(runner.root.period).toBe(4);
     expect(runner.state).toBe('paused');
     expect(scheduler.pending).toBe(0);
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(4 + 6);
+    expect(runner.root.period).toBe(4 + 6);
     expect(runner.state).toBe('running');
   });
 
@@ -171,54 +173,54 @@ describe('Runner states', () => {
 });
 
 describe('Runner pacing', () => {
-  it('runs 30 ticks/s at 50 frames/s with fractional carry', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 30 });
+  it('runs 30 iterations/s at 50 frames/s with fractional carry', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 30 });
     const frames: number[] = [];
-    runner.onFrame((sim) => frames.push(sim.tick));
+    runner.onFrame((root) => frames.push(root.period));
     runner.start();
     scheduler.runFrames(10);
-    // 0.6 ticks per frame: 0, 1, 1, 2, 3, 3, 4, 4, 5, 6 cumulative.
+    // 0.6 iterations per frame: 0, 1, 1, 2, 3, 3, 4, 4, 5, 6 cumulative.
     expect(frames).toEqual([0, 1, 1, 2, 3, 3, 4, 4, 5, 6]);
     scheduler.runFrames(40);
-    expect(runner.sim.tick).toBe(30);
+    expect(runner.root.period).toBe(30);
   });
 
-  it('runs 30 ticks/s at 60 frames/s', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 30, frameIntervalMs: 1000 / 60 });
+  it('runs 30 iterations/s at 60 frames/s', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 30, frameIntervalMs: 1000 / 60 });
     runner.start();
     scheduler.runFrames(60);
-    expect(runner.sim.tick).toBe(30);
+    expect(runner.root.period).toBe(30);
     scheduler.runFrames(2);
-    expect(runner.sim.tick).toBe(31);
+    expect(runner.root.period).toBe(31);
   });
 
-  it('runs several ticks per frame at high speed', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 500 });
+  it('runs several iterations per frame at high speed', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 500 });
     runner.start();
     scheduler.runFrames(3);
-    expect(runner.sim.tick).toBe(30);
+    expect(runner.root.period).toBe(30);
   });
 
-  it('runs slow speeds one tick every few frames', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 5 });
+  it('runs slow speeds one iteration every few frames', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 5 });
     runner.start();
     scheduler.runFrames(9);
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root.period).toBe(0);
     scheduler.runFrames(1);
-    expect(runner.sim.tick).toBe(1);
+    expect(runner.root.period).toBe(1);
     scheduler.runFrames(10);
-    expect(runner.sim.tick).toBe(2);
+    expect(runner.root.period).toBe(2);
   });
 
   it('setSpeed changes the pace', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 50 });
+    const { runner, scheduler } = rig({ iterationsPerSecond: 50 });
     runner.start();
     scheduler.runFrames(2);
-    expect(runner.sim.tick).toBe(2);
+    expect(runner.root.period).toBe(2);
     runner.setSpeed(100);
-    expect(runner.ticksPerSecond).toBe(100);
+    expect(runner.iterationsPerSecond).toBe(100);
     scheduler.runFrames(2);
-    expect(runner.sim.tick).toBe(6);
+    expect(runner.root.period).toBe(6);
   });
 
   it('rejects invalid speeds', () => {
@@ -226,66 +228,67 @@ describe('Runner pacing', () => {
     expect(() => runner.setSpeed(0)).toThrow(RangeError);
     expect(() => runner.setSpeed(-1)).toThrow(RangeError);
     expect(() => runner.setSpeed(NaN)).toThrow(RangeError);
-    expect(() => rig({ ticksPerSecond: 0 })).toThrow(RangeError);
+    expect(() => rig({ iterationsPerSecond: 0 })).toThrow(RangeError);
   });
 
   it('cuts a frame short at the budget and drops the backlog', () => {
-    // 1000 ticks/s with 20 ms frames is 20 ticks due; each tick costs 1 ms; budget 5 ms.
-    const { runner, scheduler } = rig({ ticksPerSecond: 1000, frameBudgetMs: 5 }, (_, clock) =>
+    // 1000 iterations/s with 20 ms frames is 20 iterations due; each iteration costs 1 ms; budget 5 ms.
+    const { runner, scheduler } = rig({ iterationsPerSecond: 1000, frameBudgetMs: 5 }, (_, clock) =>
       clock.advance(1),
     );
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(5);
-    // The backlog is not carried over: the next frame is again limited to 5 ticks.
+    expect(runner.root.period).toBe(5);
+    // The backlog is not carried over: the next frame is again limited to 5 iterations.
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(10);
+    expect(runner.root.period).toBe(10);
   });
 
-  it('always runs at least one tick per frame, even with a tiny budget', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 1000, frameBudgetMs: 0 });
+  it('always runs at least one iteration per frame, even with a tiny budget', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 1000, frameBudgetMs: 0 });
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(1);
+    expect(runner.root.period).toBe(1);
   });
 
   it('steps until the budget is used at Infinity speed', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: Infinity, frameBudgetMs: 12 }, (_, clock) =>
-      clock.advance(2),
+    const { runner, scheduler } = rig(
+      { iterationsPerSecond: Infinity, frameBudgetMs: 12 },
+      (_, clock) => clock.advance(2),
     );
     let frames = 0;
     runner.onFrame(() => frames++);
     runner.start();
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(6);
+    expect(runner.root.period).toBe(6);
     expect(frames).toBe(1);
     expect(scheduler.lastDelayMs).toBe(0);
     scheduler.runNext();
-    expect(runner.sim.tick).toBe(12);
+    expect(runner.root.period).toBe(12);
   });
 
-  it('Infinity speed still honors pauseAt and stopAt', () => {
-    const a = rig({ ticksPerSecond: Infinity, pauseAt: 7 }, (_, c) => c.advance(1));
+  it('Infinity speed still honors pausePeriod and stopPeriod', () => {
+    const a = rig({ iterationsPerSecond: Infinity, pausePeriod: 7 }, (_, c) => c.advance(1));
     a.runner.start();
     a.scheduler.runNext();
-    expect(a.runner.sim.tick).toBe(7);
+    expect(a.runner.root.period).toBe(7);
     expect(a.runner.state).toBe('paused');
-    const b = rig({ ticksPerSecond: Infinity, stopAt: 4 }, (_, c) => c.advance(1));
+    const b = rig({ iterationsPerSecond: Infinity, stopPeriod: 4 }, (_, c) => c.advance(1));
     b.runner.start();
     b.scheduler.runNext();
     expect(b.runner.state).toBe('stopped');
-    expect(b.runner.sim.tick).toBe(4);
+    expect(b.runner.root.period).toBe(4);
   });
 
   it('does not count time spent paused', () => {
-    const { runner, scheduler, clock } = rig({ ticksPerSecond: 50 });
+    const { runner, scheduler, clock } = rig({ iterationsPerSecond: 50 });
     runner.start();
     scheduler.runFrames(1);
     runner.pause();
     clock.advance(10_000);
     runner.start();
     scheduler.runFrames(1);
-    expect(runner.sim.tick).toBe(2);
+    expect(runner.root.period).toBe(2);
   });
 });
 
@@ -293,15 +296,15 @@ describe('Runner restart', () => {
   it('keeps an explicit seed and regenerates an unspecified one', () => {
     const fixed = rig({ seed: 42 });
     fixed.runner.restart();
-    expect(fixed.runner.sim.seed).toBe(42);
+    expect(fixed.runner.root.seed).toBe(42);
 
     const clock = new ManualClock();
     const scheduler = new ManualScheduler(clock);
     const free = new Runner(model(), { scheduler, clock });
-    const seeds = new Set<number | string>([free.sim.seed]);
+    const seeds = new Set<number | string>([free.root.seed]);
     for (let i = 0; i < 5; i++) {
       free.restart();
-      seeds.add(free.sim.seed);
+      seeds.add(free.root.seed);
     }
     expect(seeds.size).toBeGreaterThan(1);
   });
@@ -309,53 +312,53 @@ describe('Runner restart', () => {
   it('an explicit seed in restart replaces the seed from then on', () => {
     const { runner } = rig({ seed: 1 });
     runner.restart({ seed: 'abc' });
-    expect(runner.sim.seed).toBe('abc');
+    expect(runner.root.seed).toBe('abc');
     runner.restart();
-    expect(runner.sim.seed).toBe('abc');
+    expect(runner.root.seed).toBe('abc');
   });
 
   it('applies and keeps parameter overrides, merging them', () => {
     const { runner } = rig({ parameters: { size: 3 } });
-    expect(runner.sim.parameters.size).toBe(3);
+    expect(runner.root.parameters.size).toBe(3);
     runner.restart();
-    expect(runner.sim.parameters.size).toBe(3);
+    expect(runner.root.parameters.size).toBe(3);
     runner.restart({ parameters: { size: 9 } });
-    expect(runner.sim.parameters.size).toBe(9);
+    expect(runner.root.parameters.size).toBe(9);
     runner.restart();
-    expect(runner.sim.parameters.size).toBe(9);
+    expect(runner.root.parameters.size).toBe(9);
   });
 
-  it('discards the old simulation', () => {
+  it('discards the old root', () => {
     const { runner } = rig();
-    const before = runner.sim;
+    const before = runner.root;
     runner.step();
     runner.restart();
-    expect(runner.sim).not.toBe(before);
-    expect(runner.sim.tick).toBe(0);
+    expect(runner.root).not.toBe(before);
+    expect(runner.root.period).toBe(0);
   });
 
   it('an invalid override throws and leaves the runner untouched', () => {
     const { runner } = rig();
-    const before = runner.sim;
+    const before = runner.root;
     runner.step();
     expect(() => runner.restart({ parameters: { size: 1.5 } })).toThrow(ParameterError);
-    expect(runner.sim).toBe(before);
+    expect(runner.root).toBe(before);
     expect(runner.state).toBe('paused');
   });
 
   it('notifies frame listeners so views can redraw', () => {
     const { runner } = rig();
-    const ticks: number[] = [];
-    runner.onFrame((sim) => ticks.push(sim.tick));
+    const iterations: number[] = [];
+    runner.onFrame((root) => iterations.push(root.period));
     runner.step();
     runner.restart();
-    expect(ticks).toEqual([1, 0]);
+    expect(iterations).toEqual([1, 0]);
   });
 
   it('same seed gives the same run', () => {
     const run = () => {
       const out: number[] = [];
-      const { runner } = rig({ seed: 5 }, (sim) => out.push(sim.random.int(0, 1000)));
+      const { runner } = rig({ seed: 5 }, (root) => out.push(root.random.int(0, 1000)));
       runner.step();
       runner.step();
       runner.restart();
@@ -369,14 +372,14 @@ describe('Runner restart', () => {
 });
 
 describe('Runner listeners', () => {
-  it('calls frame listeners once per frame with the current sim', () => {
-    const { runner, scheduler } = rig({ ticksPerSecond: 500 });
-    const seen: Simulation[] = [];
-    runner.onFrame((sim) => seen.push(sim as unknown as Simulation));
+  it('calls frame listeners once per frame with the current root', () => {
+    const { runner, scheduler } = rig({ iterationsPerSecond: 500 });
+    const seen: RootScape[] = [];
+    runner.onFrame((root) => seen.push(root as unknown as RootScape));
     runner.start();
     scheduler.runFrames(3);
     expect(seen).toHaveLength(3);
-    expect(seen.every((sim) => sim === (runner.sim as unknown as Simulation))).toBe(true);
+    expect(seen.every((root) => root === (runner.root as unknown as RootScape))).toBe(true);
   });
 
   it('calls frame listeners after a manual step', () => {
@@ -440,8 +443,8 @@ describe('Runner listeners', () => {
 describe('Runner errors', () => {
   it('captures a model exception in a frame', () => {
     const boom = new Error('boom');
-    const { runner, scheduler } = rig({ ticksPerSecond: 500 }, (sim) => {
-      if (sim.tick === 2) throw boom;
+    const { runner, scheduler } = rig({ iterationsPerSecond: 500 }, (root) => {
+      if (root.period === 2) throw boom;
     });
     const errors: unknown[] = [];
     const states: string[] = [];
@@ -544,10 +547,10 @@ describe('Runner live parameters', () => {
     let frames = 0;
     runner.onFrame(() => frames++);
     runner.setParameter('rate', 3);
-    expect(runner.sim.parameters.rate).toBe(3);
+    expect(runner.root.parameters.rate).toBe(3);
     expect(frames).toBe(1);
     runner.restart();
-    expect(runner.sim.parameters.rate).toBe(3);
+    expect(runner.root.parameters.rate).toBe(3);
     expect(runner.parameterOverrides).toEqual({ rate: 3 });
     expect(() => runner.setParameter('size', 3)).toThrow(/not live/);
   });

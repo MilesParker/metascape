@@ -5,16 +5,18 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles T. Parker and contributors, under EPL-2.0.
 import {
-  type Cell,
+  Array2DVonNeumann,
   colors,
-  GridScape,
   gridView,
+  type HostCell,
   int,
-  real,
-  Scape,
-  timeSeriesView,
   type ParameterValues,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import {
   addPdStatistics,
@@ -49,14 +51,14 @@ export const gaParameters = {
     min: 0,
     max: 1,
     label: 'Mutation probability',
-    description: 'Chance that each chromosome bit flips, every tick.',
+    description: 'Chance that each chromosome bit flips, every period.',
   }),
   crossoverProbability: real(0.01, {
     min: 0,
     max: 1,
     label: 'Crossover probability',
     description:
-      'Chance per tick that a player crosses its chromosome over with a random neighbor.',
+      'Chance per period that a player crosses its chromosome over with a random neighbor.',
   }),
   trackAll: int(0, {
     min: 0,
@@ -199,10 +201,10 @@ export class GaPlayer extends PdPlayer {
    * win when every neighbor is empty, in which case nobody is returned.
    */
   #neighborByDistance(similar: boolean): GaPlayer | undefined {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return undefined;
     let best = -Infinity;
-    let ties: Cell[] = [];
+    let ties: HostCell[] = [];
     for (const n of cell.neighbors) {
       const other = n.occupant as GaPlayer | undefined;
       let value = -1;
@@ -331,26 +333,24 @@ export function genomeColor(text: string): number {
 }
 
 /** Builds one spatial iterated Prisoner's Dilemma world. */
-export function buildSpatialIpd(sim: Simulation<GaParameters>, options: GaBuildOptions): void {
-  const params: GaParams = sim.parameters;
-  const grid = sim.addScape(
-    new GridScape({
+export function buildSpatialIpd(root: RootScape<GaParameters>, options: GaBuildOptions): void {
+  const params: GaParams = root.parameters;
+  const grid = root.add(
+    new Scape<HostCell>({
       name: 'Environment',
-      width: params.latticeWidth,
-      height: params.latticeHeight,
-      wrap: true,
-      neighborhood: 'vonNeumann',
+      space: new Array2DVonNeumann<HostCell>(),
+      extent: [params.latticeWidth, params.latticeHeight],
+      periodic: true,
     }),
   );
   const world = new GaWorld(params, grid);
-  const players = sim.addScape(
+  const players = root.add(
     new Scape<GaPlayer>({
       name: 'Players',
       size: params.numberOfAgents,
-      create: () => new GaPlayer(world),
+      prototypeAgent: () => new GaPlayer(world),
       // PD2DGA switches the players to agent order.
-      schedule: 'byAgent',
-      order: 'shuffled',
+      executionOrder: 'byAgent',
     }),
   );
   world.players = players;
@@ -375,9 +375,9 @@ export function buildSpatialIpd(sim: Simulation<GaParameters>, options: GaBuildO
   rule('Crossover', true, (p) => p.crossover());
   rule('Mutation', true, (p) => p.mutation());
 
-  addPdStatistics(sim as unknown as Simulation, players as unknown as Scape<PdPlayer>, true);
+  addPdStatistics(root as unknown as RootScape, players as unknown as Scape<PdPlayer>, true);
   const ratio = (name: string, value: (p: GaPlayer) => number): void => {
-    sim.data.measure(players, name, value, { statistics: ['count', 'sum', 'mean'] });
+    players.addStatCollector(stat.measure(name, value, { statistics: ['count', 'sum', 'mean'] }));
   };
   ratio('Cooperate Ratio', (p) => p.cooperateRatio);
   ratio('Defect Ratio', (p) => p.defectRatio);
@@ -387,23 +387,25 @@ export function buildSpatialIpd(sim: Simulation<GaParameters>, options: GaBuildO
   ratio('Defect Farthest', (p) => (p.preference === 1 ? 1 - p.cooperateRatio : 0));
 
   if (options.stopWhenExtinct) {
-    sim.observe({
-      stepped(s) {
-        if (players.size === 0 && s.tick !== 0) s.stop('extinct');
+    root.add(new Scape({ name: 'Extinction', space: new Singleton() })).addRule(
+      'Stop when extinct',
+      () => {
+        if (players.size === 0 && root.iteration !== 0) root.stop('extinct');
       },
-    });
+      { randomExecution: false, causesRemoval: false },
+    );
   }
 
-  sim.addView(
-    gridView<Cell, GaPlayer>({
+  root.addView(
+    gridView<HostCell, GaPlayer>({
       title: "Player's View",
-      grid,
+      scape: grid,
       background: 0xd3d3d3,
       occupantColor: (p) => genomeColor(p.strategyString()),
       occupantShape: 'circle',
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Cooperation and defection ratios',
       series: ['Cooperate Ratio.sum', 'Defect Ratio.sum'],
@@ -412,7 +414,7 @@ export function buildSpatialIpd(sim: Simulation<GaParameters>, options: GaBuildO
     }),
   );
   if (options.closenessChart) {
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Cooperation by preference',
         series: [

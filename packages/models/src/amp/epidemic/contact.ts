@@ -3,7 +3,7 @@
 // Ported to Metascape from the Eclipse Agent Modeling Platform example model EpidemicContact.metaabm.
 // Original: Copyright 2009, Miles Parker. Released under Eclipse Public License. All uses should be attributed.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { defineModel, Network } from '@metascape/engine';
+import { defineModel, Graph, stat } from '@metascape/engine';
 import { epidemicCopyright, epidemicDescription } from './constants';
 import type { Individual } from './disease';
 import { buildCity, cityParameters } from './single-city';
@@ -22,9 +22,9 @@ export const epidemicContact = defineModel({
     copyright: epidemicCopyright,
   },
   parameters: cityParameters({ individualCount: 1500, initialInfectionProbability: 0.005 }),
-  build(sim) {
-    const contacts = new Network<Individual>({ directed: true });
-    buildCity(sim, sim.parameters, { contacts });
-    sim.data.value('contacts', () => contacts.edgeCount);
+  build(root) {
+    const contacts = new Graph<Individual>({ directed: true });
+    buildCity(root, root.parameters, { contacts });
+    root.addStatCollector(stat.value('contacts', () => contacts.edgeCount));
   },
 });

@@ -8,14 +8,15 @@
 import {
   colors,
   defineModel,
-  GridScape,
   gridView,
   int,
-  Network,
+  Graph,
   networkView,
   real,
+  type RootScape,
+  Scape,
+  stat,
   timeSeriesView,
-  type Simulation,
 } from '@metascape/engine';
 import {
   DEATH_STARVATION_RULE,
@@ -66,11 +67,11 @@ import type { SpiceSettings, SugarSettings, SugarscapeWorld } from './world';
  * harvest, metabolize and die of starvation.
  */
 export function createGasII1(
-  sim: Simulation,
+  root: RootScape,
   settings: SugarSettings,
   kinds: Kinds = SUGAR_KINDS,
 ): SugarscapeWorld {
-  const world = createGasBase(sim, settings, kinds);
+  const world = createGasBase(root, settings, kinds);
   world.grid.addRule(SUGAR_GROW_BACK_INF_RULE);
   world.agents.addRule(MOVEMENT_RULE);
   world.agents.addRule(HARVEST_RULE);
@@ -81,21 +82,21 @@ export function createGasII1(
 
 /** `GAS_II_2.createScape`: as II-1 with the immediate growback deselected and unit growback added. */
 export function createGasII2(
-  sim: Simulation,
+  root: RootScape,
   settings: SugarSettings,
   kinds: Kinds = SUGAR_KINDS,
 ): SugarscapeWorld {
-  const world = createGasII1(sim, settings, kinds);
+  const world = createGasII1(root, settings, kinds);
   deselectRule(world.grid, SUGAR_GROW_BACK_INF_RULE);
   world.grid.addRule(SUGAR_GROW_BACK_1_RULE);
   return world;
 }
 
 /** The `GAS_Base` views and charts. */
-function showBaseViews(sim: Simulation, world: SugarscapeWorld): void {
+function showBaseViews(root: RootScape, world: SugarscapeWorld): void {
   const plan = gasBaseViews();
   plan.extra.push(...sugarStatisticsCharts());
-  showViews(sim, world, plan);
+  showViews(root, world, plan);
 }
 
 /** Sugarscape II-1. */
@@ -106,9 +107,9 @@ export const gasII1 = defineModel({
     'two-peaked landscape, eat it and die when they run out; sugar grows back to capacity at once.',
   provenance: sugarscapeProvenance('GAS_II_1'),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasII1(sim, sugarSettings(sim.parameters));
-    showBaseViews(sim, world);
+  build(root) {
+    const world = createGasII1(root, sugarSettings(root.parameters));
+    showBaseViews(root, world);
   },
 });
 
@@ -116,13 +117,13 @@ export const gasII1 = defineModel({
 export const gasII2 = defineModel({
   name: 'Sugarscape II-2: Unit growback',
   description:
-    'As II-1, but sugar grows back one unit per tick, so agents gather on the peaks and the ' +
+    'As II-1, but sugar grows back one unit per period, so agents gather on the peaks and the ' +
     'population falls to the carrying capacity of the landscape.',
   provenance: sugarscapeProvenance('GAS_II_2'),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters));
-    showBaseViews(sim, world);
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters));
+    showBaseViews(root, world);
   },
 });
 
@@ -137,9 +138,9 @@ export const gasII3 = defineModel({
     'Same rules as GAS_II_2; the legacy class only adds the population chart.',
   ),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters));
-    showBaseViews(sim, world);
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters));
+    showBaseViews(root, world);
   },
 });
 
@@ -151,18 +152,21 @@ export const gasII5 = defineModel({
     'acts, giving a social network of neighbors that changes as agents move.',
   provenance: sugarscapeProvenance('GAS_II_5'),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters));
-    const network = new Network<SugarAgent>({ directed: true });
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters));
+    // The neighbor network, as a graph whose members are the agents it links; it draws
+    // nothing at random, so it shares the root's stream.
+    const network = new Graph<SugarAgent>({ directed: true });
+    root.add(new Scape<SugarAgent>({ name: 'Neighbors', space: network, randomStream: 'parent' }));
     world.agents.addRule(trackSocialNetwork(network));
-    world.agents.schedule = 'byAgent';
-    sim.data.value('networkLinks', () => network.edgeCount);
+    world.agents.executionOrder = 'byAgent';
+    root.addStatCollector(stat.value('networkLinks', () => network.edgeCount));
     const plan = gasBaseViews();
     plan.extra.push(
       networkView<SugarAgent>({
         title: 'Neighbor network',
         nodes: world.agents,
-        network,
+        graph: network,
         color: () => colors.red,
         legend: [{ color: colors.red, label: 'Agent; links join neighbors' }],
         layout: 'force',
@@ -170,7 +174,7 @@ export const gasII5 = defineModel({
       ...sugarStatisticsCharts(),
       timeSeriesView({ title: 'Network links', series: ['networkLinks'] }),
     );
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });
 
@@ -179,15 +183,15 @@ export const gasII6 = defineModel({
   name: 'Sugarscape II-6: Migration from a corner',
   description:
     'Agents with long vision start packed into a 20 by 20 corner of a landscape with ' +
-    'flatter peaks and migrate across it in waves; the run stops after 50 ticks.',
+    'flatter peaks and migrate across it in waves; the run stops after 50 periods.',
   provenance: sugarscapeProvenance(
     'GAS_II_6',
     'Starts with 400 agents (GAS_Base.scapeSetup overrides the 350 set in createScape).',
   ),
   parameters: sugarParameters({ sugarMoundness: 0.0037, minVision: 6, maxVision: 10 }),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters));
-    const grid = world.grid;
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters));
+    const grid = world.lattice;
     world.agents.addInitialRule({
       name: 'Move Random Within 0, 30 -> 20, 20',
       execute(agent) {
@@ -196,8 +200,8 @@ export const gasII6 = defineModel({
         agent.moveTo(cell);
       },
     });
-    stopAtPeriod(sim, 50);
-    showBaseViews(sim, world);
+    stopAtPeriod(root, 50);
+    showBaseViews(root, world);
   },
 });
 
@@ -205,7 +209,7 @@ export const gasII6 = defineModel({
 export const gasII7 = defineModel({
   name: 'Sugarscape II-7: Seasons',
   description:
-    'Sugar grows back one unit per tick in the summer half of the landscape and slowly in ' +
+    'Sugar grows back one unit per period in the summer half of the landscape and slowly in ' +
     'the winter half, the seasons alternating; agents with long vision migrate between them.',
   provenance: sugarscapeProvenance('GAS_II_7'),
   parameters: {
@@ -224,21 +228,21 @@ export const gasII7 = defineModel({
       min: 1,
       max: 1000,
       label: 'Season length',
-      description: 'Ticks per season.',
+      description: 'Periods per season.',
     }),
   },
-  build(sim) {
-    const p = sim.parameters;
-    const world = createGasII2(sim, sugarSettings(p));
+  build(root) {
+    const p = root.parameters;
+    const world = createGasII2(root, sugarSettings(p));
     clearSelection(world.grid);
-    // Read each tick, so both can be changed while it runs.
+    // Read each period, so both can be changed while it runs.
     world.grid.addRule(
       sugarSeasonalGrowBackRule(
-        () => sim.parameters.winterSugarGrowbackRate,
-        () => sim.parameters.seasonLength,
+        () => root.parameters.winterSugarGrowbackRate,
+        () => root.parameters.seasonLength,
       ),
     );
-    showBaseViews(sim, world);
+    showBaseViews(root, world);
   },
 });
 
@@ -253,22 +257,24 @@ export const gasII8 = defineModel({
     'Starts with 400 agents (GAS_Base.scapeSetup overrides the 300 set in createScape).',
   ),
   parameters: sugarParameters(),
-  build(sim) {
-    const world = createGasII2(sim, sugarSettings(sim.parameters), {
+  build(root) {
+    const world = createGasII2(root, sugarSettings(root.parameters), {
       cell: (w) => new PollutableSugarCell(w),
       agent: (w) => new PollutingSugarAgent(w),
     });
-    const cells = world.grid as GridScape<PollutableSugarCell>;
+    const cells = world.grid as unknown as Scape<PollutableSugarCell>;
     cells.addRule(pollutionDiffusionRule());
-    sim.data.measure(cells, 'pollution', (c) => c.pollution, {
-      statistics: ['sum', 'mean', 'max'],
-    });
+    cells.addStatCollector(
+      stat.measure('pollution', (c) => c.pollution, {
+        statistics: ['sum', 'mean', 'max'],
+      }),
+    );
     const plan = gasBaseViews();
     plan.cellColor = sugarCellColor;
     plan.extra.push(
       gridView<SugarCell, SugarAgent>({
         title: 'Pollution',
-        grid: world.grid,
+        scape: world.grid,
         cellColor: pollutionCellColor,
         occupantColor: plan.agentColor,
         occupantShape: 'circle',
@@ -277,16 +283,16 @@ export const gasII8 = defineModel({
       ...sugarStatisticsCharts(),
       timeSeriesView({ title: 'Mean pollution', series: ['pollution.mean'] }),
     );
-    showViews(sim, world, plan);
+    showViews(root, world, plan);
   },
 });
 
 /** `Spice_II_1.createScape`: both goods grow back at once; death only from lack of sugar. */
 export function createSpiceII1(
-  sim: Simulation,
+  root: RootScape,
   settings: [SugarSettings, SpiceSettings],
 ): SugarscapeWorld {
-  const world = createGasSpiceBase(sim, settings);
+  const world = createGasSpiceBase(root, settings);
   world.grid.addRule(SUGAR_SPICE_GROW_BACK_INF_RULE);
   world.agents.addRule(MOVEMENT_RULE);
   world.agents.addRule(HARVEST_RULE);
@@ -295,10 +301,10 @@ export function createSpiceII1(
   return world;
 }
 
-function showSpiceViews(sim: Simulation, world: SugarscapeWorld): void {
+function showSpiceViews(root: RootScape, world: SugarscapeWorld): void {
   const plan = gasSpiceBaseViews();
   plan.extra.push(...spiceStatisticsCharts());
-  showViews(sim, world, plan);
+  showViews(root, world, plan);
 }
 
 /** Sugarscape Spice II-1. */
@@ -312,9 +318,9 @@ export const spiceII1 = defineModel({
     'Agents die only when out of sugar (the legacy class uses DEATH_STARVATION_RULE).',
   ),
   parameters: spiceParameters(),
-  build(sim) {
-    const world = createSpiceII1(sim, spiceSettings(sim.parameters));
-    showSpiceViews(sim, world);
+  build(root) {
+    const world = createSpiceII1(root, spiceSettings(root.parameters));
+    showSpiceViews(root, world);
   },
 });
 
@@ -322,17 +328,17 @@ export const spiceII1 = defineModel({
 export const spiceII2 = defineModel({
   name: 'Sugarscape Spice II-2: Sugar and spice, unit growback',
   description:
-    'As Spice II-1, with the cell rules replaced by sugar growback of one unit per tick; ' +
+    'As Spice II-1, with the cell rules replaced by sugar growback of one unit per period; ' +
     'as in the legacy code, spice is not grown back at all.',
   provenance: sugarscapeProvenance(
     'Spice_II_2',
     'Kept legacy behaviour: only SUGAR_GROW_BACK_1_RULE is installed, so spice never regrows.',
   ),
   parameters: spiceParameters(),
-  build(sim) {
-    const world = createSpiceII1(sim, spiceSettings(sim.parameters));
+  build(root) {
+    const world = createSpiceII1(root, spiceSettings(root.parameters));
     clearRules(world.grid);
     world.grid.addRule(SUGAR_GROW_BACK_1_RULE);
-    showSpiceViews(sim, world);
+    showSpiceViews(root, world);
   },
 });

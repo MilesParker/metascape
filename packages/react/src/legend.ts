@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Color, LegendEntry, ViewSpec } from '@metascape/engine';
+import { latticeOf, occupantsOf } from './grid-view';
 
 /** One entry of a legend as shown: a declared entry, or a colour found in the picture. */
 export interface ShownLegendEntry {
@@ -58,10 +59,11 @@ export function legendOf(spec: ViewSpec): Legend | undefined {
   }
   const found = new Map<string, { color: Color; mark: ShownLegendEntry['mark']; count: number }>();
   if (spec.type === 'grid') {
-    for (const cell of spec.grid.members) {
+    for (const cell of latticeOf(spec).members) {
       if (spec.cellColor) tally(found, spec.cellColor(cell), 'cell');
       if (spec.occupantColor) {
-        for (const occupant of cell.occupants) tally(found, spec.occupantColor(occupant), 'agent');
+        for (const occupant of occupantsOf(cell))
+          tally(found, spec.occupantColor(occupant), 'agent');
       }
     }
   } else if (spec.type === 'continuous') {

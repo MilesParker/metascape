@@ -10,18 +10,18 @@
 /**
  * The Long House Valley landscape: environment, maize and yield zones, the
  * 80 x 120 lattice of locations, water sources, historic settlements,
- * simulated settlements and farms, and the spatial searches the households
- * use. One {@link LongHouseValley} is created per simulation run.
+ * modelled settlements and farms, and the spatial searches the households
+ * use. One {@link LongHouseValley} is created per run.
  */
 import {
-  Cell,
-  Occupant,
-  rgb,
+  type Array2D,
+  CellOccupant,
   type Color,
-  type GridScape,
+  HostCell,
   type Random,
+  rgb,
+  type RootScape,
   type Scape,
-  type Simulation,
 } from '@metascape/engine';
 import {
   cellFromMeters,
@@ -372,10 +372,10 @@ export class Farm {
 }
 
 /**
- * A simulated settlement: the households living at one location
+ * A modelled settlement: the households living at one location
  * (`Settlement`). It stands on the lattice as an occupant so views can draw it.
  */
-export class Settlement extends Occupant<Location> {
+export class Settlement extends CellOccupant<Location> {
   readonly households: FarmingHousehold[] = [];
   location: Location | null = null;
   get size(): number {
@@ -409,15 +409,12 @@ export class Settlement extends Occupant<Location> {
 }
 
 /** Marks a location with historic settlements on the lattice, so views can draw it. */
-export class HistoricSite extends Occupant<Location> {
+export class HistoricSite extends CellOccupant<Location> {
   readonly world: LongHouseValley;
-  readonly x: number;
-  readonly y: number;
+  /** Its cell's column and row, which it stands on once initialized. */
   constructor(world: LongHouseValley, x: number, y: number) {
-    super();
+    super(x, y);
     this.world = world;
-    this.x = x;
-    this.y = y;
   }
   override initialize(): void {
     const location = this.world.grid.at(this.x, this.y);
@@ -425,14 +422,14 @@ export class HistoricSite extends Occupant<Location> {
     this.moveTo(location);
   }
   get location(): Location {
-    const location = this.cell;
+    const location = this.hostCell;
     if (!location) throw new Error('Historic site not placed');
     return location;
   }
 }
 
 /** One cell of the valley (`Location`). */
-export class Location extends Cell {
+export class Location extends HostCell {
   readonly world: LongHouseValley;
   readonly environmentZone: EnvironmentZoneState;
   readonly yieldZone: YieldZone;
@@ -561,7 +558,7 @@ export interface ValleyParameters {
   readonly harvestVarianceLocation: number;
 }
 
-/** Per-tick event counts, cleared at the start of every step (the legacy uncollected stat collectors). */
+/** Per-period event counts, cleared at the start of every step (the legacy uncollected stat collectors). */
 export interface EventCounts {
   movements: number;
   fissions: number;
@@ -617,7 +614,7 @@ function nearlyEqual(a: number, b: number): boolean {
  * and views.
  */
 export class LongHouseValley {
-  readonly sim: Simulation;
+  readonly root: RootScape;
   readonly data: LongHouseValleyData;
   readonly environmentZones: readonly EnvironmentZoneState[];
   readonly yieldZones: readonly YieldZone[];
@@ -637,18 +634,18 @@ export class LongHouseValley {
     householdsFormed: 0,
     householdsDisbanded: 0,
   };
-  #grid: GridScape<Location> | undefined;
+  #grid: Array2D<Location> | undefined;
   readonly #waterRank = new Int16Array(VALLEY_WIDTH * VALLEY_HEIGHT).fill(-2);
   #waterRankDistance = Number.NaN;
   #settlements: Scape<Settlement> | undefined;
 
   /** The parameters now: a change during the run takes effect where they are next read. */
   get parameters(): ValleyParameters {
-    return this.sim.parameters as unknown as ValleyParameters;
+    return this.root.parameters as unknown as ValleyParameters;
   }
 
-  constructor(sim: Simulation) {
-    this.sim = sim;
+  constructor(root: RootScape) {
+    this.root = root;
     this.data = longHouseValleyData();
     this.environmentZones = ENVIRONMENT_ZONES.map((info) => new EnvironmentZoneState(info));
     this.yieldZones = YIELD_ZONES.map(
@@ -683,16 +680,16 @@ export class LongHouseValley {
     this.historicSettlements = historic;
   }
 
-  /** The current year: the start year plus the ticks executed. */
+  /** The current year: the start year plus the periods executed. */
   get year(): number {
-    return this.parameters.startYear + this.sim.tick;
+    return this.parameters.startYear + this.root.iteration;
   }
 
-  get grid(): GridScape<Location> {
+  get grid(): Array2D<Location> {
     if (!this.#grid) throw new Error('Valley grid not attached');
     return this.#grid;
   }
-  set grid(grid: GridScape<Location>) {
+  set grid(grid: Array2D<Location>) {
     this.#grid = grid;
   }
 
@@ -751,7 +748,7 @@ export class LongHouseValley {
     this.#waterRank.fill(-2);
   }
 
-  /** Clears the per-tick event counts. */
+  /** Clears the per-period event counts. */
   clearCounts(): void {
     for (const key of Object.keys(this.counts) as (keyof EventCounts)[]) this.counts[key] = 0;
   }

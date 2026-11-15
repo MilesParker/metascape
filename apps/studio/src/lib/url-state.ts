@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 import type {
-  Sampling,
+  ExecutionOrder,
+  ExecutionStyle,
+  ModelSettings,
   ScapeSettings,
-  Schedule,
-  SimulationSettings,
-  VisitOrder,
 } from '@metascape/engine';
 import type { ChartCustomizations } from '@metascape/react';
 
@@ -17,9 +16,11 @@ import type { ChartCustomizations } from '@metascape/react';
 /** One scape's rule settings in the address: rule keys in order, `!` marking those switched off. */
 export interface CompactScape {
   readonly rules: readonly string[];
-  readonly schedule: Schedule;
-  readonly order: VisitOrder;
-  readonly sampling: Sampling;
+  /** Execution order. */
+  readonly order: ExecutionOrder;
+  /** Execution style. */
+  readonly style: ExecutionStyle;
+  /** Agents per iteration, or null for all. */
   readonly n: number | null;
 }
 
@@ -41,12 +42,11 @@ export interface LibrarySearch {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const SCHEDULES: readonly Schedule[] = ['byAgent', 'byRule'];
-const ORDERS: readonly VisitOrder[] = ['shuffled', 'sequential'];
-const SAMPLINGS: readonly Sampling[] = ['tour', 'draw'];
+const ORDERS: readonly ExecutionOrder[] = ['byAgent', 'byRule'];
+const STYLES: readonly ExecutionStyle[] = ['completeTour', 'repeatedDraw'];
 
 /** The rule settings a user chose, in address form. */
-export function encodeRules(chosen: SimulationSettings): Record<string, CompactScape> | undefined {
+export function encodeRules(chosen: ModelSettings): Record<string, CompactScape> | undefined {
   const entries = Object.entries(chosen);
   if (entries.length === 0) return undefined;
   return Object.fromEntries(
@@ -57,23 +57,21 @@ export function encodeRules(chosen: SimulationSettings): Record<string, CompactS
           (rule) =>
             `${rule.enabled ? '' : '!'}${rule.occurrence === 0 ? rule.name : `${rule.name}#${rule.occurrence}`}`,
         ),
-        schedule: settings.schedule,
-        order: settings.order,
-        sampling: settings.sampling,
-        n: settings.activations,
+        order: settings.executionOrder,
+        style: settings.executionStyle,
+        n: settings.agentsPerIteration,
       },
     ]),
   );
 }
 
 /** Rule settings from the address; malformed entries are dropped. */
-export function decodeRules(r: WorkbenchSearch['r']): SimulationSettings {
+export function decodeRules(r: WorkbenchSearch['r']): ModelSettings {
   const result: Record<string, ScapeSettings> = {};
   for (const [scape, compact] of Object.entries(r ?? {})) {
     if (!isRecord(compact) || !Array.isArray(compact['rules'])) continue;
     const c = compact as unknown as CompactScape;
-    if (!SCHEDULES.includes(c.schedule) || !ORDERS.includes(c.order)) continue;
-    if (!SAMPLINGS.includes(c.sampling)) continue;
+    if (!ORDERS.includes(c.order) || !STYLES.includes(c.style)) continue;
     if (c.n !== null && !(Number.isInteger(c.n) && c.n >= 1)) continue;
     result[scape] = {
       rules: c.rules
@@ -86,10 +84,9 @@ export function decodeRules(r: WorkbenchSearch['r']): SimulationSettings {
             ? { name: hash[1]!, occurrence: Number(hash[2]), enabled }
             : { name: bare, occurrence: 0, enabled };
         }),
-      schedule: c.schedule,
-      order: c.order,
-      sampling: c.sampling,
-      activations: c.n,
+      executionOrder: c.order,
+      executionStyle: c.style,
+      agentsPerIteration: c.n,
     };
   }
   return result;

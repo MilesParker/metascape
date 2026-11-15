@@ -1,40 +1,40 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, type GridScape, type ParameterValues, type Scape } from '@metascape/engine';
+import { RootScape, type ParameterValues, type Scape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { schelling, type Resident, type SchellingCell } from './schelling';
 
 type Params = Partial<ParameterValues<typeof schelling.parameters>>;
 
-const make = (parameters: Params = {}, seed = 1) => new Simulation(schelling, { seed, parameters });
+const make = (parameters: Params = {}, seed = 1) => new RootScape(schelling, { seed, parameters });
 
 describe('schelling', () => {
-  it('runs 200 ticks with default parameters', () => {
-    const sim = make();
-    sim.run(200);
-    expect(sim.tick).toBeGreaterThan(0);
-    expect(sim.tick).toBeLessThanOrEqual(200);
+  it('runs 200 iterations with default parameters', () => {
+    const root = make();
+    root.run(200);
+    expect(root.period).toBeGreaterThan(0);
+    expect(root.period).toBeLessThanOrEqual(200);
   });
 
   it('is reproducible and depends on the seed', () => {
     const csv = (seed: number) => {
-      const sim = make({}, seed);
-      sim.run(10);
-      return sim.data.toCSV();
+      const root = make({}, seed);
+      root.run(10);
+      return root.data.toCSV();
     };
     expect(csv(3)).toBe(csv(3));
     expect(csv(3)).not.toBe(csv(4));
   });
 
   it('only refers to existing series and distributions in its views', () => {
-    const sim = make();
-    const views = sim.views;
+    const root = make();
+    const views = root.allViews;
     expect(views.length).toBeGreaterThan(0);
     for (const view of views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {
-        for (const id of view.series) expect(() => sim.data.get(id)).not.toThrow();
+        for (const id of view.series) expect(() => root.data.get(id)).not.toThrow();
       }
       if (view.type === 'histogram') {
-        expect(() => sim.data.distributionCounts(view.distribution)).not.toThrow();
+        expect(() => root.data.distributionCounts(view.distribution)).not.toThrow();
       }
     }
   });
@@ -47,24 +47,24 @@ describe('schelling', () => {
   });
 
   it('settles with nobody unhappy and more like neighbors than at the start', () => {
-    const sim = make({ tolerance: 0.3 });
-    const startLike = sim.data.latest('like.mean');
-    expect(sim.data.latest('unhappy')).toBeGreaterThan(0);
-    sim.run(1000);
-    expect(sim.stopped).toBe(true);
-    expect(sim.stopReason).toMatch(/unhappy/i);
-    expect(sim.data.latest('unhappy')).toBe(0);
-    expect(sim.data.latest('like.mean')).toBeGreaterThan(startLike);
+    const root = make({ tolerance: 0.3 });
+    const startLike = root.data.latest('like.mean');
+    expect(root.data.latest('unhappy')).toBeGreaterThan(0);
+    root.run(1000);
+    expect(root.stopped).toBe(true);
+    expect(root.stopReason).toMatch(/unhappy/i);
+    expect(root.data.latest('unhappy')).toBe(0);
+    expect(root.data.latest('like.mean')).toBeGreaterThan(startLike);
   });
 
   it('conserves the agents and keeps one per cell', () => {
-    const sim = make({ tolerance: 0.3 });
-    const residents = sim.scape('residents') as Scape<Resident>;
-    const cells = (sim.scape('town') as GridScape<SchellingCell>).members;
+    const root = make({ tolerance: 0.3 });
+    const residents = root.findScape('residents') as Scape<Resident>;
+    const cells = root.findScape<SchellingCell>('town').members;
     const total = residents.size;
     expect(total).toBe(Math.round(0.9 * 40 * 40));
     for (let i = 0; i < 30; i++) {
-      sim.step();
+      root.iterate();
       expect(residents.size).toBe(total);
     }
     expect(cells.filter((c) => !c.isAvailable)).toHaveLength(total);
@@ -73,8 +73,8 @@ describe('schelling', () => {
   });
 
   it('splits the groups according to the ratio', () => {
-    const sim = make({ ratio: 0.25 });
-    const residents = (sim.scape('residents') as Scape<Resident>).members;
+    const root = make({ ratio: 0.25 });
+    const residents = root.findScape<Resident>('residents').members;
     const first = residents.filter((r) => r.group === 0).length;
     expect(first).toBe(Math.round(0.25 * residents.length));
   });

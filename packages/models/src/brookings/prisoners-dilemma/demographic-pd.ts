@@ -5,19 +5,23 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles T. Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
+  Array2DVonNeumann,
   barsView,
   bool,
-  type Cell,
+  CellOccupant,
   colors,
-  GridScape,
   gridView,
+  type HostCell,
   int,
-  Occupant,
-  real,
-  Scape,
-  timeSeriesView,
   type ParameterValues,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
   type ViewSpec,
   wireSmallWorld,
 } from '@metascape/engine';
@@ -137,7 +141,7 @@ export class PdWorld<P extends PdParams = PdParams> {
 
   constructor(
     readonly params: P,
-    readonly grid: GridScape<Cell>,
+    readonly grid: Scape<HostCell>,
   ) {}
 
   /** The population scape. */
@@ -152,7 +156,7 @@ export class PdWorld<P extends PdParams = PdParams> {
 }
 
 /** A player of the demographic Prisoner's Dilemma (legacy `Player`). */
-export class PdPlayer extends Occupant {
+export class PdPlayer extends CellOccupant {
   /** The current strategy; fixed for life in the demographic game. */
   strategy: number = COOPERATE;
   age = 0;
@@ -182,16 +186,16 @@ export class PdPlayer extends Occupant {
   }
 
   /** Initial rule: a random unoccupied cell, or removal if there is none. */
-  moveToRandomLocation(): void {
+  override moveToRandomLocation(): void {
     if (this.inherited) return;
-    const cell = this.world.grid.randomAvailableCell();
+    const cell = this.world.grid.findRandom((cell) => cell.isAvailable);
     if (cell) this.moveTo(cell);
     else this.die();
   }
 
   /** Steps to a random neighboring cell if, and only if, that cell is unoccupied. */
-  randomWalk(): void {
-    const cell = this.cell;
+  override randomWalk(): void {
+    const cell = this.hostCell;
     if (!cell || cell.neighbors.length === 0) return;
     const candidate = this.random.pick(cell.neighbors);
     if (candidate.isAvailable) this.moveTo(candidate);
@@ -235,8 +239,8 @@ export class PdPlayer extends Occupant {
   }
 
   /** A random unoccupied neighboring cell, if any. */
-  randomAvailableNeighbor(): Cell | undefined {
-    const cell = this.cell;
+  randomAvailableNeighbor(): HostCell | undefined {
+    const cell = this.hostCell;
     if (!cell) return undefined;
     const free = cell.neighbors.filter((n) => n.isAvailable);
     return free.length === 0 ? undefined : this.random.pick(free);
@@ -282,28 +286,25 @@ export interface PdBuildOptions {
 }
 
 /** Builds one demographic Prisoner's Dilemma world: lattice, players, rules, statistics, views. */
-export function buildDemographicPd(sim: Simulation<PdParameters>, options: PdBuildOptions): void {
-  const params: PdParams = sim.parameters;
+export function buildDemographicPd(root: RootScape<PdParameters>, options: PdBuildOptions): void {
+  const params: PdParams = root.parameters;
   const small = options.lattice === 'smallWorld';
-  const grid = new GridScape({
+  const grid = new Scape<HostCell>({
     name: 'Environment',
-    width: params.latticeWidth,
-    height: params.latticeHeight,
+    space: small ? new Array2DMoore<HostCell>() : new Array2DVonNeumann<HostCell>(),
+    extent: [params.latticeWidth, params.latticeHeight],
     // Ascape's Array2DSmallWorld: bounded Moore lattice, rewired by wireSmallWorld.
-    wrap: !small,
-    neighborhood: small ? 'moore' : 'vonNeumann',
+    periodic: !small,
   });
-  sim.addScape(grid);
-  if (small) sim.setup(() => wireSmallWorld(grid));
+  root.add(grid);
 
   const world = new PdWorld(params, grid);
-  const players = sim.addScape(
+  const players = root.add(
     new Scape<PdPlayer>({
       name: 'Players',
       size: params.numberOfAgents,
-      create: () => new PdPlayer(world),
-      schedule: 'byRule',
-      order: 'shuffled',
+      prototypeAgent: () => new PdPlayer(world),
+      executionOrder: 'byRule',
     }),
   );
   world.players = players;
@@ -317,12 +318,12 @@ export function buildDemographicPd(sim: Simulation<PdParameters>, options: PdBui
   players.addRule('Update', (p) => p.update());
   players.addRule('Death', (p) => p.death());
 
-  addPdStatistics(sim, players, options.ageStats);
+  addPdStatistics(root, players, options.ageStats);
 
-  sim.addView(
-    gridView<Cell, PdPlayer>({
+  root.addView(
+    gridView<HostCell, PdPlayer>({
       title: "Player's View",
-      grid: grid as GridScape<Cell>,
+      scape: grid,
       background: colors.white,
       occupantColor: strategyColor,
       occupantShape: 'circle',
@@ -332,7 +333,16 @@ export function buildDemographicPd(sim: Simulation<PdParameters>, options: PdBui
       ],
     }),
   );
-  for (const view of pdCharts()) sim.addView(view);
+  for (const view of pdCharts()) root.addView(view);
+
+  // Rewired once the players stand on their cells, as before the first iteration.
+  if (small) {
+    root
+      .add(new Scape({ name: 'Small world', space: new Singleton() }))
+      .addInitialRule('Wire', () => wireSmallWorld(grid.space as Array2D<HostCell>), {
+        randomExecution: false,
+      });
+  }
 }
 
 /** Blue for cooperators, red for defectors (the legacy colour feature). */
@@ -341,18 +351,18 @@ export function strategyColor(player: PdPlayer): number {
 }
 
 /** The statistics of the legacy `PD2D` (counts, wealth and age by strategy). */
-export function addPdStatistics(sim: Simulation, players: Scape<PdPlayer>, ages: boolean): void {
+export function addPdStatistics(root: RootScape, players: Scape<PdPlayer>, ages: boolean): void {
   const coop = (p: PdPlayer): boolean => p.strategy === COOPERATE;
   const defect = (p: PdPlayer): boolean => p.strategy === DEFECT;
-  sim.data.count(players, 'Cooperate', coop);
-  sim.data.count(players, 'Defect', defect);
-  sim.data.measure(players, 'Defect Wealth', (p) => p.wealth, { when: defect });
-  sim.data.measure(players, 'Cooperate Wealth', (p) => p.wealth, { when: coop });
-  sim.data.measure(players, 'Overall Wealth', (p) => p.wealth);
+  players.addStatCollector(stat.count('Cooperate', coop));
+  players.addStatCollector(stat.count('Defect', defect));
+  players.addStatCollector(stat.measure('Defect Wealth', (p) => p.wealth, { when: defect }));
+  players.addStatCollector(stat.measure('Cooperate Wealth', (p) => p.wealth, { when: coop }));
+  players.addStatCollector(stat.measure('Overall Wealth', (p) => p.wealth));
   if (ages) {
-    sim.data.measure(players, 'Cooperate Age', (p) => p.age, { when: coop });
-    sim.data.measure(players, 'Defect Age', (p) => p.age, { when: defect });
-    sim.data.measure(players, 'Overall Age', (p) => p.age);
+    players.addStatCollector(stat.measure('Cooperate Age', (p) => p.age, { when: coop }));
+    players.addStatCollector(stat.measure('Defect Age', (p) => p.age, { when: defect }));
+    players.addStatCollector(stat.measure('Overall Age', (p) => p.age));
   }
 }
 

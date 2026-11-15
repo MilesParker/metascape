@@ -12,7 +12,7 @@ Stocks: SucseptiblePopulation (initial 9999), InfectedPopulation (initial 1), Re
 
 ## How the AMP version integrates
 
-The AMP runtime (`org.eclipse.amp.axf.sd`) uses explicit Euler with step size 1 (`EulerIntegration`: value(t) = value(t-1) + integral evaluated at t-1). Each stock is seeded with its initial value at BOTH period 0 and period 1, so the series is flat for the first two samples and the first change appears at period 2. Flows and auxiliaries are computed from the stocks of the same period. This port does exactly that: the three stocks live in one agent (`Compartments`) whose rule integrates from tick 2, and every variable is a recorded `sim.data.value` series with its AMP name.
+The AMP runtime (`org.eclipse.amp.axf.sd`) uses explicit Euler with step size 1 (`EulerIntegration`: value(t) = value(t-1) + integral evaluated at t-1). Each stock is seeded with its initial value at BOTH period 0 and period 1, so the series is flat for the first two samples and the first change appears at period 2. Flows and auxiliaries are computed from the stocks of the same period. This port does exactly that: the three stocks live in one agent (`Compartments`) whose rule integrates from period 2, and every variable is a recorded `root.data.value` series with its AMP name.
 
 ## Legacy classes
 

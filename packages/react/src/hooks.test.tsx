@@ -12,10 +12,10 @@ const model = defineModel({ name: 'empty', parameters: {}, build() {} });
 const otherModel = defineModel({ name: 'other', parameters: {}, build() {} });
 
 function Probe({ runner }: { runner: Runner }): ReactElement {
-  const { state, tick } = useRunnerState(runner);
+  const { state, period } = useRunnerState(runner);
   return (
     <p data-testid="probe">
-      {state}:{tick}
+      {state}:{period}
     </p>
   );
 }
@@ -28,7 +28,7 @@ function makeRunner(): { runner: Runner; scheduler: ManualScheduler } {
       seed: 1,
       clock,
       scheduler,
-      ticksPerSecond: 10,
+      iterationsPerSecond: 10,
       frameIntervalMs: 100,
     }),
     scheduler,
@@ -80,8 +80,8 @@ describe('useRunner', () => {
     function Host(): ReactElement {
       const runner = useRunner(model, { seed: 3 });
       runners.push(runner);
-      const { tick } = useRunnerState(runner);
-      return <p data-testid="tick">{tick}</p>;
+      const { period } = useRunnerState(runner);
+      return <p data-testid="period">{period}</p>;
     }
     const view = render(
       <StrictMode>

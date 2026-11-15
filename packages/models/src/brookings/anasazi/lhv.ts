@@ -35,16 +35,16 @@ const DATA_NOTE =
 
 /**
  * Artificial Anasazi, Long House Valley (`LHV`): aggregate households of five
- * farm maize under the reconstructed climate of AD 800-1350; the simulated
+ * farm maize under the reconstructed climate of AD 800-1350; the modelled
  * household count is recorded beside the archaeological record.
  */
 export const lhv = defineModel({
   name: 'Artificial Anasazi: Long House Valley (LHV)',
   description:
-    'Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The simulated number of households is charted against the archaeological record, which grows and then collapses around AD 1300.',
+    'Households of the Kayenta Anasazi farm maize in Long House Valley, Arizona, under the reconstructed climate and hydrology of AD 800-1350, settling near water and fissioning or leaving as harvests allow. The modelled number of households is charted against the archaeological record, which grows and then collapses around AD 1300.',
   provenance: anasaziProvenance('LHV', DATA_NOTE),
   parameters: lhvParameters({ stopYear: 1350, minFertility: 0.125 }),
-  time: { unit: 'year', originOf: (p) => p.startYear },
+  period: { name: 'year', startOf: (p) => p.startYear },
   explorations: [
     {
       title: 'Poorer harvests',
@@ -53,8 +53,8 @@ export const lhv = defineModel({
       parameters: { harvestAdjustment: 0.6 },
     },
   ],
-  build(sim) {
-    buildLongHouseValley(sim, { households: 'aggregate' });
+  build(root) {
+    buildLongHouseValley(root, { households: 'aggregate' });
   },
 });
 
@@ -72,8 +72,8 @@ export const lhvGreedy = defineModel({
     `${DATA_NOTE} The legacy HouseholdGreedy buffer-farm code is commented out, so this behaves like LHV.`,
   ),
   parameters: lhvParameters({ stopYear: 1350, minFertility: 0.125 }),
-  time: { unit: 'year', originOf: (p) => p.startYear },
-  build(sim) {
-    buildLongHouseValley(sim, { households: 'greedy' });
+  period: { name: 'year', startOf: (p) => p.startYear },
+  build(root) {
+    buildLongHouseValley(root, { households: 'greedy' });
   },
 });

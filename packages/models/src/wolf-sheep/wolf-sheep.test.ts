@@ -1,40 +1,40 @@
 // SPDX-License-Identifier: EPL-2.0
-import { ParameterError, Simulation, type GridScape, type ViewSpec } from '@metascape/engine';
+import { ParameterError, RootScape, type ViewSpec } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { wolfSheep, type Patch } from './wolf-sheep';
 
-type Params = Partial<Simulation<typeof wolfSheep.parameters>['parameters']>;
+type Params = Partial<RootScape<typeof wolfSheep.parameters>['parameters']>;
 const make = (seed: number | string = 1, parameters: Params = {}) =>
-  new Simulation(wolfSheep, { seed, parameters });
+  new RootScape(wolfSheep, { seed, parameters });
 
 describe('wolf sheep predation', () => {
-  it('runs 200 ticks with defaults', () => {
-    const sim = make();
-    sim.run(200);
-    expect(sim.tick).toBeGreaterThan(0);
+  it('runs 200 iterations with defaults', () => {
+    const root = make();
+    root.run(200);
+    expect(root.period).toBeGreaterThan(0);
   });
 
   it('is reproducible by seed', () => {
     const run = (seed: number) => {
-      const sim = make(seed);
-      sim.run(100);
-      return sim.data.toCSV();
+      const root = make(seed);
+      root.run(100);
+      return root.data.toCSV();
     };
     expect(run(2)).toBe(run(2));
     expect(run(2)).not.toBe(run(3));
   });
 
   it('only references recorded series and distributions in its views', () => {
-    const sim = make();
-    const known = new Set(sim.data.series.map((s) => s.id));
-    const views: readonly ViewSpec[] = sim.views;
+    const root = make();
+    const known = new Set(root.data.series.map((s) => s.id));
+    const views: readonly ViewSpec[] = root.allViews;
     expect(views.length).toBeGreaterThan(0);
     for (const view of views) {
       if (view.type === 'timeSeries' || view.type === 'bars') {
         for (const id of view.series) expect(known.has(id)).toBe(true);
       }
       if (view.type === 'histogram') {
-        expect(() => sim.data.distributionCounts(view.distribution)).not.toThrow();
+        expect(() => root.data.distributionCounts(view.distribution)).not.toThrow();
       }
     }
   });
@@ -46,13 +46,13 @@ describe('wolf sheep predation', () => {
   });
 
   it('keeps counts equal to scape sizes and leaves no dead animal on a cell', () => {
-    const sim = make(5);
-    const grid = sim.scape('grass') as unknown as GridScape<Patch>;
+    const root = make(5);
+    const grid = root.findScape<Patch>('grass');
     for (let t = 0; t < 120; t++) {
-      sim.step();
-      expect(sim.data.latest('sheep')).toBe(sim.scape('sheep').size);
-      expect(sim.data.latest('wolves')).toBe(sim.scape('wolves').size);
-      expect(sim.data.latest('grass')).toBe(grid.count((patch) => patch.grown));
+      root.iterate();
+      expect(root.data.latest('sheep')).toBe(root.findScape('sheep').size);
+      expect(root.data.latest('wolves')).toBe(root.findScape('wolves').size);
+      expect(root.data.latest('grass')).toBe(grid.count((patch) => patch.grown));
       let animals = 0;
       for (const patch of grid.members) {
         for (const occupant of patch.occupants) {
@@ -60,22 +60,22 @@ describe('wolf sheep predation', () => {
           animals++;
         }
       }
-      expect(animals).toBe(sim.scape('sheep').size + sim.scape('wolves').size);
-      if (sim.stopped) break;
+      expect(animals).toBe(root.findScape('sheep').size + root.findScape('wolves').size);
+      if (root.stopped) break;
     }
   });
 
   it('never grows the sheep population without wolves or sheep reproduction', () => {
-    const sim = make(8, { initialWolves: 0, sheepReproduce: 0 });
-    sim.run(100);
-    const sheep = sim.data.values('sheep');
+    const root = make(8, { initialWolves: 0, sheepReproduce: 0 });
+    root.run(100);
+    const sheep = root.data.values('sheep');
     for (let i = 1; i < sheep.length; i++) expect(sheep[i]!).toBeLessThanOrEqual(sheep[i - 1]!);
   });
 
   it('stops when every animal is gone', () => {
-    const sim = make(3, { initialWolves: 0, initialSheep: 0 });
-    sim.run(10);
-    expect(sim.stopped).toBe(true);
-    expect(sim.stopReason).toBe('all animals are gone');
+    const root = make(3, { initialWolves: 0, initialSheep: 0 });
+    root.run(10);
+    expect(root.stopped).toBe(true);
+    expect(root.stopReason).toBe('all animals are gone');
   });
 });

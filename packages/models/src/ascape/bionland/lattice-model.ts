@@ -7,21 +7,25 @@
 // All rights reserved. Used under the BSD license in LICENSES/ascape-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Cell,
-  GridScape,
-  gridView,
-  int,
-  Occupant,
-  real,
-  rgb,
-  Scape,
-  timeSeriesView,
+  type Array2D,
+  Array2DMoore,
+  Array2DVonNeumann,
+  CellOccupant,
   type Color,
+  gridView,
+  HostCell,
+  int,
   type LegendEntry,
   type Model,
   type ParameterSchema,
+  real,
+  rgb,
+  type RootScape,
   type Rule,
-  type Simulation,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import {
   cellAway,
@@ -42,7 +46,7 @@ export const BIONLAND_COPYRIGHT =
   'Copyright 1998-2007 The Brookings Institution, NuTech Solutions,Inc., Metascape LLC, and contributors.';
 
 /** One site of Bionland: it can hold the "energy" each species leaves behind. */
-export class BionTile extends Cell {
+export class BionTile extends HostCell {
   /** Red, orange and blue energy, in 0..1 once any bion has left some. */
   readonly energy: [number, number, number] = [0, 0, 0];
   /** Scratch space for the two-phase diffusion rules. */
@@ -100,8 +104,8 @@ export interface LatticeConfig {
   /** The full model's details: fission threshold parameter, `>=`, deposit scaled by gain, rule order. */
   readonly full: boolean;
   readonly occupantShape: 'circle' | 'square';
-  /** Stop the run after this tick, as the legacy data-collecting launchers did. */
-  readonly stopAt?: number;
+  /** Stop the run after this period, as the legacy data-collecting launchers did. */
+  readonly stopPeriod?: number;
   readonly densityKey: string;
   readonly visionKeys: readonly [string, string];
   readonly gainKey: string;
@@ -128,7 +132,7 @@ interface Settings {
 }
 
 /** A bion: one agent of a species, standing on a tile. */
-export class Bion extends Occupant<BionTile> {
+export class Bion extends CellOccupant<BionTile> {
   vision = 0;
   storedEnergy = 0;
 
@@ -150,24 +154,24 @@ export class Bion extends Occupant<BionTile> {
   }
 
   /** Random walk: step to a random neighbor if it happens to be free. */
-  randomWalk(): void {
-    const cell = this.cell;
+  override randomWalk(): void {
+    const cell = this.hostCell;
     if (!cell) return;
     const candidate = this.random.pick(this.world.grid.neighbors(cell));
     if (candidate.isAvailable) this.moveTo(candidate);
   }
 
-  /** Moves one step toward a tile, if the tile one step that way is free. */
-  moveToward(target: BionTile): void {
-    const cell = this.cell;
+  /** Moves one step toward a tile, if the tile one step that way is free (Ascape `moveToward`). */
+  moveTowardTile(target: BionTile): void {
+    const cell = this.hostCell;
     if (!cell) return;
     const next = cellToward(this.world.grid, cell, target);
     if (next.isAvailable) this.moveTo(next);
   }
 
-  /** Moves one step away from a tile, if the tile one step that way is free. */
-  moveAway(target: BionTile): void {
-    const cell = this.cell;
+  /** Moves one step away from a tile, if the tile one step that way is free (Ascape `moveAway`). */
+  moveAwayFromTile(target: BionTile): void {
+    const cell = this.hostCell;
     if (!cell) return;
     const next = cellAway(this.world.grid, cell, target, this.world.ring, this.random);
     if (next.isAvailable) this.moveTo(next);
@@ -175,7 +179,7 @@ export class Bion extends Occupant<BionTile> {
 
   /** Moves toward or away from the nearest bion of a species. */
   moveRelativeToSpecies(species: number, toward: boolean): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const target = nearestMatch(
       this.world.grid,
@@ -186,13 +190,13 @@ export class Bion extends Occupant<BionTile> {
       this.random,
     );
     if (!target) return;
-    if (toward) this.moveToward(target);
-    else this.moveAway(target);
+    if (toward) this.moveTowardTile(target);
+    else this.moveAwayFromTile(target);
   }
 
   /** Moves toward or away from the tile with the most of a species' energy nearby. */
   moveRelativeToEnergy(species: number, toward: boolean): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const target = maximumWithin(
       this.world.grid,
@@ -203,13 +207,13 @@ export class Bion extends Occupant<BionTile> {
       this.random,
     );
     if (!target) return;
-    if (toward) this.moveToward(target);
-    else this.moveAway(target);
+    if (toward) this.moveTowardTile(target);
+    else this.moveAwayFromTile(target);
   }
 
   /** Eats up to `consumption` of one species' energy from the tile underfoot. */
   consume(species: number): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const energy = Math.min(cell.energy[species] as number, this.world.settings.consumption);
     cell.energy[species] = (cell.energy[species] as number) - energy;
@@ -218,7 +222,7 @@ export class Bion extends Occupant<BionTile> {
 
   /** Pays for living and leaves some of its own species' energy on the tile. */
   leaveEnergy(): void {
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const { config, settings } = this.world;
     if (config.storedEnergy) {
@@ -240,7 +244,7 @@ export class Bion extends Occupant<BionTile> {
     const { config, settings, grid } = this.world;
     const threshold = config.full ? settings.fissionEnergy : 2.0;
     if (!(config.full ? this.storedEnergy >= threshold : this.storedEnergy > threshold)) return;
-    const cell = this.cell;
+    const cell = this.hostCell;
     if (!cell) return;
     const free = grid.neighbors(cell).filter((c) => c.isAvailable);
     if (free.length === 0) return;
@@ -257,7 +261,7 @@ export class Bion extends Occupant<BionTile> {
 export interface LatticeWorld {
   readonly config: LatticeConfig;
   readonly settings: Settings;
-  readonly grid: GridScape<BionTile>;
+  readonly grid: Array2D<BionTile>;
   readonly ring: boolean;
 }
 
@@ -337,13 +341,14 @@ function schemaFor(config: LatticeConfig): ParameterSchema {
       min: 0,
       max: 0.2,
       label: 'Bion energy leakage',
-      description: 'Energy a bion leaves on its tile (and loses, once it stores energy) each tick.',
+      description:
+        'Energy a bion leaves on its tile (and loses, once it stores energy) each period.',
     });
     schema['bionEnergyConsumption'] = real(config.full ? 0.023 : 0.015, {
       min: 0,
       max: 0.2,
       label: 'Bion energy consumption',
-      description: 'The most energy a bion eats from its tile each tick.',
+      description: 'The most energy a bion eats from its tile each period.',
     });
   }
   if (config.storedEnergy && !config.full) {
@@ -377,13 +382,13 @@ function schemaFor(config: LatticeConfig): ParameterSchema {
       min: 0,
       max: 1,
       label: 'Diffusion constant',
-      description: 'How far each tile moves toward the mean of its neighbors each tick.',
+      description: 'How far each tile moves toward the mean of its neighbors each period.',
     });
     schema['evaporationRate'] = real(0.0, {
       min: 0,
       max: 0.2,
       label: 'Evaporation rate',
-      description: 'Fraction of tile energy that disappears each tick.',
+      description: 'Fraction of tile energy that disappears each period.',
     });
   }
   return schema;
@@ -402,12 +407,12 @@ export function latticeModel(config: LatticeConfig): Model {
         'Map colours follow the legacy colour features; ball images, sliders and custom drawing are not ported.',
     },
     parameters: schemaFor(config),
-    build: (sim) => buildLattice(sim, config),
+    build: (root) => buildLattice(root, config),
   };
 }
 
-function buildLattice(sim: Simulation, config: LatticeConfig): void {
-  const values = sim.parameters as Values;
+function buildLattice(root: RootScape, config: LatticeConfig): void {
+  const values = root.parameters as Values;
   const settings: Settings = {
     leakage: num(values, 'bionEnergyLeakage', 0.02),
     consumption: num(values, 'bionEnergyConsumption', 0.015),
@@ -421,53 +426,62 @@ function buildLattice(sim: Simulation, config: LatticeConfig): void {
   };
   const ring = config.kind === 'ring';
 
-  const grid = new GridScape<BionTile>({
+  const grid = new Scape<BionTile>({
     name: config.territoryName,
-    width: config.width,
-    height: config.height,
-    wrap: true,
-    neighborhood: config.kind === 'vonNeumann' ? 'vonNeumann' : 'moore',
-    create: () => new BionTile(),
+    space:
+      config.kind === 'vonNeumann'
+        ? new Array2DVonNeumann<BionTile>()
+        : new Array2DMoore<BionTile>(),
+    extent: [config.width, config.height],
+    periodic: true,
+    prototypeAgent: () => new BionTile(),
     // Ascape: territory.setExecutionOrder(RULE_ORDER) once there is diffusion.
-    schedule: 'byRule',
+    executionOrder: 'byRule',
   });
-  const world: LatticeWorld = { config, settings, grid, ring };
+  const world: LatticeWorld = { config, settings, grid: grid.space as Array2D<BionTile>, ring };
   if (config.diffusion !== 'none') {
     for (let colour = 0; colour < 3; colour++) grid.addRule(diffusionRule(world, colour));
   }
-  sim.addScape(grid);
+  root.add(grid);
 
   const density = num(values, config.densityKey, config.density);
-  const populationSize = Math.trunc((grid.width * grid.height * density) / 3.0);
+  const populationSize = Math.trunc((world.grid.width * world.grid.height * density) / 3.0);
   const scapes: Scape<Bion>[] = [];
   if (config.species === 'one') {
-    scapes.push(sim.addScape(bionScape(world, 'Bions', 0, config.singleCount)));
+    scapes.push(root.add(bionScape(world, 'Bions', 0, config.singleCount)));
   } else {
     SPECIES.forEach((name, index) => {
-      scapes.push(sim.addScape(bionScape(world, name, index, populationSize)));
+      scapes.push(root.add(bionScape(world, name, index, populationSize)));
     });
   }
 
   // Ascape's initial rule MOVE_RANDOM_LOCATION_RULE. It is run once from here, not as an
   // initial rule, because bions born later by fission must not be moved to a random tile.
-  sim.setup(() => {
-    for (const scape of scapes) {
-      for (const bion of scape.random.shuffle([...scape.members])) {
-        const home = grid.randomAvailableCell();
-        if (home) bion.moveTo(home);
-        else bion.die();
+  const whole = root.add(new Scape({ name: 'Placement', space: new Singleton() }));
+  whole.addInitialRule(
+    'Move to random location',
+    () => {
+      for (const scape of scapes) {
+        for (const bion of scape.random.shuffle([...scape.members])) {
+          const home = grid.findRandom((cell) => cell.isAvailable);
+          if (home) bion.moveTo(home);
+          else bion.die();
+        }
       }
-    }
-  });
+    },
+    { randomExecution: false },
+  );
 
   // Statistics and charts.
   const names = config.species === 'one' ? ['Bions'] : [...SPECIES];
-  scapes.forEach((scape, i) => sim.data.count(scape, names[i] as string));
+  scapes.forEach((scape, i) => scape.addStatCollector(stat.count(names[i] as string)));
   if (config.energyStats) {
     scapes.forEach((scape, i) => {
-      sim.data.measure(scape, `${names[i]} Stored Energy`, (b) => b.storedEnergy, {
-        statistics: ['count', 'mean', 'min', 'max'],
-      });
+      scape.addStatCollector(
+        stat.measure(`${names[i]} Stored Energy`, (b) => b.storedEnergy, {
+          statistics: ['count', 'mean', 'min', 'max'],
+        }),
+      );
     });
   }
   const useEnergyChart = config.energyStats && config.diffusion === 'none';
@@ -477,10 +491,10 @@ function buildLattice(sim: Simulation, config: LatticeConfig): void {
     (id, i) => (colors[id] = config.species === 'one' ? 0x000000 : (SPECIES_COLORS[i] as Color)),
   );
 
-  sim.addView(
+  root.addView(
     gridView<BionTile, Bion>({
       title: 'Map',
-      grid,
+      scape: grid,
       cellColor: (tile) => tileColor(config.tiles, tile),
       occupantColor: (bion) =>
         config.species === 'one' ? 0x000000 : (SPECIES_COLORS[bion.species] as Color),
@@ -497,7 +511,7 @@ function buildLattice(sim: Simulation, config: LatticeConfig): void {
       ],
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: useEnergyChart ? 'Average stored energy' : 'Population',
       series,
@@ -505,24 +519,22 @@ function buildLattice(sim: Simulation, config: LatticeConfig): void {
     }),
   );
 
-  if (config.stopAt !== undefined) {
-    const stopAt = config.stopAt;
-    sim.observe({
-      stepped(s) {
-        if (s.tick >= stopAt) s.stop(`legacy stop period ${stopAt} reached`);
+  if (config.stopPeriod !== undefined) {
+    const stopPeriod = config.stopPeriod;
+    whole.addRule(
+      'Stop at period',
+      () => {
+        if (root.iteration >= stopPeriod) root.stop(`legacy stop period ${stopPeriod} reached`);
       },
-    });
+      { randomExecution: false, causesRemoval: false },
+    );
   }
 }
 
 /** A scape of bions of one species and the rules it follows, in Ascape's rule-list order. */
 function bionScape(world: LatticeWorld, name: string, species: number, size: number): Scape<Bion> {
   const { config } = world;
-  const scape = new Scape<Bion>({
-    name,
-    size,
-    create: () => new Bion(species, world),
-  });
+  const scape = new Scape<Bion>({ name, size, prototypeAgent: () => new Bion(species, world) });
   const rules: Rule<Bion>[] = [];
   const add = (ruleName: string, execute: (b: Bion) => void): void => {
     rules.push({ name: ruleName, execute });

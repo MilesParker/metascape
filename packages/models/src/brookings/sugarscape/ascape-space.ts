@@ -16,7 +16,7 @@
  * reproduce Ascape's semantics (orderings, tie breaking, fallbacks), not its
  * random number sequence.
  */
-import type { Cell, GridScape, Random, Rule } from '@metascape/engine';
+import type { HostCell, Array2D, Random, Rule } from '@metascape/engine';
 
 function permutations(n: number): number[][] {
   if (n === 0) return [[]];
@@ -97,7 +97,11 @@ export function findMaximum<T>(
  * indexes into this list, so the order matters. Only valid while 2d + 1 fits
  * in both dimensions (Ascape uses another code path otherwise).
  */
-export function lineOfSight<C extends Cell>(grid: GridScape<C>, origin: C, distance: number): C[] {
+export function lineOfSight<C extends HostCell>(
+  grid: Array2D<C>,
+  origin: C,
+  distance: number,
+): C[] {
   const d = Math.floor(distance);
   if (2 * d + 1 > grid.width || 2 * d + 1 > grid.height) {
     throw new RangeError(`Line of sight ${d} does not fit a ${grid.width}x${grid.height} lattice`);
@@ -115,15 +119,15 @@ export function lineOfSight<C extends Cell>(grid: GridScape<C>, origin: C, dista
 }
 
 /** `Array2DBase.findRandom()`: a uniformly random cell, drawing x then y. */
-function randomCell<C extends Cell>(grid: GridScape<C>, random: Random): C {
+function randomCell<C extends HostCell>(grid: Array2D<C>, random: Random): C {
   const x = random.int(0, grid.width);
   const y = random.int(0, grid.height);
   return grid.at(x, y)!;
 }
 
 /** `Discrete.findAvailable()` then a random pick: any free cell of the whole lattice. */
-function randomAvailableAnywhere<C extends Cell>(
-  grid: GridScape<C>,
+function randomAvailableAnywhere<C extends HostCell>(
+  grid: Array2D<C>,
   random: Random,
 ): C | undefined {
   const available = grid.members.filter((cell) => cell.isAvailable);
@@ -135,8 +139,8 @@ function randomAvailableAnywhere<C extends Cell>(
  * after that a free cell is chosen among all free cells. `undefined` if the
  * lattice is full.
  */
-export function findRandomUnoccupiedCell<C extends Cell>(
-  grid: GridScape<C>,
+export function findRandomUnoccupiedCell<C extends HostCell>(
+  grid: Array2D<C>,
   random: Random,
 ): C | undefined {
   for (let i = 0; i < 10; i++) {
@@ -151,8 +155,8 @@ export function findRandomUnoccupiedCell<C extends Cell>(
  * cells inside the rectangle are tried; after that, as in Ascape, the fallback
  * is a random free cell of the WHOLE lattice, not of the rectangle.
  */
-export function findRandomUnoccupiedWithin<C extends Cell>(
-  grid: GridScape<C>,
+export function findRandomUnoccupiedWithin<C extends HostCell>(
+  grid: Array2D<C>,
   random: Random,
   x: number,
   y: number,
@@ -170,12 +174,12 @@ export function findRandomUnoccupiedWithin<C extends Cell>(
 }
 
 /** `HostCell.isNeighborAvailable()`. */
-export function isNeighborAvailable(cell: Cell): boolean {
+export function isNeighborAvailable(cell: HostCell): boolean {
   return cell.neighbors.some((neighbor) => neighbor.isAvailable);
 }
 
 /** `HostCell.findRandomAvailableNeighbor()`: one draw among the free neighbors, or `undefined`. */
-export function findRandomAvailableNeighbor<C extends Cell>(
+export function findRandomAvailableNeighbor<C extends HostCell>(
   cell: C,
   random: Random,
 ): C | undefined {
@@ -193,7 +197,7 @@ export interface Diffusable {
  * computes the mean of its neighbors' values (its own value is not included)
  * and then takes that mean as its new value.
  */
-export function ascapeDiffusion<C extends Cell & Diffusable>(
+export function ascapeDiffusion<C extends HostCell & Diffusable>(
   name: string,
   get: (cell: C) => number,
   set: (cell: C, value: number) => void,

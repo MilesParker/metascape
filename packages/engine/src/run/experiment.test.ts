@@ -13,10 +13,10 @@ const model = defineModel({
     flag: bool(false),
     label: text(''),
   },
-  build(sim) {
-    sim.observe({
-      stepped(s) {
-        if (s.tick === 3) s.stop('three');
+  build(root) {
+    root.addScapeListener({
+      scapeIterated() {
+        if (root.period === 3) root.stop('three');
       },
     });
   },
@@ -60,7 +60,7 @@ describe('experiments', () => {
   it('crosses parameters with the first varying slowest', () => {
     const rows = runExperiment(model, {
       parameters: { a: [1, 2], b: [10, 20, 30] },
-      maxTicks: 1,
+      maxIterations: 1,
       measure,
     });
     expect(rows).toHaveLength(6);
@@ -79,7 +79,7 @@ describe('experiments', () => {
     const rows = runExperiment(model, {
       parameters: { a: [1, 2] },
       replicates: 3,
-      maxTicks: 1,
+      maxIterations: 1,
       measure,
     });
     expect(rows.map((r) => [r['a'], r.replicate, r.run])).toEqual([
@@ -96,7 +96,7 @@ describe('experiments', () => {
     const rows = runExperiment(model, {
       parameters: { a: [1, 2, 3], c: [0.1, 0.2], b: [7, 8, 9] },
       linked: [['a', 'b']],
-      maxTicks: 1,
+      maxIterations: 1,
       measure,
     });
     // Factors in order: the group {a, b} (placed at a's position), then c.
@@ -111,7 +111,7 @@ describe('experiments', () => {
   });
 
   it('validates linked groups', () => {
-    const base = { maxTicks: 1, measure };
+    const base = { maxIterations: 1, measure };
     expect(() =>
       experimentRuns(model, { ...base, parameters: { a: [1, 2], b: [1] }, linked: [['a', 'b']] }),
     ).toThrow(/equal/);
@@ -131,9 +131,9 @@ describe('experiments', () => {
   });
 
   it('validates the design eagerly', () => {
-    const base = { maxTicks: 1, measure };
+    const base = { maxIterations: 1, measure };
     expect(() => experimentRuns(model, { ...base, replicates: 0 })).toThrow(RangeError);
-    expect(() => experimentRuns(model, { ...base, maxTicks: -1 })).toThrow(RangeError);
+    expect(() => experimentRuns(model, { ...base, maxIterations: -1 })).toThrow(RangeError);
     expect(() => experimentRuns(model, { ...base, parameters: { a: [] } })).toThrow(/no values/);
     expect(() =>
       experimentRuns(model, { ...base, parameters: { nope: [1] } as unknown as { a: number[] } }),
@@ -143,7 +143,7 @@ describe('experiments', () => {
   });
 
   it('runs one default run when no parameters are varied', () => {
-    const rows = runExperiment(model, { maxTicks: 1, measure });
+    const rows = runExperiment(model, { maxIterations: 1, measure });
     expect(rows).toHaveLength(1);
     expect(rows[0]!['a']).toBe(0);
   });
@@ -153,9 +153,9 @@ describe('experiments', () => {
       parameters: { a: [1, 2] },
       replicates: 3,
       seed: 7,
-      maxTicks: 2,
-      measure: (sim: { random: { int(a: number, b: number): number } }) => ({
-        draw: sim.random.int(0, 1_000_000),
+      maxIterations: 2,
+      measure: (root: { random: { int(a: number, b: number): number } }) => ({
+        draw: root.random.int(0, 1_000_000),
       }),
     };
     const first = runExperiment(model, design);
@@ -167,18 +167,18 @@ describe('experiments', () => {
     expect(other.map((r) => r.seed)).not.toEqual(first.map((r) => r.seed));
   });
 
-  it('reports ticks and stop reasons', () => {
-    const rows = runExperiment(model, { parameters: { a: [1] }, maxTicks: 10, measure });
-    expect(rows[0]).toMatchObject({ ticks: 3, stopReason: 'three' });
-    const capped = runExperiment(model, { maxTicks: 2, measure });
-    expect(capped[0]).toMatchObject({ ticks: 2, stopReason: 'maxTicks' });
+  it('reports iterations and stop reasons', () => {
+    const rows = runExperiment(model, { parameters: { a: [1] }, maxIterations: 10, measure });
+    expect(rows[0]).toMatchObject({ iterations: 3, stopReason: 'three' });
+    const capped = runExperiment(model, { maxIterations: 2, measure });
+    expect(capped[0]).toMatchObject({ iterations: 2, stopReason: 'maxIterations' });
   });
 
-  it('passes typed parameter overrides to the simulation and measures it', () => {
+  it('passes typed parameter overrides to the root and measures it', () => {
     const rows = runExperiment(model, {
       parameters: { mode: ['x', 'y'], flag: [true], label: ['hi'] },
-      maxTicks: 1,
-      measure: (sim) => ({ seenMode: sim.parameters.mode, size: sim.scapes.length }),
+      maxIterations: 1,
+      measure: (root) => ({ seenMode: root.parameters.mode, size: root.scapes.length }),
     });
     expect(rows.map((r) => r['seenMode'])).toEqual(['x', 'y']);
     expect(rows[0]).toMatchObject({ flag: true, label: 'hi', a: 0, size: 0 });
@@ -187,36 +187,36 @@ describe('experiments', () => {
       'run',
       'replicate',
       'seed',
-      'ticks',
+      'iterations',
       'stopReason',
     ]);
     expect(Object.keys(rows[0]!).at(-1)).toBe('size');
   });
 
   it('rejects wrongly typed values at compile time and invalid ones at run time', () => {
-    const base = { maxTicks: 1, measure };
+    const base = { maxIterations: 1, measure };
     // @ts-expect-error 'z' is not a choice option
     expect(() => runExperiment(model, { ...base, parameters: { mode: ['z'] } })).toThrow();
     // @ts-expect-error a is a number
     expect(() => runExperiment(model, { ...base, parameters: { a: ['s'] } })).toThrow();
   });
 
-  it('calls setup on each fresh simulation before running', () => {
-    const ticksAtSetup: number[] = [];
+  it('calls prepare on each fresh root before running', () => {
+    const periodsAtPrepare: number[] = [];
     runExperiment(model, {
       parameters: { a: [1, 2] },
-      maxTicks: 1,
-      setup: (sim) => ticksAtSetup.push(sim.tick),
+      maxIterations: 1,
+      prepare: (root) => periodsAtPrepare.push(root.period),
       measure,
     });
-    expect(ticksAtSetup).toEqual([0, 0]);
+    expect(periodsAtPrepare).toEqual([0, 0]);
   });
 
   it('throws when a measure collides with a built-in or parameter column', () => {
-    expect(() => runExperiment(model, { maxTicks: 1, measure: () => ({ ticks: 1 }) })).toThrow(
-      /collides/,
-    );
-    expect(() => runExperiment(model, { maxTicks: 1, measure: () => ({ a: 1 }) })).toThrow(
+    expect(() =>
+      runExperiment(model, { maxIterations: 1, measure: () => ({ iterations: 1 }) }),
+    ).toThrow(/collides/);
+    expect(() => runExperiment(model, { maxIterations: 1, measure: () => ({ a: 1 }) })).toThrow(
       /collides/,
     );
   });
@@ -225,8 +225,8 @@ describe('experiments', () => {
     let runs = 0;
     const gen = experimentRuns(model, {
       parameters: { a: range(1, 100, 1) },
-      maxTicks: 1,
-      setup: () => runs++,
+      maxIterations: 1,
+      prepare: () => runs++,
       measure,
     });
     gen.next();
@@ -264,11 +264,11 @@ describe('rowsToCSV', () => {
     const rows = runExperiment(model, {
       parameters: { a: [1, 2] },
       seed: 0,
-      maxTicks: 1,
+      maxIterations: 1,
       measure: () => ({ m: true }),
     });
     const lines = rowsToCSV(rows).split('\n');
-    expect(lines[0]).toBe('run,replicate,seed,ticks,stopReason,a,b,c,mode,flag,label,m');
+    expect(lines[0]).toBe('run,replicate,seed,iterations,stopReason,a,b,c,mode,flag,label,m');
     expect(lines).toHaveLength(3);
   });
 });

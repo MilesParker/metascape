@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
   Agent,
-  Cell,
-  ContinuousScape,
-  GridScape,
-  Occupant,
-  PointAgent,
-  Scape,
-  type GridScapeOptions,
-  type Network,
+  CellOccupant,
+  HostCell,
+  ListSpace,
+  LocatedAgent,
+  type Array2D,
+  type Continuous2D,
+  type Graph,
   type Random,
-  type ScapeOptions,
-  type Simulation,
+  type RootScape,
+  type Scape,
 } from '@metascape/engine';
 import type { Type } from './types';
 
 /*
  * What compiled models run on: one agent class per role, each storing its
  * attributes in a Float64Array (booleans as 0 or 1, states as the index of
- * the state), the per-simulation World that compiled closures reach the
+ * the state), the context of one run that compiled closures reach the
  * scapes through, and the frames that hold an action list's local variables.
  */
 
-/** A compiled agent type, shared by every simulation of a compiled model. */
+/** A compiled agent type, shared by every run of a compiled model. */
 export interface AgentKind {
   readonly index: number;
   readonly name: string;
@@ -36,7 +35,7 @@ export interface AgentKind {
 /** The state every compiled agent carries. */
 interface SpecState {
   readonly kind: AgentKind;
-  readonly world: World;
+  readonly context: ModelContext;
   /** Attribute values, by declaration order. */
   readonly v: Float64Array;
   /** Values set by synchronous rules, applied after every agent has acted. */
@@ -51,7 +50,7 @@ function buffers(kind: AgentKind): [Float64Array | undefined, Uint8Array | undef
 }
 
 /** A cell of a grid in a compiled model. */
-export class SpecCell extends Cell implements SpecState {
+export class SpecCell extends HostCell implements SpecState {
   readonly v: Float64Array;
   readonly next: Float64Array | undefined;
   readonly dirty: Uint8Array | undefined;
@@ -59,7 +58,7 @@ export class SpecCell extends Cell implements SpecState {
 
   constructor(
     readonly kind: AgentKind,
-    readonly world: World,
+    readonly context: ModelContext,
   ) {
     super();
     this.v = new Float64Array(kind.attributes.length);
@@ -72,7 +71,7 @@ export class SpecCell extends Cell implements SpecState {
 }
 
 /** An occupant of a grid in a compiled model. */
-export class SpecOccupant extends Occupant<SpecCell> implements SpecState {
+export class SpecOccupant extends CellOccupant<SpecCell> implements SpecState {
   readonly v: Float64Array;
   readonly next: Float64Array | undefined;
   readonly dirty: Uint8Array | undefined;
@@ -80,7 +79,7 @@ export class SpecOccupant extends Occupant<SpecCell> implements SpecState {
 
   constructor(
     readonly kind: AgentKind,
-    readonly world: World,
+    readonly context: ModelContext,
   ) {
     super();
     this.v = new Float64Array(kind.attributes.length);
@@ -93,7 +92,7 @@ export class SpecOccupant extends Occupant<SpecCell> implements SpecState {
 }
 
 /** An agent of a continuous space in a compiled model. */
-export class SpecPoint extends PointAgent implements SpecState {
+export class SpecPoint extends LocatedAgent implements SpecState {
   readonly v: Float64Array;
   readonly next: Float64Array | undefined;
   readonly dirty: Uint8Array | undefined;
@@ -101,7 +100,7 @@ export class SpecPoint extends PointAgent implements SpecState {
 
   constructor(
     readonly kind: AgentKind,
-    readonly world: World,
+    readonly context: ModelContext,
     x?: number,
     y?: number,
   ) {
@@ -124,7 +123,7 @@ export class SpecPlain extends Agent implements SpecState {
 
   constructor(
     readonly kind: AgentKind,
-    readonly world: World,
+    readonly context: ModelContext,
   ) {
     super();
     this.v = new Float64Array(kind.attributes.length);
@@ -179,15 +178,16 @@ export function readAttribute(agent: Agent, name: string): number | boolean | st
   return value;
 }
 
-/** Per-simulation state that compiled closures reach the model's structure through. */
-export class World {
+/** What compiled closures reach the structure of one run through: its root, scapes and spaces. */
+export class ModelContext {
   /** By agent type index. */
   readonly scapes: Scape<Agent>[] = [];
-  /** By space index. */
-  readonly grids: (SpecGrid | undefined)[] = [];
-  /** By space index: one of the scapes in that continuous space, for distances. */
-  readonly continuous: (ContinuousScape<SpecPoint> | undefined)[] = [];
-  readonly networks: (Network<Agent> | undefined)[] = [];
+  /** By space index: the lattice of a grid. */
+  readonly grids: (Array2D<SpecCell> | undefined)[] = [];
+  /** By space index: the space of one of the scapes in that continuous space, for distances. */
+  readonly continuous: (Continuous2D<SpecPoint> | undefined)[] = [];
+  /** By space index: the graph of a network. */
+  readonly networks: (Graph<Agent> | undefined)[] = [];
   /** Parameter values by index; booleans as 0 or 1. */
   readonly params: Float64Array;
   readonly widths: Float64Array;
@@ -201,7 +201,7 @@ export class World {
   overrideValues: Float64Array = new Float64Array(0);
 
   constructor(
-    readonly sim: Simulation,
+    readonly root: RootScape,
     parameterCount: number,
     spaceCount: number,
   ) {
@@ -211,26 +211,11 @@ export class World {
   }
 }
 
-/** A grid whose population step may be triggered early by an occupant scape declared before it. */
-export class SpecGrid extends GridScape<SpecCell> {
-  #populated = false;
-
-  constructor(options: GridScapeOptions<SpecCell>) {
-    super(options);
-  }
-
-  override populate(): void {
-    if (this.#populated) return;
-    this.#populated = true;
-    super.populate();
-  }
-}
-
 /**
  * A free cell chosen uniformly with `random` (any cell on a multi-occupancy
  * grid), or `undefined` if every cell is taken.
  */
-export function randomFreeCell(grid: GridScape<SpecCell>, random: Random): SpecCell | undefined {
+export function randomFreeCell(grid: Array2D<SpecCell>, random: Random): SpecCell | undefined {
   const cells = grid.members;
   const n = cells.length;
   if (n === 0) return undefined;
@@ -251,37 +236,39 @@ export function randomFreeCell(grid: GridScape<SpecCell>, random: Random): SpecC
   return undefined;
 }
 
-/** The scape of an occupant type: places each new member on a cell of its grid. */
-export class OccupantScape extends Scape<SpecOccupant> {
+/**
+ * The space of an occupant type's scape: a list, like any collection, that
+ * stands each new member on a cell of its grid, and has the grid's cells
+ * created first, since a type may be declared before its grid.
+ */
+export class OccupantSpace extends ListSpace<SpecOccupant> {
   constructor(
-    options: ScapeOptions<SpecOccupant>,
-    readonly world: World,
+    readonly context: ModelContext,
     readonly gridIndex: number,
   ) {
-    super(options);
+    super();
   }
 
-  get grid(): SpecGrid {
-    const grid = this.world.grids[this.gridIndex];
-    if (!grid) throw new Error(`Scape "${this.name}": its grid does not exist`);
+  get grid(): Array2D<SpecCell> {
+    const grid = this.context.grids[this.gridIndex];
+    if (!grid) throw new Error(`Scape "${this.scape.name}": its grid does not exist`);
     return grid;
   }
 
   override populate(): void {
-    // The grid may be declared after this type; its cells must exist first.
-    this.grid.populate();
+    this.grid.scape.populate();
     super.populate();
   }
 
-  protected override onAdded(agent: SpecOccupant): void {
-    const world = this.world;
-    let cell = world.pendingCell;
-    world.pendingCell = undefined;
+  override added(agent: SpecOccupant): void {
+    const context = this.context;
+    let cell = context.pendingCell;
+    context.pendingCell = undefined;
     cell ??= randomFreeCell(this.grid, this.random);
     if (!cell) {
       const grid = this.grid;
       throw new Error(
-        `Not enough free cells for "${this.name}": grid "${grid.name}" has ${grid.width * grid.height} cells and allows one occupant per cell`,
+        `Not enough free cells for "${this.scape.name}": grid "${grid.scape.name}" has ${grid.width * grid.height} cells and allows one occupant per cell`,
       );
     }
     agent.moveTo(cell);
@@ -292,7 +279,7 @@ export class OccupantScape extends Scape<SpecOccupant> {
 export class Frame {
   self: SpecAgent | undefined = undefined;
   random!: Random;
-  world!: World;
+  context!: ModelContext;
   readonly nums: Float64Array;
   readonly refs: (SpecAgent | undefined)[];
 
@@ -313,7 +300,7 @@ export class FramePool {
 
   constructor(readonly layout: { readonly nums: number; readonly refs: number }) {}
 
-  enter(self: SpecAgent | undefined, world: World, random: Random): Frame {
+  enter(self: SpecAgent | undefined, context: ModelContext, random: Random): Frame {
     let frame = this.#frames[this.#depth];
     if (!frame) {
       frame = new Frame(this.layout.nums, this.layout.refs);
@@ -321,7 +308,7 @@ export class FramePool {
     }
     this.#depth++;
     frame.self = self;
-    frame.world = world;
+    frame.context = context;
     frame.random = random;
     return frame;
   }

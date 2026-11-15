@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, type Scape } from '@metascape/engine';
+import { RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import {
   BargainerTagged,
@@ -13,8 +13,8 @@ import {
 import { family } from './index';
 
 const make = (model: (typeof family.models)[number], seed: number | string = 1) =>
-  new Simulation(model as never, { seed, parameters: { population: 60 } as never });
-const agents = (sim: Simulation) => [...(sim.scape('agents') as Scape<Bargainer>)];
+  new RootScape(model as never, { seed, parameters: { population: 60 } as never });
+const agents = (root: RootScape) => [...root.findScape<Bargainer>('agents')];
 
 describe('Emergence of Classes', () => {
   it('has nine models with unique names and provenance', () => {
@@ -28,11 +28,11 @@ describe('Emergence of Classes', () => {
 
   for (const model of family.models) {
     describe(model.name, () => {
-      it('runs 40 ticks with valid memories', () => {
-        const sim = make(model);
-        sim.run(40);
-        expect(sim.tick).toBe(40);
-        for (const a of agents(sim)) {
+      it('runs 40 periods with valid memories', () => {
+        const root = make(model);
+        root.run(40);
+        expect(root.iteration).toBe(40);
+        for (const a of agents(root)) {
           expect(a.memorySize).toBeGreaterThanOrEqual(1);
           expect(a.oldestMemory).toBeLessThan(a.memorySize);
           for (const s of a.strategyMemory) expect([LOW, MEDIUM, HIGH]).toContain(s);
@@ -41,27 +41,28 @@ describe('Emergence of Classes', () => {
             expect(a.opponentMemory.includes(a)).toBe(false);
           }
         }
-        const last = sim.data.latest('low') + sim.data.latest('medium') + sim.data.latest('high');
+        const last =
+          root.data.latest('low') + root.data.latest('medium') + root.data.latest('high');
         expect(last).toBe(60);
       });
 
       it('is deterministic by seed', () => {
         const run = (seed: number) => {
-          const sim = make(model, seed);
-          sim.run(30);
-          return sim.data.toCSV();
+          const root = make(model, seed);
+          root.run(30);
+          return root.data.toCSV();
         };
         expect(run(5)).toBe(run(5));
         expect(run(5)).not.toBe(run(6));
       });
 
       it('only references recorded series in its views', () => {
-        const sim = make(model);
-        const known = new Set(sim.data.series.map((s) => s.id));
-        for (const v of sim.views) {
+        const root = make(model);
+        const known = new Set(root.data.series.map((s) => s.id));
+        for (const v of root.allViews) {
           if (v.type === 'timeSeries') for (const id of v.series) expect(known.has(id)).toBe(true);
         }
-        expect(sim.views.some((v) => v.type === 'continuous')).toBe(true);
+        expect(root.allViews.some((v) => v.type === 'continuous')).toBe(true);
       });
     });
   }
@@ -75,7 +76,7 @@ describe('Emergence of Classes', () => {
 
   it('applies the start rules of figures 7, 8 and 9', () => {
     const by = (n: string) => make(family.models.find((m) => m.name.endsWith(n))!);
-    const tagged = (sim: Simulation) => agents(sim) as BargainerTagged[];
+    const tagged = (root: RootScape) => agents(root) as BargainerTagged[];
     for (const a of tagged(by('Figure 7'))) {
       if (a.tag !== LIGHT_TAG) continue;
       a.opponentMemory.forEach((o, i) => {
@@ -100,15 +101,15 @@ describe('Emergence of Classes', () => {
   });
 
   it('Peyton uses its own payoffs', () => {
-    const sim = make(family.models.find((m) => m.name.endsWith('Peyton'))!);
-    expect(sim.parameters).toMatchObject({ lowPayoff: 0.1, mediumPayoff: 0.3, highPayoff: 0.5 });
+    const root = make(family.models.find((m) => m.name.endsWith('Peyton'))!);
+    expect(root.parameters).toMatchObject({ lowPayoff: 0.1, mediumPayoff: 0.3, highPayoff: 0.5 });
   });
 
   it('Figure 2 settles on mostly medium (fair) demands', () => {
-    const sim = new Simulation(family.models.find((m) => m.name.endsWith('Figure 2')) as never, {
+    const root = new RootScape(family.models.find((m) => m.name.endsWith('Figure 2')) as never, {
       seed: 3,
     });
-    sim.run(600);
-    expect(sim.data.latest('medium')).toBeGreaterThan(50);
+    root.run(600);
+    expect(root.data.latest('medium')).toBeGreaterThan(50);
   });
 });

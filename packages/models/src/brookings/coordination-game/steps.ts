@@ -65,10 +65,10 @@ export const step1 = defineModel({
     'Players on a lattice take random steps and play a coordination game with a random neighbor: matching on red or on blue pays the player. After a few plays each player copies the colour of any neighbor who is scoring better.',
   provenance: provenance(1),
   parameters: { nPlayers, redScore, blueScore } as const,
-  build(sim) {
+  build(root) {
     buildCoordinationGame(
-      sim,
-      { ...defaults, ...sim.parameters },
+      root,
+      { ...defaults, ...root.parameters },
       config({ revision: 'imitate-neighbors', payoff: false }),
     );
   },
@@ -81,10 +81,10 @@ export const step2 = defineModel({
     'Step 1 with errors: with a given chance a player picks a colour at random instead of imitating. The chart adds the average payoff.',
   provenance: provenance(2),
   parameters: { nPlayers, redScore, blueScore, error } as const,
-  build(sim) {
+  build(root) {
     buildCoordinationGame(
-      sim,
-      { ...defaults, ...sim.parameters },
+      root,
+      { ...defaults, ...root.parameters },
       config({ revision: 'imitate-neighbors' }),
     );
   },
@@ -97,10 +97,10 @@ export const step3 = defineModel({
     'Players remember the colours of their last five partners and switch to the colour with the higher expected payoff against them (a best reply), choosing at random on ties or with the given error.',
   provenance: provenance(3),
   parameters: { nPlayers, redScore, blueScore, error } as const,
-  build(sim) {
+  build(root) {
     buildCoordinationGame(
-      sim,
-      { ...defaults, ...sim.parameters },
+      root,
+      { ...defaults, ...root.parameters },
       config({ revision: 'best-reply' }),
     );
   },
@@ -135,8 +135,8 @@ export const step4 = defineModel({
       description: 'A player with a recent score at or below this dies, once it has played enough.',
     }),
   } as const,
-  build(sim) {
-    buildCoordinationGame(sim, { ...defaults, ...sim.parameters }, config({ demography: true }));
+  build(root) {
+    buildCoordinationGame(root, { ...defaults, ...root.parameters }, config({ demography: true }));
   },
 });
 
@@ -150,10 +150,10 @@ export const step5 = defineModel({
     'Births and deaths of step 4 are not part of this step, as in the legacy code.',
   ),
   parameters: { nPlayers, redScore, blueScore, error } as const,
-  build(sim) {
+  build(root) {
     buildCoordinationGame(
-      sim,
-      { ...defaults, ...sim.parameters },
+      root,
+      { ...defaults, ...root.parameters },
       config({ revision: 'imitate-friends', friends: true }),
     );
   },

@@ -4,20 +4,23 @@
 // Original: Copyright (c) Metascape LLC and others, made available under the Eclipse Public License
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
   barsView,
-  Cell,
+  CellOccupant,
+  type Color,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
-  real,
-  Scape,
-  timeSeriesView,
-  type Color,
   type ParameterSchema,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import { durationParameters, movementParameter, transmissionParameters } from './parameters';
 import {
@@ -46,15 +49,15 @@ export interface RegionalParameters extends DiseaseParameters {
 }
 
 /** A site of a city map or of the regional map. */
-export class MapCell extends Cell {}
+export class MapCell extends HostCell {}
 
 /**
  * A city: it stands on a cell of the regional map and owns a map of its own
  * and the individuals living on it.
  */
-export class City extends Occupant {
+export class City extends CellOccupant {
   communityStatus: CommunityStatus = CommunityStatus.noInfections;
-  map!: GridScape<MapCell>;
+  map!: Array2D<MapCell>;
   people!: Scape<Resident>;
   /** Position in creation order, for naming. */
   index = 0;
@@ -141,29 +144,28 @@ function regionalParameters(defaults: {
 
 /** Builds a region of cities. Shared by the regional models. */
 function buildRegion<S extends ParameterSchema>(
-  sim: Simulation<S>,
+  root: RootScape<S>,
   p: RegionalParameters,
   stopPeriod?: number,
 ): void {
-  const epi: Epidemiology = { parameters: p, period: () => sim.tick };
+  const epi: Epidemiology = { parameters: p, period: () => root.iteration };
   const region: Region = { initialCityAssigned: false, cities: [] };
-  const parts: { map: GridScape<MapCell>; people: Scape<Resident> }[] = [];
+  const parts: { map: Array2D<MapCell>; people: Scape<Resident> }[] = [];
 
-  const regionalMap = sim.addScape(
-    new GridScape<MapCell>({
+  const regionalMap = root.add(
+    new Scape<MapCell>({
       name: 'regional map',
-      width: p.regionalMapWidth,
-      height: p.regionalMapHeight,
-      wrap: true,
-      neighborhood: 'moore',
-      create: () => new MapCell(),
+      space: new Array2DMoore<MapCell>(),
+      extent: [p.regionalMapWidth, p.regionalMapHeight],
+      periodic: true,
+      prototypeAgent: () => new MapCell(),
     }),
   );
-  const cities = sim.addScape(
+  const cities = root.add(
     new Scape<City>({
       name: 'cities',
       size: p.cityCount,
-      create: (i) => {
+      prototypeAgent: (i) => {
         const city = new City();
         city.index = i;
         return city;
@@ -172,96 +174,111 @@ function buildRegion<S extends ParameterSchema>(
   );
   // Setup Location: each city takes a random free cell of the regional map.
   cities.addInitialRule('setup location', (city) => {
-    const cell = regionalMap.randomAvailableCell();
+    const cell = regionalMap.findRandom((cell) => cell.isAvailable);
     if (cell) city.moveTo(cell);
   });
 
   // The city scapes are created up front (scapes can only be added while the
   // model is built); their individuals are created and initialized in setup.
   for (let i = 0; i < p.cityCount; i++) {
-    const map = sim.addScape(
-      new GridScape<MapCell>({
+    const map = root.add(
+      new Scape<MapCell>({
         name: `city ${i} map`,
-        width: p.mapWidth,
-        height: p.mapHeight,
-        wrap: false,
-        neighborhood: 'moore',
-        create: () => new MapCell(),
+        space: new Array2DMoore<MapCell>(),
+        extent: [p.mapWidth, p.mapHeight],
+        periodic: false,
+        prototypeAgent: () => new MapCell(),
       }),
     );
-    const people = sim.addScape(
+    const people = root.add(
       new Scape<Resident>({
         name: `city ${i} individuals`,
-        schedule: 'byRule',
-        create: () => new Resident(epi),
+        executionOrder: 'byRule',
+        prototypeAgent: () => new Resident(epi),
       }),
     );
     people.addRule('movement', (person) => {
-      if (person.cell) person.movement();
+      if (person.hostCell) person.movement();
     });
     people.addRule('transmission', (person) => {
-      if (person.cell) person.transmission();
+      if (person.hostCell) person.transmission();
     });
     people.addRule('progression', (person) => person.progression());
     people.addRule('migrate', (person) => migrate(person, p, epi));
-    parts.push({ map, people });
+    parts.push({ map: map.space as Array2D<MapCell>, people });
   }
 
-  sim.setup(() => {
-    const members = cities.members;
-    for (let i = 0; i < members.length; i++) {
-      const city = members[i]!;
-      city.map = parts[i]!.map;
-      city.people = parts[i]!.people;
-      region.cities.push(city);
-    }
-    // City by city: Initialize Location for every individual, then Initialize State.
-    for (const city of region.cities) {
-      const created: Resident[] = [];
-      for (let k = 0; k < p.individualCount; k++) {
-        const person = city.people.spawn();
-        person.city = city;
-        created.push(person);
+  // The region as a whole, once every scape's initial rules have run: it gives each city its
+  // map and people, then creates and places the individuals city by city.
+  const whole = root.add(new Scape({ name: 'Region', space: new Singleton() }));
+  whole.addInitialRule(
+    'Set up cities',
+    () => {
+      const members = cities.members;
+      for (let i = 0; i < members.length; i++) {
+        const city = members[i]!;
+        city.map = parts[i]!.map;
+        city.people = parts[i]!.people;
+        region.cities.push(city);
       }
-      const order = (): Resident[] => city.people.random.shuffle([...created]);
-      for (const person of order()) {
-        const cell = city.map.randomAvailableCell();
-        if (cell) person.moveTo(cell);
+      // City by city: Initialize Location for every individual, then Initialize State.
+      for (const city of region.cities) {
+        const created: Resident[] = [];
+        for (let k = 0; k < p.individualCount; k++) {
+          const person = city.people.newAgent();
+          person.city = city;
+          created.push(person);
+        }
+        const order = (): Resident[] => city.people.random.shuffle([...created]);
+        for (const person of order()) {
+          const cell = city.map.findRandomAvailable();
+          if (cell) person.moveTo(cell);
+        }
+        for (const person of order()) initializeState(person, p, region);
       }
-      for (const person of order()) initializeState(person, p, region);
-    }
-  });
+    },
+    { randomExecution: false },
+  );
 
   const census = makeCensus(region);
   for (const name of statusNames) {
-    sim.data.value(name, (s) => census(s.tick)[Status[name]]!);
+    root.addStatCollector(stat.value(name, () => census(root.iteration)[Status[name]]!));
   }
-  sim.data.value('population', (s) => census(s.tick).reduce((a, b) => a + b, 0));
-  sim.data.value(
-    'citiesWithInfectionsObserved',
-    () =>
-      region.cities.filter((c) => c.communityStatus === CommunityStatus.infectionsObserved).length,
+  root.addStatCollector(
+    stat.value('population', () => census(root.iteration).reduce((a, b) => a + b, 0)),
+  );
+  root.addStatCollector(
+    stat.value(
+      'citiesWithInfectionsObserved',
+      () =>
+        region.cities.filter((c) => c.communityStatus === CommunityStatus.infectionsObserved)
+          .length,
+    ),
   );
   for (let i = 0; i < p.cityCount; i++) {
-    sim.data.value(`city ${i} symptomInfectious`, () => {
-      const city = region.cities[i];
-      return city ? city.people.count((a) => a.status === Status.symptomInfectious) : 0;
-    });
+    root.addStatCollector(
+      stat.value(`city ${i} symptomInfectious`, () => {
+        const city = region.cities[i];
+        return city ? city.people.count((a) => a.status === Status.symptomInfectious) : 0;
+      }),
+    );
   }
 
   if (stopPeriod !== undefined) {
-    sim.observe({
-      stepped(s) {
-        if (s.tick >= stopPeriod) s.stop('stop period reached');
+    whole.addRule(
+      'Stop at period',
+      () => {
+        if (root.iteration >= stopPeriod) root.stop('stop period reached');
       },
-    });
+      { randomExecution: false, causesRemoval: false },
+    );
   }
 
   const palette = { ...statusColors } as Record<string, number>;
-  sim.addView(
+  root.addView(
     gridView<MapCell, City>({
       title: 'Region',
-      grid: regionalMap,
+      scape: regionalMap,
       occupantColor: (c) => c.color(),
       occupantShape: 'square',
       background: colors.white,
@@ -273,11 +290,11 @@ function buildRegion<S extends ParameterSchema>(
     }),
   );
   for (let i = 0; i < Math.min(p.cityCount, 4); i++) {
-    const map = sim.scape(`city ${i} map`) as GridScape<MapCell>;
-    sim.addView(
+    const map = root.findScape<MapCell>(`city ${i} map`);
+    root.addView(
       gridView<MapCell, Individual>({
         title: `City ${i}`,
-        grid: map,
+        scape: map,
         legend: statusNames.map((name) => ({
           color: statusColors[name],
           label: STATUS_LABELS[name],
@@ -289,7 +306,7 @@ function buildRegion<S extends ParameterSchema>(
       }),
     );
   }
-  sim.addView(
+  root.addView(
     timeSeriesView({
       title: 'Individuals by status',
       series: [...statusNames],
@@ -298,7 +315,7 @@ function buildRegion<S extends ParameterSchema>(
       yMin: 0,
     }),
   );
-  sim.addView(
+  root.addView(
     barsView({
       title: 'Individuals by status now',
       series: [...statusNames],
@@ -308,17 +325,17 @@ function buildRegion<S extends ParameterSchema>(
   );
 }
 
-/** Totals by status over all cities, recomputed once per tick. */
-function makeCensus(region: Region): (tick: number) => number[] {
+/** Totals by status over all cities, recomputed once per period. */
+function makeCensus(region: Region): (period: number) => number[] {
   let cachedTick = -1;
   let cached: number[] = [];
-  return (tick) => {
-    if (tick !== cachedTick || cached.length === 0) {
+  return (period) => {
+    if (period !== cachedTick || cached.length === 0) {
       cached = [0, 0, 0, 0, 0, 0];
       for (const city of region.cities) {
         for (const person of city.people.members) cached[person.status]!++;
       }
-      cachedTick = tick;
+      cachedTick = period;
     }
     return cached;
   };
@@ -350,7 +367,7 @@ function migrate(person: Resident, p: RegionalParameters, epi: Epidemiology): vo
   const neighbors = person.city.neighboringOccupants().filter((o): o is City => o instanceof City);
   if (neighbors.length === 0) return;
   const target = person.random.pick(neighbors);
-  const cell = target.map.randomAvailableCell();
+  const cell = target.map.findRandomAvailable();
   if (!cell) return;
   const from = person.city;
   if (from === target) {
@@ -387,8 +404,8 @@ export const epidemicRegional = defineModel({
     regionalMapWidth: 2,
     regionalMapHeight: 2,
   }),
-  build(sim) {
-    buildRegion(sim, sim.parameters);
+  build(root) {
+    buildRegion(root, root.parameters);
   },
 });
 
@@ -414,7 +431,7 @@ export const epidemicRegionalPeriods = defineModel({
     regionalMapWidth: 40,
     regionalMapHeight: 4,
   }),
-  build(sim) {
-    buildRegion(sim, sim.parameters, 3000);
+  build(root) {
+    buildRegion(root, root.parameters, 3000);
   },
 });

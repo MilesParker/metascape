@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { Simulation, type Model, type ParameterSchema } from '@metascape/engine';
+import { type Model, type ParameterSchema, RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { family } from './index';
 import {
@@ -25,12 +25,12 @@ const smallRegion = {
 function run(
   model: Model<ParameterSchema>,
   seed: number,
-  ticks: number,
+  periods: number,
   parameters: Record<string, number> = {},
 ) {
-  const sim = new Simulation(model, { seed, parameters });
-  sim.run(ticks);
-  return sim;
+  const root = new RootScape(model, { seed, parameters });
+  root.run(periods);
+  return root;
 }
 
 const variants: [string, Model<ParameterSchema>, Record<string, number>][] = [
@@ -86,13 +86,13 @@ describe('family', () => {
 });
 
 describe.each(variants)('%s', (_name, model, parameters) => {
-  it('builds and runs 30 ticks with views over recorded series', () => {
-    const sim = run(model, 1, 30, parameters);
-    expect(sim.tick).toBe(30);
-    const known = new Set(sim.data.series.map((s) => s.id));
-    expect(sim.views.some((v) => v.type === 'grid')).toBe(true);
-    expect(sim.views.some((v) => v.type === 'timeSeries')).toBe(true);
-    for (const view of sim.views) {
+  it('builds and runs 30 periods with views over recorded series', () => {
+    const root = run(model, 1, 30, parameters);
+    expect(root.iteration).toBe(30);
+    const known = new Set(root.data.series.map((s) => s.id));
+    expect(root.allViews.some((v) => v.type === 'grid')).toBe(true);
+    expect(root.allViews.some((v) => v.type === 'timeSeries')).toBe(true);
+    for (const view of root.allViews) {
       if (view.type === 'timeSeries' || view.type === 'bars') {
         for (const id of view.series) expect(known.has(id)).toBe(true);
       }
@@ -108,10 +108,10 @@ describe.each(variants)('%s', (_name, model, parameters) => {
 
 describe('epidemic invariants', () => {
   it('conserves the population and never puts two individuals on a cell', () => {
-    const sim = new Simulation(epidemic, { seed: 2, parameters: small });
+    const root = new RootScape(epidemic, { seed: 2, parameters: small });
     for (let t = 0; t < 80; t++) {
-      sim.step();
-      expect(sim.data.latest('population')).toBe(150);
+      root.iterate();
+      expect(root.data.latest('population')).toBe(150);
       const statuses = [
         'susceptible',
         'exposed',
@@ -120,16 +120,16 @@ describe('epidemic invariants', () => {
         'recovered',
         'dead',
       ];
-      expect(statuses.reduce((a, s) => a + sim.data.latest(s), 0)).toBe(150);
+      expect(statuses.reduce((a, s) => a + root.data.latest(s), 0)).toBe(150);
     }
-    const grid = sim.scape('city');
+    const grid = root.findScape('city');
     for (const cell of grid.members) {
       expect((cell as unknown as { occupants: unknown[] }).occupants.length).toBeLessThanOrEqual(1);
     }
   });
 
   it('starts about initialInfectionProbability of the population exposed', () => {
-    const sim = new Simulation(epidemic, {
+    const root = new RootScape(epidemic, {
       seed: 3,
       parameters: {
         ...small,
@@ -139,13 +139,13 @@ describe('epidemic invariants', () => {
         initialInfectionProbability: 0.2,
       },
     });
-    const exposed = sim.data.latest('exposed');
+    const exposed = root.data.latest('exposed');
     expect(exposed).toBeGreaterThan(140);
     expect(exposed).toBeLessThan(260);
   });
 
   it('spreads nothing when transmission is zero, and everyone infected stays within the rules', () => {
-    const sim = new Simulation(epidemic, {
+    const root = new RootScape(epidemic, {
       seed: 4,
       parameters: {
         ...small,
@@ -153,14 +153,14 @@ describe('epidemic invariants', () => {
         maxContactTransmissionProbability: 0,
       },
     });
-    const initial = sim.data.latest('susceptible');
-    sim.run(100);
-    const infectedEver = 150 - sim.data.latest('susceptible');
+    const initial = root.data.latest('susceptible');
+    root.run(100);
+    const infectedEver = 150 - root.data.latest('susceptible');
     expect(infectedEver).toBe(150 - initial);
   });
 
   it('lets an epidemic run through to recovered and dead individuals', () => {
-    const sim = new Simulation(epidemic, {
+    const root = new RootScape(epidemic, {
       seed: 5,
       parameters: {
         ...small,
@@ -169,17 +169,17 @@ describe('epidemic invariants', () => {
         maxContactTransmissionProbability: 0.4,
       },
     });
-    sim.run(500);
-    expect(sim.data.latest('recovered') + sim.data.latest('dead')).toBeGreaterThan(30);
-    expect(sim.data.latest('dead')).toBeGreaterThan(0);
+    root.run(500);
+    expect(root.data.latest('recovered') + root.data.latest('dead')).toBeGreaterThan(30);
+    expect(root.data.latest('dead')).toBeGreaterThan(0);
   });
 
   it('draws exposure, asymptomatic and infection periods in order', () => {
-    const sim = new Simulation(epidemic, {
+    const root = new RootScape(epidemic, {
       seed: 6,
       parameters: { ...small, initialInfectionProbability: 1 },
     });
-    const people = sim.scape('individuals').members as readonly Individual[];
+    const people = root.findScape('individuals').members as readonly Individual[];
     for (const p of people) {
       expect(p.status).toBe(Status.exposed);
       expect(p.exposureEndPeriod).toBeGreaterThanOrEqual(24);
@@ -192,45 +192,48 @@ describe('epidemic invariants', () => {
 
 describe('contact', () => {
   it('records the infections as directed contacts', () => {
-    const sim = run(epidemicContact as unknown as Model<ParameterSchema>, 7, 150, {
+    const root = run(epidemicContact as unknown as Model<ParameterSchema>, 7, 150, {
       ...small,
       initialInfectionProbability: 0.05,
       minContactTransmissionProbability: 0.3,
       maxContactTransmissionProbability: 0.4,
     });
-    expect(sim.data.latest('contacts')).toBeGreaterThan(5);
+    expect(root.data.latest('contacts')).toBeGreaterThan(5);
   });
 });
 
 describe('plague', () => {
   it('starts with no individuals by default and keeps creatures on distinct cells', () => {
-    const sim = new Simulation(epidemicPlague, {
+    const root = new RootScape(epidemicPlague, {
       seed: 1,
       parameters: { cityWidth: 20, cityHeight: 20 },
     });
-    expect(sim.data.latest('population')).toBe(0);
-    expect(sim.data.latest('fleas')).toBe(30);
-    expect(sim.data.latest('rats')).toBe(40);
-    const rats = [...(sim.scape('rats').members as readonly Rat[])];
-    const before = rats.map((r) => r.cell);
-    sim.run(30);
-    expect(rats.map((r) => r.cell)).toEqual(before);
-    for (const cell of sim.scape('city').members) {
+    expect(root.data.latest('population')).toBe(0);
+    expect(root.data.latest('fleas')).toBe(30);
+    expect(root.data.latest('rats')).toBe(40);
+    const rats = [...(root.findScape('rats').members as readonly Rat[])];
+    const before = rats.map((r) => r.hostCell);
+    root.run(30);
+    expect(rats.map((r) => r.hostCell)).toEqual(before);
+    for (const cell of root.findScape('city').members) {
       expect((cell as unknown as { occupants: unknown[] }).occupants.length).toBeLessThanOrEqual(1);
     }
   });
 
   it('moves a flea toward a rat within range', () => {
-    const sim = new Simulation(epidemicPlague, {
+    const root = new RootScape(epidemicPlague, {
       seed: 1,
       parameters: { cityWidth: 20, cityHeight: 20, fleaCount: 1, ratCount: 1, fleaRange: 50 },
     });
-    const flea = sim.scape('fleas').members[0] as Flea;
-    const rat = sim.scape('rats').members[0] as Rat;
+    const flea = root.findScape('fleas').members[0] as Flea;
+    const rat = root.findScape('rats').members[0] as Rat;
     const dist = () =>
-      Math.max(Math.abs(flea.cell!.x - rat.cell!.x), Math.abs(flea.cell!.y - rat.cell!.y));
+      Math.max(
+        Math.abs(flea.hostCell!.x - rat.hostCell!.x),
+        Math.abs(flea.hostCell!.y - rat.hostCell!.y),
+      );
     const start = dist();
-    sim.step();
+    root.iterate();
     if (start > 1) expect(dist()).toBe(start - 1);
     else expect(dist()).toBe(1);
   });
@@ -238,20 +241,20 @@ describe('plague', () => {
 
 describe('regional', () => {
   it('makes exactly one origin city and migrates individuals between cities', () => {
-    const sim = new Simulation(epidemicRegional, {
+    const root = new RootScape(epidemicRegional, {
       seed: 8,
       parameters: { ...smallRegion, migrationProbability: 0.3, initialInfectionProbability: 0.3 },
     });
-    expect(sim.data.latest('population')).toBe(120);
-    const before = [0, 1, 2].map((i) => sim.scape(`city ${i} individuals`).size);
+    expect(root.data.latest('population')).toBe(120);
+    const before = [0, 1, 2].map((i) => root.findScape(`city ${i} individuals`).size);
     expect(before).toEqual([40, 40, 40]);
-    sim.run(40);
-    expect(sim.data.latest('population')).toBe(120);
-    const after = [0, 1, 2].map((i) => sim.scape(`city ${i} individuals`).size);
+    root.run(40);
+    expect(root.data.latest('population')).toBe(120);
+    const after = [0, 1, 2].map((i) => root.findScape(`city ${i} individuals`).size);
     expect(after.reduce((a, b) => a + b, 0)).toBe(120);
     expect(after).not.toEqual(before);
     for (const i of [0, 1, 2]) {
-      const grid = sim.scape(`city ${i} map`);
+      const grid = root.findScape(`city ${i} map`);
       for (const cell of grid.members) {
         expect((cell as unknown as { occupants: unknown[] }).occupants.length).toBeLessThanOrEqual(
           1,
@@ -261,20 +264,24 @@ describe('regional', () => {
   });
 
   it('keeps individuals in place when migration is off, and starts infection in one city only', () => {
-    const sim = new Simulation(epidemicRegional, {
+    const root = new RootScape(epidemicRegional, {
       seed: 9,
       parameters: { ...smallRegion, migrationProbability: 0, initialInfectionProbability: 0.5 },
     });
     const counts = [0, 1, 2].map((i) =>
-      sim.scape(`city ${i} individuals`).count((a) => (a as Individual).status === Status.exposed),
+      root
+        .findScape(`city ${i} individuals`)
+        .count((a) => (a as Individual).status === Status.exposed),
     );
     expect(counts.filter((c) => c > 0)).toHaveLength(1);
-    sim.run(20);
-    expect([0, 1, 2].map((i) => sim.scape(`city ${i} individuals`).size)).toEqual([40, 40, 40]);
+    root.run(20);
+    expect([0, 1, 2].map((i) => root.findScape(`city ${i} individuals`).size)).toEqual([
+      40, 40, 40,
+    ]);
   });
 
   it('stops the periods variant at its stop period', () => {
-    const sim = new Simulation(epidemicRegionalPeriods, {
+    const root = new RootScape(epidemicRegionalPeriods, {
       seed: 1,
       parameters: {
         ...smallRegion,
@@ -285,8 +292,8 @@ describe('regional', () => {
         mapHeight: 4,
       },
     });
-    sim.run(5000);
-    expect(sim.tick).toBe(3000);
-    expect(sim.stopped).toBe(true);
+    root.run(5000);
+    expect(root.iteration).toBe(3000);
+    expect(root.stopped).toBe(true);
   });
 });

@@ -5,17 +5,20 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
+  type Array2D,
+  Array2DMoore,
+  barsView,
   bool,
-  Cell,
   colors,
   defineModel,
-  GridScape,
-  gridView,
   gradient,
-  real,
+  gridView,
+  HostCell,
   int,
+  real,
+  Scape,
+  stat,
   timeSeriesView,
-  barsView,
 } from '@metascape/engine';
 
 /** Number of agents on the ring. Private in the legacy model, so not a parameter. */
@@ -36,7 +39,7 @@ export interface NormSettings {
  * radius. Agents never move; they update norm and radius from the agents
  * within their radius.
  */
-export class NormCell extends Cell {
+export class NormCell extends HostCell {
   strategy = 0;
   radius = 0;
   #near: readonly NormCell[] = [];
@@ -62,11 +65,11 @@ export class NormCell extends Cell {
   }
 
   #findNearCells(): void {
-    const grid = this.grid as GridScape<NormCell>;
+    const grid = this.scape.space as unknown as Array2D<NormCell>;
     const options = { metric: 'chebyshev', includeSelf: true } as const;
-    this.#near = grid.within(this, this.radius, options);
-    this.#nearMinusOne = grid.within(this, this.radius - 1, options);
-    this.#nearPlusOne = grid.within(this, this.radius + 1, options);
+    this.#near = grid.findWithin(this, this.radius, options);
+    this.#nearMinusOne = grid.findWithin(this, this.radius - 1, options);
+    this.#nearPlusOne = grid.findWithin(this, this.radius + 1, options);
   }
 
   /** The legacy rule "Update Radius & Strategy". */
@@ -144,8 +147,8 @@ export const norms = defineModel({
         'Start with every agent holding norm 0 (the case of Figure 1 in the paper) instead of random norms.',
     }),
   } as const,
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     const settings: NormSettings = {
       ambientNoise: p.ambientNoise,
       tolerance: p.tolerance,
@@ -153,31 +156,33 @@ export const norms = defineModel({
       lockIn: p.lockIn,
     };
     // A 1 x 191 wrapped strip is the ring; chebyshev distance along it is ring distance.
-    const ring = sim.addScape(
-      new GridScape<NormCell>({
+    const ring = root.add(
+      new Scape<NormCell>({
         name: 'Norm Model',
-        width: RING_SIZE,
-        height: 1,
-        wrap: true,
-        // Each tick, as many agents act as there are agents, drawn with replacement (REPEATED_DRAW).
-        sampling: 'draw',
-        activations: RING_SIZE,
-        create: () => new NormCell(settings),
+        space: new Array2DMoore<NormCell>(),
+        extent: [RING_SIZE, 1],
+        periodic: true,
+        prototypeAgent: () => new NormCell(settings),
+        // Each period, as many agents act as there are agents, drawn with replacement (REPEATED_DRAW).
+        executionStyle: 'repeatedDraw',
+        agentsPerIteration: RING_SIZE,
       }),
     );
     ring.addRule('Update Radius & Strategy', (cell) => cell.update());
 
-    sim.data.measure(ring, 'radius', (cell) => cell.radius, {
-      statistics: ['min', 'mean', 'max', 'variance', 'stdDev'],
-    });
+    ring.addStatCollector(
+      stat.measure('radius', (cell) => cell.radius, {
+        statistics: ['min', 'mean', 'max', 'variance', 'stdDev'],
+      }),
+    );
     // The legacy chart labelled these the other way round ("Yellow" counts norm 0).
-    sim.data.count(ring, 'strategy0', (cell) => cell.strategy === 0);
-    sim.data.count(ring, 'strategy1', (cell) => cell.strategy === 1);
+    ring.addStatCollector(stat.count('strategy0', (cell) => cell.strategy === 0));
+    ring.addStatCollector(stat.count('strategy1', (cell) => cell.strategy === 1));
 
-    sim.addView(
+    root.addView(
       gridView<NormCell>({
         title: 'Strategy',
-        grid: ring,
+        scape: ring,
         legend: [
           { color: colors.blue, label: 'Holds norm 0' },
           { color: colors.yellow, label: 'Holds norm 1' },
@@ -186,10 +191,10 @@ export const norms = defineModel({
       }),
     );
     const shade = gradient(colors.white, colors.black);
-    sim.addView(
+    root.addView(
       gridView<NormCell>({
         title: 'Radius',
-        grid: ring,
+        scape: ring,
         legend: [
           { color: shade(0), label: 'Radius 1' },
           { color: shade(0.5), label: 'Radius 3' },
@@ -198,7 +203,7 @@ export const norms = defineModel({
         cellColor: (cell) => shade(Math.min(1, Math.max(0, (cell.radius - 1) / 4))),
       }),
     );
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Sampling radius',
         series: ['radius.variance', 'radius.stdDev', 'radius.min', 'radius.mean', 'radius.max'],
@@ -212,7 +217,7 @@ export const norms = defineModel({
         yMin: 0,
       }),
     );
-    sim.addView(
+    root.addView(
       barsView({
         title: 'Norms held',
         series: ['strategy0', 'strategy1'],

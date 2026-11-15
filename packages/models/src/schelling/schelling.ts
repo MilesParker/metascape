@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
+  Array2DMoore,
   bool,
-  Cell,
+  CellOccupant,
   colors,
   defineModel,
-  GridScape,
   gridView,
+  HostCell,
   int,
-  Occupant,
   real,
   rgb,
   Scape,
+  Singleton,
+  stat,
   timeSeriesView,
   type Random,
 } from '@metascape/engine';
 
 /** A site of the Schelling lattice, which knows where it sits in the list of free sites. */
-export class SchellingCell extends Cell {
+export class SchellingCell extends HostCell {
   /** Index in the list of free cells, or -1 while occupied. */
   freeIndex = -1;
 }
@@ -57,7 +59,7 @@ class FreeCells {
 }
 
 /** A resident of one of two groups who wants enough neighbors of its own group. */
-export class Resident extends Occupant<SchellingCell> {
+export class Resident extends CellOccupant<SchellingCell> {
   constructor(
     /** 0 or 1. */
     readonly group: number,
@@ -78,7 +80,7 @@ export class Resident extends Occupant<SchellingCell> {
    * when there are no neighbors at all (nothing to be unhappy about).
    */
   likeFraction(): number {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here) return 1;
     let like = 0;
     let occupied = 0;
@@ -98,7 +100,7 @@ export class Resident extends Occupant<SchellingCell> {
 
   /** Moves to a random free cell if unhappy. */
   act(): void {
-    const here = this.cell;
+    const here = this.hostCell;
     if (!here || !this.isUnhappy()) return;
     const target = this.free.swap(this.random, here);
     if (target) this.moveTo(target);
@@ -160,17 +162,16 @@ export const schelling = defineModel({
     }),
   },
 
-  build(sim) {
-    const p = sim.parameters;
+  build(root) {
+    const p = root.parameters;
     const free = new FreeCells();
-    const town = sim.addScape(
-      new GridScape<SchellingCell>({
+    const town = root.add(
+      new Scape<SchellingCell>({
         name: 'town',
-        width: p.width,
-        height: p.height,
-        wrap: p.wrap,
-        neighborhood: 'moore',
-        create: () => {
+        space: new Array2DMoore<SchellingCell>(),
+        extent: [p.width, p.height],
+        periodic: p.wrap,
+        prototypeAgent: () => {
           const cell = new SchellingCell();
           free.register(cell);
           return cell;
@@ -180,31 +181,36 @@ export const schelling = defineModel({
 
     const count = Math.round(p.density * p.width * p.height);
     const firstGroup = Math.round(p.ratio * count);
-    const residents = sim.addScape(
+    const residents = root.add(
       new Scape<Resident>({
         name: 'residents',
         size: count,
-        create: (index) => new Resident(index < firstGroup ? 0 : 1, p.tolerance, free),
+        prototypeAgent: (index) => new Resident(index < firstGroup ? 0 : 1, p.tolerance, free),
       }),
     );
     residents.addRule('relocate', (resident) => resident.act());
 
-    sim.data.count(residents, 'unhappy', (resident) => resident.isUnhappy());
-    sim.data.measure(residents, 'like', (resident) => resident.likeFraction(), {
-      statistics: ['mean'],
-    });
+    residents.addStatCollector(stat.count('unhappy', (resident) => resident.isUnhappy()));
+    residents.addStatCollector(
+      stat.measure('like', (resident) => resident.likeFraction(), { statistics: ['mean'] }),
+    );
 
-    const finishIfSettled = (): void => {
-      if (sim.data.latest('unhappy') === 0) sim.stop('Nobody is unhappy');
+    // The town as a whole: it stops the model once everyone has settled, at the start and
+    // after every iteration, once the residents have moved.
+    const settled = (): void => {
+      if (residents.count((resident) => resident.isUnhappy()) === 0) root.stop('Nobody is unhappy');
     };
-    sim.observe({ initialized: finishIfSettled, stepped: finishIfSettled });
+    root
+      .add(new Scape({ name: 'settlement', space: new Singleton() }))
+      .addInitialRule('stop when settled', settled, { randomExecution: false })
+      .addRule('stop when settled', settled, { randomExecution: false, causesRemoval: false });
 
     const groupColors = [colors.blue, colors.orange] as const;
     const empty = rgb(236, 236, 238);
-    sim.addView(
+    town.addView(
       gridView<SchellingCell>({
         title: 'Town',
-        grid: town,
+        scape: town,
         legend: [
           { color: colors.blue, label: 'Group A' },
           { color: colors.orange, label: 'Group B' },
@@ -217,7 +223,7 @@ export const schelling = defineModel({
         background: empty,
       }),
     );
-    sim.addView(
+    residents.addView(
       timeSeriesView({
         title: 'Unhappiness and segregation',
         series: ['unhappy', 'like.mean'],

@@ -10,7 +10,7 @@ import {
   SettingsStore,
   Agent,
   ManualScheduler,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -32,8 +32,10 @@ const model = defineModel({
     valueMinimum: real(0),
     valueMaximum: real(1),
   },
-  build(sim) {
-    const scape = sim.addScape(new Scape({ name: 'things', size: 2, create: () => new Agent() }));
+  build(root) {
+    const scape = root.add(
+      new Scape({ name: 'things', size: 2, prototypeAgent: () => new Agent() }),
+    );
     scape.addRule('first', () => {});
     scape.addRule('second', () => {});
   },
@@ -53,7 +55,12 @@ describe('parameter helpers', () => {
 
   it('says how a scape runs in words', () => {
     const words = describeExecution(
-      { rules: [], schedule: 'byRule', order: 'shuffled', activations: 4, sampling: 'draw' },
+      {
+        rules: [],
+        executionOrder: 'byRule',
+        agentsPerIteration: 4,
+        executionStyle: 'repeatedDraw',
+      },
       10,
     );
     expect(words.who).toMatch(/4 random draws/);
@@ -67,38 +74,38 @@ describe('useParameterController', () => {
     const runner = new Runner(model, { scheduler: new ManualScheduler(), seed: 1 });
     const { result } = renderHook(() => useParameterController(model, runner));
     act(() => void result.current.set('rate', 2));
-    expect(runner.sim.parameters.rate).toBe(2);
+    expect(runner.root.parameters.rate).toBe(2);
     expect(result.current.pending).toEqual([]);
     expect(result.current.changed).toEqual(['rate']);
     act(() => void result.current.set('size', 7));
-    expect(runner.sim.parameters.size).toBe(3);
+    expect(runner.root.parameters.size).toBe(3);
     expect(result.current.pending).toEqual(['size']);
     act(() => void result.current.set('size', 99));
     expect(result.current.errors['size']).toMatch(/at most 9/);
     act(() => void result.current.apply());
-    expect(runner.sim.parameters.size).toBe(7);
-    expect(runner.sim.parameters.rate).toBe(2);
+    expect(runner.root.parameters.size).toBe(7);
+    expect(runner.root.parameters.rate).toBe(2);
     expect(result.current.pending).toEqual([]);
     act(() => result.current.resetAll());
-    expect(runner.sim.parameters.rate).toBe(1);
+    expect(runner.root.parameters.rate).toBe(1);
     expect(result.current.pending).toEqual(['size']);
   });
 });
 
 describe('useRulesController', () => {
-  it('toggles and moves rules in the running simulation and keeps them in the store', () => {
+  it('toggles and moves rules in the running model and keeps them in the store', () => {
     const runner = new Runner(model, { scheduler: new ManualScheduler(), seed: 1 });
     const store = new SettingsStore();
-    store.attach(runner.sim as unknown as Simulation);
+    store.attach(runner.root as unknown as RootScape);
     const changes: string[] = [];
     const { result } = renderHook(() =>
-      useRulesController(runner.sim as unknown as Simulation, store, 0, (scape) =>
+      useRulesController(runner.root as unknown as RootScape, store, 0, (scape) =>
         changes.push(scape),
       ),
     );
     act(() => result.current.toggle('things', 0, false));
     act(() => result.current.move('things', 1, 0));
-    const settings = readScapeSettings(runner.sim.scape('things'));
+    const settings = readScapeSettings(runner.root.findScape('things'));
     expect(settings.rules.map((r) => `${r.name}:${r.enabled}`)).toEqual([
       'second:true',
       'first:false',
@@ -106,6 +113,6 @@ describe('useRulesController', () => {
     expect(changes).toEqual(['things', 'things']);
     expect(result.current.customized).toBe(true);
     act(() => result.current.reset());
-    expect(readScapeSettings(runner.sim.scape('things')).rules[0]!.name).toBe('first');
+    expect(readScapeSettings(runner.root.findScape('things')).rules[0]!.name).toBe('first');
   });
 });

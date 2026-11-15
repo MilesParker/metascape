@@ -7,7 +7,7 @@ import {
   type ParameterSchema,
   type Runner,
   type ScapeSettings,
-  type Simulation,
+  type RootScape,
 } from '@metascape/engine';
 import {
   describeTime,
@@ -37,7 +37,7 @@ export interface Session {
   readonly model: Model;
   readonly runner: Runner;
   readonly snapshot: RunnerSnapshot;
-  readonly sim: Simulation;
+  readonly root: RootScape;
   readonly frame: number;
   readonly settings: SettingsStore;
   readonly parameters: ParameterController;
@@ -75,12 +75,12 @@ function acceptedParameters(
 
 function applyRules(
   store: SettingsStore,
-  sim: Simulation,
+  root: RootScape,
   settings: Record<string, ScapeSettings>,
 ): void {
   for (const [scape, wanted] of Object.entries(settings)) {
     try {
-      store.set(sim, scape, wanted);
+      store.set(root, scape, wanted);
     } catch {
       // A scape that this model does not have, or settings that no longer fit.
     }
@@ -108,14 +108,15 @@ export function describeRuleChange(
     }
   }
   if (moved) return `${moved.name} to ${moved.to}`;
-  if (before.schedule !== after.schedule)
-    return `${scape}: ${after.schedule === 'byRule' ? 'by rule' : 'by agent'}`;
-  if (before.order !== after.order)
-    return `${scape}: ${after.order === 'shuffled' ? 'shuffled' : 'sequential'}`;
-  if (before.sampling !== after.sampling)
-    return `${scape}: ${after.sampling === 'tour' ? 'complete tour' : 'repeated draw'}`;
-  if (before.activations !== after.activations)
-    return `${scape}: ${after.activations === null ? 'all' : after.activations} per step`;
+  if (before.executionOrder !== after.executionOrder)
+    return `${scape}: ${after.executionOrder === 'byRule' ? 'by rule' : 'by agent'}`;
+  if (before.executionStyle !== after.executionStyle) {
+    return `${scape}: ${after.executionStyle === 'completeTour' ? 'complete tour' : 'repeated draw'}`;
+  }
+  if (before.agentsPerIteration !== after.agentsPerIteration) {
+    const count = after.agentsPerIteration === null ? 'all' : after.agentsPerIteration;
+    return `${scape}: ${count} per iteration`;
+  }
   return scape;
 }
 
@@ -143,8 +144,8 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   const runner = useRunner(model, {
     seed: initial.seed,
     parameters: initial.parameters,
-    onSimulation: (created) => {
-      const previous = runnerRef.current?.sim;
+    onRoot: (created) => {
+      const previous = runnerRef.current?.root;
       settings.attach(created);
       if (firstRules.current) {
         applyRules(settings, created, firstRules.current);
@@ -152,7 +153,7 @@ export function useSession(entry: ManifestModel, model: Model): Session {
       }
       // The run being replaced becomes the ghost in the charts.
       if (previous && previous !== created) {
-        workbench.getState().newRun(previous.tick > 0 ? ghostOf(previous) : undefined);
+        workbench.getState().newRun(previous.iteration > 0 ? ghostOf(previous) : undefined);
       }
     },
   }) as unknown as Runner;
@@ -160,7 +161,7 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     runnerRef.current = runner;
   }, [runner]);
   const snapshot = useRunnerState(runner);
-  const { sim, frame } = snapshot;
+  const { root, frame } = snapshot;
 
   // What this session last wrote to the address, to tell its own changes from back and forward.
   const written = useRef<string | undefined>(undefined);
@@ -176,11 +177,11 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   const currentSearch = useCallback(
     (extra: Partial<WorkbenchSearch> = {}): WorkbenchSearch => {
       const defaults = resolveParameters(schema) as Record<string, unknown>;
-      const live = runner.sim.parameters as Record<string, number | string | boolean>;
+      const live = runner.root.parameters as Record<string, number | string | boolean>;
       const p = Object.fromEntries(Object.entries(live).filter(([n, v]) => defaults[n] !== v));
       const c = extra.c ?? charts;
       return compact({
-        seed: runner.sim.seed,
+        seed: runner.root.seed,
         p: Object.keys(p).length > 0 ? p : undefined,
         r: encodeRules(settings.chosen),
         c: c.added.length > 0 || Object.keys(c.changed).length > 0 ? c : undefined,
@@ -219,10 +220,10 @@ export function useSession(entry: ManifestModel, model: Model): Session {
       ...(resolveParameters(schema) as Record<string, number | string | boolean>),
       ...acceptedParameters(schema, search.p),
     };
-    settings.reset(runner.sim);
+    settings.reset(runner.root);
     firstRules.current = decodeRules(search.r);
     try {
-      runner.restart({ seed: search.seed ?? runner.sim.seed, parameters });
+      runner.restart({ seed: search.seed ?? runner.root.seed, parameters });
     } catch {
       // Leave the current run; the address was not usable.
     }
@@ -231,7 +232,7 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   const parameters = useParameterController(model, runner, {
     onLiveChange: (name, value, current) => {
       workbench.getState().addIntervention({
-        tick: current.tick,
+        period: current.period,
         kind: 'parameter',
         key: name,
         label: `${schema[name]?.label ?? humanize(name)} → ${String(value)}`,
@@ -241,9 +242,9 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     onApply: () => write(false),
   });
 
-  const rules = useRulesController(sim, settings, frame, (scape, before, after) => {
+  const rules = useRulesController(root, settings, frame, (scape, before, after) => {
     workbench.getState().addIntervention({
-      tick: runner.sim.tick,
+      period: runner.root.period,
       kind: 'rule',
       label: describeRuleChange(scape, before, after),
     });
@@ -303,18 +304,18 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     [runner, parameters, write],
   );
 
-  // Keep the selection only while its simulation runs.
+  // Keep the selection only while its model runs.
   useEffect(() => {
     const selection = workbench.getState().selection;
-    if (selection && selection.sim !== sim) workbench.getState().select(undefined);
-  }, [sim, workbench]);
+    if (selection && selection.root !== root) workbench.getState().select(undefined);
+  }, [root, workbench]);
 
   return {
     entry,
     model,
     runner,
     snapshot,
-    sim,
+    root,
     frame,
     settings,
     parameters,
@@ -330,7 +331,7 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   };
 }
 
-/** The time of the current tick in words, such as "year 1043". */
-export const nowText = (sim: Simulation): string => describeTime(sim, sim.tick);
+/** The current period in words, such as "year 1043". */
+export const nowText = (root: RootScape): string => describeTime(root, root.period);
 
 export { readScapeSettings };

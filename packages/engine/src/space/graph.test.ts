@@ -1,30 +1,34 @@
 // SPDX-License-Identifier: EPL-2.0
 import { describe, expect, it } from 'vitest';
-import { Agent, Random, Scape, Simulation, type Model, type ParameterSchema } from '../../index';
-import { connectRandom, connectRing, connectSmallWorld, Network } from './index';
+import { Agent, Random, RootScape, Scape, type Model, type ParameterSchema } from '../index';
+import { connectRandom, connectRing, connectSmallWorld, Graph, type GraphOptions } from './index';
 
 function makeAgents(count: number, seed = 1): { agents: Agent[]; scape: Scape<Agent> } {
   const model: Model<ParameterSchema> & { scape: Scape<Agent> } = {
     name: 'net',
     parameters: {},
     scape: undefined as unknown as Scape<Agent>,
-    build(sim: Simulation) {
-      model.scape = sim.addScape(
-        new Scape<Agent>({ name: 'nodes', size: count, create: () => new Agent() }),
+    build(root: RootScape) {
+      model.scape = root.add(
+        new Scape<Agent>({ name: 'nodes', size: count, prototypeAgent: () => new Agent() }),
       );
     },
   };
-  new Simulation(model, { seed });
+  new RootScape(model, { seed });
   return { agents: [...model.scape.members], scape: model.scape };
 }
 
+/** A graph: the space of a scape of links, which agents living in other scapes join as they are linked. */
+const graph = (options: GraphOptions = {}): Graph =>
+  new Scape({ name: 'links', space: new Graph(options) }).space as Graph;
+
 const ids = (agents: readonly Agent[] | undefined) => agents?.map((a) => a.id);
 
-describe('Network (undirected)', () => {
+describe('Graph (undirected)', () => {
   it('connects, rejects self-links and duplicates, and disconnects', () => {
     const { agents } = makeAgents(3);
     const [a, b, c] = agents as [Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     expect(net.directed).toBe(false);
     expect(net.connect(a, b)).toBe(true);
     expect(net.connect(a, b)).toBe(false);
@@ -43,7 +47,7 @@ describe('Network (undirected)', () => {
   it('lists neighbors in order of link creation, and edges once each', () => {
     const { agents } = makeAgents(4);
     const [a, b, c, d] = agents as [Agent, Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     net.connect(a, c);
     net.connect(a, b);
     net.connect(d, a);
@@ -62,7 +66,7 @@ describe('Network (undirected)', () => {
   it('disconnectAll and clear remove links', () => {
     const { agents } = makeAgents(4);
     const [a, b, c, d] = agents as [Agent, Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     net.connect(a, b);
     net.connect(a, c);
     net.connect(c, d);
@@ -76,11 +80,11 @@ describe('Network (undirected)', () => {
   });
 });
 
-describe('Network (directed)', () => {
+describe('Graph (directed)', () => {
   it('keeps the direction of links', () => {
     const { agents } = makeAgents(3);
     const [a, b, c] = agents as [Agent, Agent, Agent];
-    const net = new Network({ directed: true });
+    const net = graph({ directed: true });
     expect(net.directed).toBe(true);
     expect(net.connect(a, b)).toBe(true);
     expect(net.connect(b, a)).toBe(true);
@@ -104,7 +108,7 @@ describe('Network (directed)', () => {
   it('respects direction in paths', () => {
     const { agents } = makeAgents(3);
     const [a, b, c] = agents as [Agent, Agent, Agent];
-    const net = new Network({ directed: true });
+    const net = graph({ directed: true });
     net.connect(a, b);
     net.connect(b, c);
     expect(net.distance(a, c)).toBe(2);
@@ -117,7 +121,7 @@ describe('dead agents', () => {
   it('are never returned and links are pruned', () => {
     const { agents } = makeAgents(4);
     const [a, b, c, d] = agents as [Agent, Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     net.connect(a, b);
     net.connect(a, c);
     net.connect(b, d);
@@ -131,13 +135,13 @@ describe('dead agents', () => {
     expect(net.edgeCount).toBe(1);
     expect([...net.edges()].flat().includes(b)).toBe(false);
     expect(net.distance(a, d)).toBe(Infinity);
-    expect(net.within(a, 5)).toEqual([c]);
+    expect(net.findWithin(a, 5)).toEqual([c]);
   });
 
   it('are pruned from inNeighbors, edges and paths in a directed network', () => {
     const { agents } = makeAgents(3);
     const [a, b, c] = agents as [Agent, Agent, Agent];
-    const net = new Network({ directed: true });
+    const net = graph({ directed: true });
     net.connect(a, b);
     net.connect(b, c);
     b.die();
@@ -150,7 +154,7 @@ describe('dead agents', () => {
     const { agents } = makeAgents(2);
     const [a, b] = agents as [Agent, Agent];
     b.die();
-    const net = new Network();
+    const net = graph();
     expect(net.connect(a, b)).toBe(false);
     expect(net.connect(new Agent(), a)).toBe(false);
   });
@@ -160,7 +164,7 @@ describe('paths', () => {
   // 0-1-2-3-4 with a shortcut 0-5-4, and an isolated node 6.
   const build = () => {
     const { agents } = makeAgents(7);
-    const net = new Network();
+    const net = graph();
     for (const [i, j] of [
       [0, 1],
       [1, 2],
@@ -176,11 +180,11 @@ describe('paths', () => {
 
   it('finds agents within some hops in breadth-first order', () => {
     const { net, n } = build();
-    expect(ids(net.within(n[0] as Agent, 0))).toEqual([]);
-    expect(ids(net.within(n[0] as Agent, 1))).toEqual([1, 5]);
-    expect(ids(net.within(n[0] as Agent, 2))).toEqual([1, 5, 2, 4]);
-    expect(ids(net.within(n[0] as Agent, 10))).toEqual([1, 5, 2, 4, 3]);
-    expect(ids(net.within(n[6] as Agent, 3))).toEqual([]);
+    expect(ids(net.findWithin(n[0] as Agent, 0))).toEqual([]);
+    expect(ids(net.findWithin(n[0] as Agent, 1))).toEqual([1, 5]);
+    expect(ids(net.findWithin(n[0] as Agent, 2))).toEqual([1, 5, 2, 4]);
+    expect(ids(net.findWithin(n[0] as Agent, 10))).toEqual([1, 5, 2, 4, 3]);
+    expect(ids(net.findWithin(n[6] as Agent, 3))).toEqual([]);
   });
 
   it('measures hop distances', () => {
@@ -204,43 +208,42 @@ describe('paths', () => {
 });
 
 describe('generators', () => {
-  const edgeKeys = (net: Network) =>
+  const edgeKeys = (net: Graph) =>
     [...net.edges()].map(([a, b]) => `${Math.min(a.id, b.id)}-${Math.max(a.id, b.id)}`).sort();
 
   it('connectRing gives each agent k neighbors on each side', () => {
     const { agents } = makeAgents(10);
-    const net = connectRing(new Network(), agents, 2);
+    const net = connectRing(graph(), agents, 2);
     expect(net.edgeCount).toBe(20);
     for (const agent of agents) expect(net.degree(agent)).toBe(4);
     expect(net.isConnected(agents[0] as Agent, agents[8] as Agent)).toBe(true);
     expect(net.isConnected(agents[0] as Agent, agents[3] as Agent)).toBe(false);
-    expect(() => connectRing(new Network(), agents, -1)).toThrow(RangeError);
+    expect(() => connectRing(graph(), agents, -1)).toThrow(RangeError);
   });
 
   it('connectRing handles small and directed cases', () => {
     const { agents } = makeAgents(3);
-    expect(connectRing(new Network(), agents, 5).edgeCount).toBe(3);
-    const directed = connectRing(new Network({ directed: true }), agents, 1);
+    expect(connectRing(graph(), agents, 5).edgeCount).toBe(3);
+    const directed = connectRing(graph({ directed: true }), agents, 1);
     expect(directed.edgeCount).toBe(6);
-    expect(connectRing(new Network(), [], 2).edgeCount).toBe(0);
+    expect(connectRing(graph(), [], 2).edgeCount).toBe(0);
   });
 
   it('connectRandom respects the extremes and gives plausible density', () => {
     const { agents } = makeAgents(30);
-    expect(connectRandom(new Network(), agents, 0, new Random(1)).edgeCount).toBe(0);
-    expect(connectRandom(new Network(), agents, 1, new Random(1)).edgeCount).toBe((30 * 29) / 2);
-    expect(connectRandom(new Network({ directed: true }), agents, 1, new Random(1)).edgeCount).toBe(
+    expect(connectRandom(graph(), agents, 0, new Random(1)).edgeCount).toBe(0);
+    expect(connectRandom(graph(), agents, 1, new Random(1)).edgeCount).toBe((30 * 29) / 2);
+    expect(connectRandom(graph({ directed: true }), agents, 1, new Random(1)).edgeCount).toBe(
       30 * 29,
     );
-    const net = connectRandom(new Network(), agents, 0.3, new Random(2));
+    const net = connectRandom(graph(), agents, 0.3, new Random(2));
     expect(net.edgeCount).toBeGreaterThan(80);
     expect(net.edgeCount).toBeLessThan(180);
   });
 
   it('connectRandom is reproducible for a seed', () => {
     const { agents } = makeAgents(25);
-    const make = (seed: number) =>
-      edgeKeys(connectRandom(new Network(), agents, 0.2, new Random(seed)));
+    const make = (seed: number) => edgeKeys(connectRandom(graph(), agents, 0.2, new Random(seed)));
     expect(make(7)).toEqual(make(7));
     expect(make(7)).not.toEqual(make(8));
   });
@@ -248,7 +251,7 @@ describe('generators', () => {
   it('connectSmallWorld keeps the edge count with no self or duplicate links', () => {
     const { agents } = makeAgents(40);
     for (const p of [0, 0.1, 0.5, 1]) {
-      const net = connectSmallWorld(new Network(), agents, 3, p, new Random(5));
+      const net = connectSmallWorld(graph(), agents, 3, p, new Random(5));
       expect(net.edgeCount).toBe(120);
       const keys = edgeKeys(net);
       expect(new Set(keys).size).toBe(keys.length);
@@ -257,37 +260,37 @@ describe('generators', () => {
       for (const agent of agents) total += net.degree(agent);
       expect(total).toBe(240);
     }
-    const ring = connectSmallWorld(new Network(), agents, 3, 0, new Random(5));
-    expect(edgeKeys(ring)).toEqual(edgeKeys(connectRing(new Network(), agents, 3)));
+    const ring = connectSmallWorld(graph(), agents, 3, 0, new Random(5));
+    expect(edgeKeys(ring)).toEqual(edgeKeys(connectRing(graph(), agents, 3)));
   });
 
   it('connectSmallWorld rewires and shortens paths, reproducibly', () => {
     const { agents } = makeAgents(60);
-    const ring = connectRing(new Network(), agents, 2);
-    const small = connectSmallWorld(new Network(), agents, 2, 0.3, new Random(9));
+    const ring = connectRing(graph(), agents, 2);
+    const small = connectSmallWorld(graph(), agents, 2, 0.3, new Random(9));
     expect(edgeKeys(small)).not.toEqual(edgeKeys(ring));
     const a = agents[0] as Agent;
     const b = agents[30] as Agent;
     expect(small.distance(a, b)).toBeLessThanOrEqual(ring.distance(a, b));
-    const again = connectSmallWorld(new Network(), agents, 2, 0.3, new Random(9));
+    const again = connectSmallWorld(graph(), agents, 2, 0.3, new Random(9));
     expect(edgeKeys(again)).toEqual(edgeKeys(small));
   });
 
   it('connectSmallWorld works on a directed network and when nothing can be rewired', () => {
     const { agents } = makeAgents(10);
-    const net = connectSmallWorld(new Network({ directed: true }), agents, 2, 1, new Random(3));
+    const net = connectSmallWorld(graph({ directed: true }), agents, 2, 1, new Random(3));
     expect(net.edgeCount).toBe(40);
     for (const [a, b] of net.edges()) expect(a).not.toBe(b);
     const { agents: tiny } = makeAgents(3);
-    expect(connectSmallWorld(new Network(), tiny, 1, 1, new Random(1)).edgeCount).toBe(3);
+    expect(connectSmallWorld(graph(), tiny, 1, 1, new Random(1)).edgeCount).toBe(3);
   });
 });
 
-describe('Network.neighbors caching', () => {
+describe('Graph.neighbors caching', () => {
   it('returns the same array until links change, then a fresh one', () => {
     const { agents } = makeAgents(4);
     const [a, b, c, d] = agents as [Agent, Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     net.connect(a, b);
     const first = net.neighbors(a);
     expect(net.neighbors(a)).toBe(first);
@@ -310,7 +313,7 @@ describe('Network.neighbors caching', () => {
   it('drops a dead neighbor from the cached result', () => {
     const { agents, scape } = makeAgents(3);
     const [a, b, c] = agents as [Agent, Agent, Agent];
-    const net = new Network();
+    const net = graph();
     net.connect(a, b);
     net.connect(a, c);
     const before = net.neighbors(a);

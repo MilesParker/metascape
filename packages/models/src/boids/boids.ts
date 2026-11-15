@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
   colors,
-  ContinuousScape,
+  Continuous2D,
   continuousView,
   defineModel,
   gradient,
   int,
-  PointAgent,
+  LocatedAgent,
   real,
+  Scape,
+  stat,
   timeSeriesView,
+  type RootScape,
   type Rule,
-  type Simulation,
 } from '@metascape/engine';
 
 /** A bird-like object that steers by separation, alignment and cohesion. */
-export class Boid extends PointAgent {
-  /** Current velocity, in space units per tick. */
+export class Boid extends LocatedAgent {
+  /** Current velocity, in space units per period. */
   vx: number;
   vy: number;
   /** Velocity computed in `execute`, applied in `update`. */
@@ -82,26 +84,28 @@ const parameters = {
     max: 10,
     label: 'Maximum speed',
     description:
-      'Upper limit on speed, in space units per tick. Boids never go slower than 40% of it.',
+      'Upper limit on speed, in space units per period. Boids never go slower than 40% of it.',
   }),
   maxTurn: real(0.35, {
     live: true,
     min: 0.01,
     max: Math.PI,
     label: 'Maximum turn',
-    description: 'Largest change of heading in one tick, in radians.',
+    description: 'Largest change of heading in one period, in radians.',
   }),
 } as const;
 
 /** Steering rule: reads the current state, writes only `nextVx`/`nextVy`. */
-function steering(sim: Simulation<typeof parameters>, scape: ContinuousScape<Boid>): Rule<Boid> {
+function steering(root: RootScape<typeof parameters>, space: Continuous2D<Boid>): Rule<Boid> {
   return {
     name: 'steer',
+    randomExecution: false,
+    causesRemoval: false,
     description:
       'Steer away from crowding, toward the mean heading and toward the centre of neighbours in sight.',
     execute(boid) {
       // Read afresh each time, so the weights can change while the flock flies.
-      const p = sim.parameters;
+      const p = root.parameters;
       const minSpeed = 0.4 * p.maxSpeed;
       let sepX = 0;
       let sepY = 0;
@@ -110,8 +114,8 @@ function steering(sim: Simulation<typeof parameters>, scape: ContinuousScape<Boi
       let cohX = 0;
       let cohY = 0;
       let n = 0;
-      for (const other of scape.within(boid, p.vision)) {
-        const { dx, dy } = scape.displacement(boid, other);
+      for (const other of boid.findWithin(p.vision)) {
+        const { dx, dy } = space.displacement(boid, other);
         const d = Math.hypot(dx, dy);
         n++;
         sumVx += other.vx;
@@ -193,55 +197,58 @@ export const boids = defineModel({
     },
   ],
   parameters,
-  build(sim) {
-    const p = sim.parameters;
-    const scape: ContinuousScape<Boid> = sim.addScape(
-      new ContinuousScape<Boid>({
+  build(root) {
+    const p = root.parameters;
+    const flock: Scape<Boid> = root.add(
+      new Scape<Boid>({
         name: 'boids',
-        width: p.size,
-        height: p.size,
-        wrap: true,
-        cellSize: Math.max(p.vision, p.size / 32),
+        space: new Continuous2D<Boid>({ cellSize: Math.max(p.vision, p.size / 32) }),
+        extent: [p.size, p.size],
+        periodic: true,
         size: p.count,
-        create: () => {
-          const angle = scape.random.float() * 2 * Math.PI;
-          const speed = p.maxSpeed * (0.5 + 0.5 * scape.random.float());
+        prototypeAgent: () => {
+          const angle = flock.random.float() * 2 * Math.PI;
+          const speed = p.maxSpeed * (0.5 + 0.5 * flock.random.float());
           return new Boid(Math.cos(angle) * speed, Math.sin(angle) * speed);
         },
-        order: 'sequential',
       }),
     );
-    scape.addRule(steering(sim, scape));
+    const space = flock.space as Continuous2D<Boid>;
+    flock.addRule(steering(root, space));
 
-    sim.data.value('polarization', () => {
-      let sx = 0;
-      let sy = 0;
-      const members = scape.members;
-      for (let i = 0; i < members.length; i++) {
-        const b = members[i]!;
-        const speed = Math.hypot(b.vx, b.vy);
-        if (speed === 0) continue;
-        sx += b.vx / speed;
-        sy += b.vy / speed;
-      }
-      return members.length === 0 ? 0 : Math.hypot(sx, sy) / members.length;
-    });
-    sim.data.value('nearestDistance', () => {
-      let total = 0;
-      let counted = 0;
-      for (const boid of scape.members) {
-        const nearest = scape.nearest(boid);
-        if (!nearest) continue;
-        total += scape.distance(boid, nearest);
-        counted++;
-      }
-      return counted === 0 ? 0 : total / counted;
-    });
+    flock.addStatCollector(
+      stat.value('polarization', () => {
+        let sx = 0;
+        let sy = 0;
+        const members = flock.members;
+        for (let i = 0; i < members.length; i++) {
+          const b = members[i]!;
+          const speed = Math.hypot(b.vx, b.vy);
+          if (speed === 0) continue;
+          sx += b.vx / speed;
+          sy += b.vy / speed;
+        }
+        return members.length === 0 ? 0 : Math.hypot(sx, sy) / members.length;
+      }),
+    );
+    flock.addStatCollector(
+      stat.value('nearestDistance', () => {
+        let total = 0;
+        let counted = 0;
+        for (const boid of flock.members) {
+          const nearest = boid.findNearest();
+          if (!nearest) continue;
+          total += boid.distanceTo(nearest);
+          counted++;
+        }
+        return counted === 0 ? 0 : total / counted;
+      }),
+    );
 
-    sim.addView(
+    flock.addView(
       continuousView<Boid>({
         title: 'Flock',
-        scape,
+        scape: flock,
         heading: (boid) => boid.heading,
         legend: [
           { color: headingColor(0.25), label: 'Heading up' },
@@ -253,7 +260,7 @@ export const boids = defineModel({
         radius: () => 1,
       }),
     );
-    sim.addView(
+    flock.addView(
       timeSeriesView({
         title: 'Polarization',
         series: ['polarization'],
@@ -262,7 +269,7 @@ export const boids = defineModel({
         colors: { polarization: colors.blue },
       }),
     );
-    sim.addView(
+    flock.addView(
       timeSeriesView({
         title: 'Nearest-neighbor distance',
         series: ['nearestDistance'],

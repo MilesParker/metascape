@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: EPL-2.0
-import { GridScape, Network, Random, Scape, Simulation, type Model } from '@metascape/engine';
+import {
+  Array2D,
+  Array2DMoore,
+  Array2DVonNeumann,
+  type Model,
+  Graph,
+  Random,
+  RootScape,
+  Scape,
+  Singleton,
+} from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { family } from './index';
 import { cellAway, cellToward, nearestMatch } from './lattice-space';
@@ -10,22 +20,22 @@ import { GraphNode, nearestNode, nodeAway, nodeToward, pathLength } from './grap
 type Loose = Readonly<Record<string, unknown>>;
 
 /** Everything that distinguishes one run from another: the series and where every agent is. */
-function fingerprint(sim: Simulation): string {
-  const agents = sim.scapes.map((scape) =>
+function fingerprint(root: RootScape): string {
+  const agents = root.scapes.map((scape) =>
     scape.members.map((m) => {
       const a = m as unknown as Loose;
-      const cell = a['cell'] as { x: number; y: number } | undefined;
+      const cell = a['hostCell'] as { x: number; y: number } | undefined;
       const node = a['node'] as { id: number } | undefined;
       return [cell?.x, cell?.y, node?.id, a['x'], a['y'], a['storedEnergy']];
     }),
   );
-  return sim.data.toCSV() + JSON.stringify(agents);
+  return root.data.toCSV() + JSON.stringify(agents);
 }
 
-function run(model: Model, seed: number, ticks: number): Simulation {
-  const sim = new Simulation(model, { seed });
-  sim.run(ticks);
-  return sim;
+function run(model: Model, seed: number, periods: number): RootScape {
+  const root = new RootScape(model, { seed });
+  root.run(periods);
+  return root;
 }
 
 describe('every Bionland model', () => {
@@ -34,7 +44,7 @@ describe('every Bionland model', () => {
       const a = run(model, 7, 25);
       const b = run(model, 7, 25);
       const c = run(model, 8, 25);
-      expect(a.tick).toBeGreaterThanOrEqual(20);
+      expect(a.iteration).toBeGreaterThanOrEqual(20);
       expect(a.views.length).toBeGreaterThanOrEqual(2);
       expect(fingerprint(a)).toBe(fingerprint(b));
       expect(fingerprint(a)).not.toBe(fingerprint(c));
@@ -53,13 +63,13 @@ describe('every Bionland model', () => {
   });
 });
 
-function grid(sim: Simulation, name = 'Bionland'): GridScape<BionTile> {
-  return sim.scape(name) as GridScape<BionTile>;
+function grid(root: RootScape, name = 'Bionland'): Array2D<BionTile> {
+  return root.findScape<BionTile>(name).space as Array2D<BionTile>;
 }
 
 describe('initial conditions', () => {
   const count = (model: Model, scape: string): number =>
-    new Simulation(model, { seed: 1 }).scape(scape).size;
+    new RootScape(model, { seed: 1 }).findScape(scape).size;
   const byName = (name: string): Model => family.models.find((m) => m.name === name) as Model;
 
   it('places 100 bions in Step A and Step B', () => {
@@ -78,14 +88,15 @@ describe('initial conditions', () => {
 
   it('keeps single occupancy and places every bion', () => {
     for (const model of family.models) {
-      const sim = run(model, 3, 15);
-      const lattice = sim.scapes.find((s) => s instanceof GridScape) as
-        GridScape<BionTile> | undefined;
+      const root = run(model, 3, 15);
+      const lattice = root.scapes.find((s) => s.space instanceof Array2D)?.space as
+        Array2D<BionTile> | undefined;
       if (!lattice) continue;
       for (const tile of lattice.members) expect(tile.occupants.length).toBeLessThanOrEqual(1);
-      for (const scape of sim.scapes) {
-        if (scape === lattice) continue;
-        for (const bion of scape.members) expect((bion as unknown as Loose)['cell']).toBeDefined();
+      for (const scape of root.scapes) {
+        if (scape === lattice.scape || scape.space.geometry === 'singleton') continue;
+        for (const bion of scape.members)
+          expect((bion as unknown as Loose)['hostCell']).toBeDefined();
       }
     }
   });
@@ -95,8 +106,8 @@ describe('energy', () => {
   it('keeps tile energy between 0 and 1', () => {
     for (const key of ['e', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'p', 'full'] as const) {
       const model = family.models.find((m) => m.name === stepConfigs[key].name) as Model;
-      const sim = run(model, 5, 60);
-      for (const tile of grid(sim, stepConfigs[key].territoryName).members) {
+      const root = run(model, 5, 60);
+      for (const tile of grid(root, stepConfigs[key].territoryName).members) {
         for (const e of tile.energy) {
           expect(e).toBeGreaterThanOrEqual(-1e-12);
           expect(e).toBeLessThanOrEqual(1 + 1e-12);
@@ -108,39 +119,39 @@ describe('energy', () => {
   it('conserves tile energy under diffusion without evaporation or bions leaving any', () => {
     for (const name of ['Bionland: Step J', 'Bionland: Step K', 'Bionland: Step L']) {
       const model = family.models.find((m) => m.name === name) as Model;
-      const sim = new Simulation(model, {
+      const root = new RootScape(model, {
         seed: 2,
         parameters: { bionEnergyLeakage: 0, bionEnergyConsumption: 0 },
       });
-      const lattice = grid(sim);
-      for (const tile of lattice.members) tile.energy[0] = sim.random.float();
+      const lattice = grid(root);
+      for (const tile of lattice.members) tile.energy[0] = root.random.float();
       const total = (): number => lattice.members.reduce((s, t) => s + (t.energy[0] as number), 0);
       const before = total();
-      sim.run(10);
+      root.run(10);
       expect(total()).toBeCloseTo(before, 8);
     }
   });
 
   it('evaporation drains Step K tile energy', () => {
     const model = family.models.find((m) => m.name === 'Bionland: Step K') as Model;
-    const sim = new Simulation(model, {
+    const root = new RootScape(model, {
       seed: 2,
       parameters: { bionEnergyLeakage: 0, bionEnergyConsumption: 0, evaporationRate: 0.1 },
     });
-    const lattice = grid(sim);
+    const lattice = grid(root);
     for (const tile of lattice.members) tile.energy[2] = 1;
-    sim.run(5);
+    root.run(5);
     for (const tile of lattice.members) expect(tile.energy[2]).toBeCloseTo(0.9 ** 5, 8);
   });
 
   it('lets bions in Step G split (here from a high start), bounded by the lattice', () => {
     const model = family.models.find((m) => m.name === 'Bionland: Step G') as Model;
-    const sim = new Simulation(model, { seed: 4, parameters: { initialStoredEnergy: 2.5 } });
-    const start = sim.scapes.slice(1).reduce((s, sc) => s + sc.size, 0);
+    const root = new RootScape(model, { seed: 4, parameters: { initialStoredEnergy: 2.5 } });
+    const start = root.scapes.slice(1).reduce((s, sc) => s + sc.size, 0);
     let changed = false;
     for (let i = 0; i < 20; i++) {
-      sim.step();
-      const total = sim.scapes.slice(1).reduce((s, sc) => s + sc.size, 0);
+      root.iterate();
+      const total = root.scapes.slice(1).reduce((s, sc) => s + sc.size, 0);
       expect(total).toBeLessThanOrEqual(625);
       if (total > start) changed = true;
     }
@@ -148,22 +159,22 @@ describe('energy', () => {
   });
 
   it("lets the full model's population change by fission and death", () => {
-    const sim = new Simulation(
+    const root = new RootScape(
       family.models.find((m) => m.name === 'Bionland: Full Model') as Model,
       { seed: 4 },
     );
-    const total = (): number => sim.scapes.slice(1).reduce((n, sc) => n + sc.size, 0);
+    const total = (): number => root.scapes.slice(1).reduce((n, sc) => n + sc.size, 0);
     const start = total();
-    sim.run(100);
+    root.run(100);
     expect(total()).not.toBe(start);
     expect(total()).toBeLessThanOrEqual(190);
   });
 
   it('stops the data runs at their legacy periods', () => {
     const model = family.models.find((m) => m.name === 'Bionland: Data Run (Full Model)') as Model;
-    expect(new Simulation(model, { seed: 1 }).run(1000)).toBe(50);
+    expect(new RootScape(model, { seed: 1 }).run(1000)).toBe(50);
     const o = family.models.find((m) => m.name === 'Bionland: Data Run O') as Model;
-    expect(new Simulation(o, { seed: 1 }).run(1000)).toBe(500);
+    expect(new RootScape(o, { seed: 1 }).run(1000)).toBe(500);
   });
 });
 
@@ -172,26 +183,25 @@ describe('movement rules', () => {
     width: number,
     height: number,
     kind: 'moore' | 'vonNeumann' = 'moore',
-  ): GridScape<BionTile> => {
-    const sim = new Simulation(
+  ): Array2D<BionTile> => {
+    const root = new RootScape(
       {
         name: 'T',
         parameters: {},
         build(s) {
-          s.addScape(
-            new GridScape<BionTile>({
+          s.add(
+            new Scape<BionTile>({
               name: 'g',
-              width,
-              height,
-              neighborhood: kind,
-              create: () => new BionTile(),
+              space: new (kind === 'vonNeumann' ? Array2DVonNeumann : Array2DMoore)(),
+              extent: [width, height],
+              prototypeAgent: () => new BionTile(),
             }),
           );
         },
       },
       { seed: 1 },
     );
-    return sim.scape('g') as GridScape<BionTile>;
+    return root.findScape<BionTile>('g').space as Array2D<BionTile>;
   };
 
   it('steps toward a target the short way round a torus', () => {
@@ -234,22 +244,27 @@ describe('movement rules', () => {
 describe('graph steps', () => {
   it('Step S starts with a ring, so every node has at least two links', () => {
     const model = family.models.find((m) => m.name === 'Bionland: Step S') as Model;
-    const sim = new Simulation(model, { seed: 3 });
-    expect(sim.data.latest('Links')).toBeGreaterThanOrEqual(100);
+    const root = new RootScape(model, { seed: 3 });
+    expect(root.data.latest('Links')).toBeGreaterThanOrEqual(100);
   });
 
   it('finds nearest, toward and away on a small path graph', () => {
-    const network = new Network<GraphNode>({ directed: true });
+    const network = new Graph<GraphNode>({ directed: true });
     let nodes: GraphNode[] = [];
-    const sim = new Simulation(
+    const root = new RootScape(
       {
         name: 'T',
         parameters: {},
         build(s) {
-          const scape = s.addScape(
-            new Scape<GraphNode>({ name: 'n', size: 5, create: () => new GraphNode() }),
+          const scape = s.add(
+            new Scape<GraphNode>({
+              name: 'n',
+              space: network,
+              size: 5,
+              prototypeAgent: () => new GraphNode(),
+            }),
           );
-          s.setup(() => {
+          s.add(new Scape({ name: 'links', space: new Singleton() })).addInitialRule('Link', () => {
             nodes = [...scape.members];
             // 0 - 1 - 2 - 3, and 4 on its own.
             for (let i = 0; i < 3; i++) {
@@ -261,7 +276,7 @@ describe('graph steps', () => {
       },
       { seed: 1 },
     );
-    const random = sim.random;
+    const random = root.random;
     const [n0, n1, n2, n3, n4] = nodes as [GraphNode, GraphNode, GraphNode, GraphNode, GraphNode];
     expect(pathLength(network, n0, n3)).toBe(3);
     expect(pathLength(network, n0, n0)).toBe(0);

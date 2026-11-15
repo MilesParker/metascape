@@ -5,7 +5,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import type { GridScape, Scape, Simulation } from '@metascape/engine';
+import type { Array2D, Scape, RootScape } from '@metascape/engine';
 import type { SugarAgent } from './agents';
 import type { SugarCell } from './cells';
 
@@ -40,11 +40,16 @@ export interface SpiceSettings {
  * lattice, the agent scape and a few values Java kept in static fields.
  */
 export class SugarscapeWorld {
-  readonly sim: Simulation;
+  readonly root: RootScape;
   readonly settings: SugarSettings;
   readonly spice: SpiceSettings | undefined;
-  /** The sugar lattice (`sugarscape` in the legacy code). Set by the builder. */
-  grid!: GridScape<SugarCell>;
+  /** The scape of sugar cells (`sugarscape` in the legacy code). Set by the builder. */
+  grid!: Scape<SugarCell>;
+
+  /** The lattice of the sugar cells. */
+  get lattice(): Array2D<SugarCell> {
+    return this.grid.space as Array2D<SugarCell>;
+  }
   /** The agent scape (`agents`). Set by the builder. */
   agents!: Scape<SugarAgent>;
   /** `PollutableSugarCell.maxPollution`: one value shared by all cells (a Java static). */
@@ -52,8 +57,8 @@ export class SugarscapeWorld {
   /** `CulturalSexualAgent.tagLength` (a Java static set by `GAS_III_6`). */
   tagLength = 0;
 
-  constructor(sim: Simulation, settings: SugarSettings, spice?: SpiceSettings) {
-    this.sim = sim;
+  constructor(root: RootScape, settings: SugarSettings, spice?: SpiceSettings) {
+    this.root = root;
     this.settings = settings;
     this.spice = spice;
     checkRange('vision', settings.minVision, settings.maxVision);

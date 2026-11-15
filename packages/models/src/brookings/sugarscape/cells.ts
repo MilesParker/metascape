@@ -5,7 +5,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, with revisions by Metascape LLC, and others.
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { Cell, type Rule } from '@metascape/engine';
+import { HostCell, type Rule } from '@metascape/engine';
 import { ascapeDiffusion, type Diffusable } from './ascape-space';
 import { CommoditySource, type SugarscapeWorld } from './world';
 
@@ -56,7 +56,7 @@ export function capacityAt(
 }
 
 /** `SugarCell`: a lattice site holding renewable sugar. */
-export class SugarCell extends Cell {
+export class SugarCell extends HostCell {
   readonly world: SugarscapeWorld;
   readonly sugar = new CommoditySource();
 
@@ -67,7 +67,7 @@ export class SugarCell extends Cell {
 
   /** Sets capacity from the two-peak map and fills the cell. */
   override initialize(): void {
-    const grid = this.world.grid;
+    const grid = this.world.lattice;
     this.sugar.capacity = capacityAt(
       this.x,
       this.y,
@@ -97,7 +97,7 @@ export class SpiceCell extends SugarCell {
 
   override initialize(): void {
     super.initialize();
-    const grid = this.world.grid;
+    const grid = this.world.lattice;
     this.spice.capacity = capacityAt(
       this.x,
       this.y,
@@ -205,9 +205,9 @@ export function pollutionDiffusionRule(): Rule<PollutableSugarCell> {
 
 /**
  * `SugarSeasonalGrowBackRule`: in "summer" the top half (y < 25) grows back one
- * unit per tick and the bottom half `epsilon`; in "winter" the reverse. The
+ * unit per period and the bottom half `epsilon`; in "winter" the reverse. The
  * season test is the legacy one: summer when the fractional part of
- * `iteration / (2 * seasonLength)` exceeds 0.5, so with length 50 ticks 1-50
+ * `iteration / (2 * seasonLength)` exceeds 0.5, so with length 50 periods 1-50
  * are winter in the top half.
  */
 export function sugarSeasonalGrowBackRule(
@@ -217,7 +217,7 @@ export function sugarSeasonalGrowBackRule(
   return {
     name: 'Sugar Grow Back Seasonally',
     execute(cell) {
-      const iter = cell.sim.tick;
+      const iter = cell.root.iteration;
       const period = seasonLength() * 2;
       const fraction = Math.fround(iter / period) - Math.trunc(iter / period);
       const top = cell.y < 25;

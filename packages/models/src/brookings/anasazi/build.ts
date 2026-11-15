@@ -13,18 +13,21 @@
  */
 import {
   Agent,
-  GridScape,
-  Scape,
+  type Array2D,
+  Array2DMoore,
+  type CellOccupant,
+  type Color,
+  colors,
   gridView,
   int,
   mix,
-  real,
-  timeSeriesView,
-  colors,
-  type Color,
-  type Occupant,
   type ParameterSchema,
-  type Simulation,
+  real,
+  type RootScape,
+  Scape,
+  Singleton,
+  stat,
+  timeSeriesView,
 } from '@metascape/engine';
 import { EARLIEST_YEAR, LATEST_YEAR, VALLEY_HEIGHT, VALLEY_WIDTH } from './data/decode';
 import {
@@ -289,50 +292,55 @@ export interface BuildOptions {
 }
 
 /**
- * Builds the Long House Valley world on a simulation. Scapes step in the
+ * Builds the Long House Valley world on a root scape. Scapes step in the
  * legacy order: the environment (set this year's climate and yields), the
  * valley, historic sites, settlements, households, then people.
  */
 export function buildLongHouseValley<S extends ParameterSchema>(
-  sim: Simulation<S>,
+  root: RootScape<S>,
   options: BuildOptions,
 ): LongHouseValley {
-  const p = sim.parameters as unknown as AnasaziParameters;
-  const base = sim as unknown as Simulation;
+  const p = root.parameters as unknown as AnasaziParameters;
+  const base = root as unknown as RootScape;
   const world = new LongHouseValley(base);
 
-  const environment = sim.addScape(
-    new Scape<Agent>({ name: 'environment', size: 1, create: () => new Agent() }),
+  const environment = root.add(
+    new Scape<Agent>({ name: 'environment', size: 1, prototypeAgent: () => new Agent() }),
   );
   environment.addRule('set environment and yields', () => {
     world.clearCounts();
     world.updateEnvironment();
   });
 
-  const valley = sim.addScape(
-    new GridScape<Location>({
+  const valley = root.add(
+    new Scape<Location>({
       name: 'valley',
-      width: VALLEY_WIDTH,
-      height: VALLEY_HEIGHT,
-      wrap: false,
-      neighborhood: 'moore',
-      multiOccupancy: true,
-      create: (x, y) => new Location(world, x, y),
+      space: new Array2DMoore<Location>({ multiOccupancy: true }),
+      extent: [VALLEY_WIDTH, VALLEY_HEIGHT],
+      periodic: false,
+      prototypeAgent: (index) => {
+        const x = index % VALLEY_WIDTH;
+        const y = Math.floor(index / VALLEY_WIDTH);
+        return new Location(world, x, y);
+      },
     }),
   );
-  world.grid = valley;
+  world.grid = valley.space as Array2D<Location>;
 
   const sites = world.historicSiteCells();
-  sim.addScape(
+  root.add(
     new Scape<HistoricSite>({
       name: 'historic sites',
       size: sites.length,
-      create: (i) => new HistoricSite(world, sites[i]![0], sites[i]![1]),
+      prototypeAgent: (i) => new HistoricSite(world, sites[i]![0], sites[i]![1]),
     }),
   );
 
-  const settlements = sim.addScape(
-    new Scape<Settlement>({ name: 'settlements', create: () => new Settlement() }),
+  const settlements = root.add(
+    new Scape<Settlement>({
+      name: 'settlements',
+      prototypeAgent: () => new Settlement(),
+    }),
   );
   world.settlementScape = settlements;
 
@@ -341,7 +349,7 @@ export function buildLongHouseValley<S extends ParameterSchema>(
     world,
     // Read when used, so a change during the run takes effect.
     get parameters() {
-      return sim.parameters as unknown as AnasaziParameters;
+      return root.parameters as unknown as AnasaziParameters;
     },
     households: () => scapes.households!,
     people: () => {
@@ -359,11 +367,11 @@ export function buildLongHouseValley<S extends ParameterSchema>(
         return new HouseholdDisaggregate(context);
     }
   };
-  const households = sim.addScape(
+  const households = root.add(
     new Scape<HouseholdBase>({
       name: 'households',
       size: world.historicHouseholds(p.startYear),
-      create,
+      prototypeAgent: create,
     }),
   );
   scapes.households = households;
@@ -378,8 +386,8 @@ export function buildLongHouseValley<S extends ParameterSchema>(
   if (options.households === 'disaggregate') {
     households.addRule('metabolism (again)', (h) => h.metabolism());
     households.addRule('movement (again)', (h) => h.movement());
-    const people = sim.addScape(
-      new Scape<Person>({ name: 'people', create: () => new Person(context) }),
+    const people = root.add(
+      new Scape<Person>({ name: 'people', prototypeAgent: () => new Person(context) }),
     );
     scapes.people = people;
     people.addRule('metabolism', (person) => person.metabolism());
@@ -392,67 +400,81 @@ export function buildLongHouseValley<S extends ParameterSchema>(
   // environment, then each household (in random order) is forced to move; a
   // disaggregated household moves twice (the duplicated Force Move rule) and
   // then creates its members (Create Scape).
-  sim.setup(() => {
-    world.updateEnvironment();
-    const order = households.random.shuffle([...households.members]);
-    for (const household of order) {
-      if (!household.alive) continue;
-      household.move();
-      if (household instanceof HouseholdDisaggregate) {
-        if (household.alive) household.move();
-        if (household.alive) household.createMembers();
+  // The valley as a whole, after every other scape: its set-up, and the end of the run.
+  const whole = root.add(new Scape({ name: 'Valley', space: new Singleton() }));
+  whole.addInitialRule(
+    'Set up',
+    () => {
+      world.updateEnvironment();
+      const order = households.random.shuffle([...households.members]);
+      for (const household of order) {
+        if (!household.alive) continue;
+        household.move();
+        if (household instanceof HouseholdDisaggregate) {
+          if (household.alive) household.move();
+          if (household.alive) household.createMembers();
+        }
       }
-    }
-  });
-
-  sim.observe({
-    stepped: () => {
-      const { stopYear } = sim.parameters as unknown as AnasaziParameters;
-      if (world.year >= stopYear) sim.stop(`reached the stop year ${stopYear}`);
     },
-  });
+    { randomExecution: false },
+  );
+  whole.addRule(
+    'Stop at the stop year',
+    () => {
+      const { stopYear } = root.parameters as unknown as AnasaziParameters;
+      if (world.year >= stopYear) root.stop(`reached the stop year ${stopYear}`);
+    },
+    { randomExecution: false, causesRemoval: false },
+  );
 
-  recordSeries(sim, world, households, settlements, scapes.people, options);
-  addViews(sim, valley, options);
+  recordSeries(root, world, households, settlements, scapes.people, options);
+  addViews(root, valley, options);
   return world;
 }
 
 function recordSeries<S extends ParameterSchema>(
-  sim: Simulation<S>,
+  root: RootScape<S>,
   world: LongHouseValley,
   households: Scape<HouseholdBase>,
   settlements: Scape<Settlement>,
   people: Scape<Person> | undefined,
   options: BuildOptions,
 ): void {
-  const data = sim.data;
-  data.value('year', () => world.year);
-  data.count(households, 'households');
-  data.value('historicHouseholds', () => world.historicHouseholds());
-  data.value('difference', () => households.size - world.historicHouseholds());
-  data.count(settlements, 'settlements');
-  data.value('historicSettlements', () => world.extantHistoricSettlements());
-  data.measure(households, 'farmsPerHousehold', (h) => h.farms.length, {
-    statistics: ['mean', 'max'],
-  });
-  data.value('movements', () => world.counts.movements);
-  data.value('fissions', () => world.counts.fissions);
-  data.value('departures', () => world.counts.departures);
+  root.addStatCollector(stat.value('year', () => world.year));
+  households.addStatCollector(stat.count('households'));
+  root.addStatCollector(stat.value('historicHouseholds', () => world.historicHouseholds()));
+  root.addStatCollector(
+    stat.value('difference', () => households.size - world.historicHouseholds()),
+  );
+  settlements.addStatCollector(stat.count('settlements'));
+  root.addStatCollector(stat.value('historicSettlements', () => world.extantHistoricSettlements()));
+  households.addStatCollector(
+    stat.measure('farmsPerHousehold', (h) => h.farms.length, {
+      statistics: ['mean', 'max'],
+    }),
+  );
+  root.addStatCollector(stat.value('movements', () => world.counts.movements));
+  root.addStatCollector(stat.value('fissions', () => world.counts.fissions));
+  root.addStatCollector(stat.value('departures', () => world.counts.departures));
   if (options.households === 'disaggregate' && people) {
-    data.count(people, 'people');
-    data.measure(households, 'householdSize', (h) => (h as HouseholdDisaggregate).members.length, {
-      statistics: ['mean', 'min', 'max'],
-    });
-    data.value('births', () => world.counts.births);
-    data.value('deaths', () => world.counts.deaths);
-    data.value('householdsFormed', () => world.counts.householdsFormed);
-    data.value('householdsDisbanded', () => world.counts.householdsDisbanded);
+    people.addStatCollector(stat.count('people'));
+    households.addStatCollector(
+      stat.measure('householdSize', (h) => (h as HouseholdDisaggregate).members.length, {
+        statistics: ['mean', 'min', 'max'],
+      }),
+    );
+    root.addStatCollector(stat.value('births', () => world.counts.births));
+    root.addStatCollector(stat.value('deaths', () => world.counts.deaths));
+    root.addStatCollector(stat.value('householdsFormed', () => world.counts.householdsFormed));
+    root.addStatCollector(
+      stat.value('householdsDisbanded', () => world.counts.householdsDisbanded),
+    );
     for (const clan of CLANS) {
-      data.count(households, clanSeries(clan.index), (h) => h.clan === clan);
+      households.addStatCollector(stat.count(clanSeries(clan.index), (h) => h.clan === clan));
     }
   } else {
-    data.value('deathsStarvation', () => world.counts.deathsStarvation);
-    data.value('deathsOldAge', () => world.counts.deathsOldAge);
+    root.addStatCollector(stat.value('deathsStarvation', () => world.counts.deathsStarvation));
+    root.addStatCollector(stat.value('deathsOldAge', () => world.counts.deathsOldAge));
   }
 }
 
@@ -462,8 +484,8 @@ export function clanSeries(index: number): string {
 }
 
 function addViews<S extends ParameterSchema>(
-  sim: Simulation<S>,
-  valley: GridScape<Location>,
+  root: RootScape<S>,
+  valley: Scape<Location>,
   options: BuildOptions,
 ): void {
   const offMap = (location: Location): boolean =>
@@ -474,10 +496,10 @@ function addViews<S extends ParameterSchema>(
     return undefined;
   };
   const clanOutline = options.clanViews === true;
-  sim.addView(
-    gridView<Location, Occupant<Location>>({
-      title: 'Long House Valley: simulation',
-      grid: valley,
+  root.addView(
+    gridView<Location, CellOccupant<Location>>({
+      title: 'Long House Valley: model',
+      scape: valley,
       legend: [
         { color: AWT.black, label: 'Settlement, under 5 households', mark: 'agent' },
         { color: AWT.green, label: 'Settlement, 5 to 19 households', mark: 'agent' },
@@ -506,10 +528,10 @@ function addViews<S extends ParameterSchema>(
       occupantShape: 'circle',
     }),
   );
-  sim.addView(
-    gridView<Location, Occupant<Location>>({
+  root.addView(
+    gridView<Location, CellOccupant<Location>>({
       title: 'Long House Valley: history',
-      grid: valley,
+      scape: valley,
       legend: [
         { color: AWT.black, label: 'Historic settlement, under 5 households', mark: 'agent' },
         { color: AWT.green, label: 'Historic settlement, 5 to 19 households', mark: 'agent' },
@@ -531,16 +553,16 @@ function addViews<S extends ParameterSchema>(
       occupantShape: 'circle',
     }),
   );
-  sim.addView(
+  root.addView(
     timeSeriesView({
-      title: 'Households: simulated and historical',
+      title: 'Households: modelled and historical',
       series: ['historicHouseholds', 'households'],
       colors: { historicHouseholds: colors.red, households: colors.blue },
       yMin: 0,
     }),
   );
   if (options.households === 'disaggregate') {
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'People',
         series: ['people'],
@@ -551,7 +573,7 @@ function addViews<S extends ParameterSchema>(
   }
   if (clanOutline) {
     const series = CLANS.map((clan) => clanSeries(clan.index));
-    sim.addView(
+    root.addView(
       timeSeriesView({
         title: 'Households by clan',
         series,

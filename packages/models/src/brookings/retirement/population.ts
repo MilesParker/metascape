@@ -65,7 +65,7 @@ export const population = defineModel({
     note: 'Implemented in Java by Miles Parker from a C++ model by Robert Axtell. Execution is by rule, as in the legacy model.',
   },
   parameters: networkParameters,
-  build(sim) {
-    buildPopulation(sim, sim.parameters, 'random-by-age');
+  build(root) {
+    buildPopulation(root, root.parameters, 'random-by-age');
   },
 });

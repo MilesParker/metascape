@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { runExperiment, Simulation, type Model, type Scape } from '@metascape/engine';
+import { type Model, RootScape, runExperiment, type Scape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { SpiceAgent, type SugarAgent } from './agents';
 import { UNIQUE_SERIES } from './ascape-space';
@@ -21,19 +21,19 @@ import { family } from './index';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- models differ in their schemas
 type AnyModel = Model<any>;
 
-function cells(sim: Simulation): SugarCell[] {
-  return sim.scapes[0]!.members as SugarCell[];
+function cells(root: RootScape): SugarCell[] {
+  return root.scapes[0]!.members as SugarCell[];
 }
 
-function agents(sim: Simulation): readonly SugarAgent[] {
-  return (sim.scapes[1] as Scape<SugarAgent>).members;
+function agents(root: RootScape): readonly SugarAgent[] {
+  return (root.scapes[1] as Scape<SugarAgent>).members;
 }
 
-function expectSingleOccupancy(sim: Simulation): void {
-  for (const cell of cells(sim)) expect(cell.occupants.length).toBeLessThanOrEqual(1);
-  for (const agent of agents(sim)) {
-    expect(agent.cell).toBeDefined();
-    expect(agent.cell!.occupant).toBe(agent);
+function expectSingleOccupancy(root: RootScape): void {
+  for (const cell of cells(root)) expect(cell.occupants.length).toBeLessThanOrEqual(1);
+  for (const agent of agents(root)) {
+    expect(agent.hostCell).toBeDefined();
+    expect(agent.hostCell!.occupant).toBe(agent);
   }
 }
 
@@ -69,17 +69,17 @@ describe('every model', () => {
   });
 
   it.each(family.models.map((m) => [m.name, m] as const))(
-    '%s builds, runs 20 ticks and keeps one agent per cell',
+    '%s builds, runs 20 periods and keeps one agent per cell',
     (_name, model: AnyModel) => {
-      const sim = new Simulation(model, { seed: 7, parameters: { initialPopulation: 200 } });
-      sim.run(20);
-      expect(sim.tick).toBe(20);
-      expectSingleOccupancy(sim);
-      for (const cell of cells(sim)) {
+      const root = new RootScape(model, { seed: 7, parameters: { initialPopulation: 200 } });
+      root.run(20);
+      expect(root.iteration).toBe(20);
+      expectSingleOccupancy(root);
+      for (const cell of cells(root)) {
         expect(cell.sugar.quantity).toBeGreaterThanOrEqual(0);
         expect(cell.sugar.quantity).toBeLessThanOrEqual(cell.sugar.capacity);
       }
-      expect(sim.views.length).toBeGreaterThanOrEqual(2);
+      expect(root.allViews.length).toBeGreaterThanOrEqual(2);
     },
   );
 });
@@ -89,9 +89,9 @@ describe('determinism', () => {
     '%s repeats with a seed and differs with another',
     (_name, model: AnyModel) => {
       const run = (seed: number): string => {
-        const sim = new Simulation(model, { seed, parameters: { initialPopulation: 150 } });
-        sim.run(25);
-        return sim.data.toCSV();
+        const root = new RootScape(model, { seed, parameters: { initialPopulation: 150 } });
+        root.run(25);
+        return root.data.toCSV();
       };
       expect(run(1)).toBe(run(1));
       expect(run(1)).not.toBe(run(2));
@@ -100,13 +100,13 @@ describe('determinism', () => {
 });
 
 describe('rules', () => {
-  it('II-1 and II-2: population never grows and no starving agent survives a tick', () => {
+  it('II-1 and II-2: population never grows and no starving agent survives a period', () => {
     for (const model of [gasII1, gasII2]) {
-      const sim = new Simulation(model, { seed: 3 });
-      let previous = agents(sim).length;
+      const root = new RootScape(model, { seed: 3 });
+      let previous = agents(root).length;
       for (let t = 0; t < 30; t++) {
-        sim.step();
-        const now = agents(sim);
+        root.iterate();
+        const now = agents(root);
         expect(now.length).toBeLessThanOrEqual(previous);
         for (const agent of now) expect(agent.sugar.stock).toBeGreaterThan(0);
         previous = now.length;
@@ -115,74 +115,74 @@ describe('rules', () => {
   });
 
   it('II-2: the population falls towards the carrying capacity and settles', () => {
-    const sim = new Simulation(gasII2, { seed: 11 });
-    sim.run(100);
-    const at100 = sim.data.latest('population');
-    sim.run(50);
-    const at150 = sim.data.latest('population');
+    const root = new RootScape(gasII2, { seed: 11 });
+    root.run(100);
+    const at100 = root.data.latest('population');
+    root.run(50);
+    const at150 = root.data.latest('population');
     expect(at100).toBeLessThan(400);
     expect(at100).toBeGreaterThan(50);
     expect(Math.abs(at150 - at100)).toBeLessThan(0.1 * at100);
   });
 
   it('II-6: starts in the corner, sees far, and stops at period 50', () => {
-    const sim = new Simulation(gasII6, { seed: 5 });
-    const inCorner = agents(sim).filter((a) => a.cell!.x < 20 && a.cell!.y >= 30).length;
+    const root = new RootScape(gasII6, { seed: 5 });
+    const inCorner = agents(root).filter((a) => a.hostCell!.x < 20 && a.hostCell!.y >= 30).length;
     expect(inCorner).toBeGreaterThan(300);
-    for (const agent of agents(sim)) expect(agent.vision).toBeGreaterThanOrEqual(6);
-    sim.run(100);
-    expect(sim.tick).toBe(50);
-    expect(sim.stopped).toBe(true);
+    for (const agent of agents(root)) expect(agent.vision).toBeGreaterThanOrEqual(6);
+    root.run(100);
+    expect(root.iteration).toBe(50);
+    expect(root.stopped).toBe(true);
   });
 
   it('II-7: the top half regrows slowly in winter and fully in summer', () => {
-    const sim = new Simulation(gasII7, { seed: 2, parameters: { initialPopulation: 0 } });
+    const root = new RootScape(gasII7, { seed: 2, parameters: { initialPopulation: 0 } });
     const top = (): number =>
-      cells(sim)
+      cells(root)
         .filter((c) => c.y < 25)
         .reduce((sum, c) => sum + c.sugar.capacity - c.sugar.quantity, 0);
-    for (const cell of cells(sim)) cell.sugar.quantity = 0;
-    sim.run(4); // winter: top grows 0.125 a tick
-    for (const cell of cells(sim).filter((c) => c.y < 25 && c.sugar.capacity > 0)) {
+    for (const cell of cells(root)) cell.sugar.quantity = 0;
+    root.run(4); // winter: top grows 0.125 a period
+    for (const cell of cells(root).filter((c) => c.y < 25 && c.sugar.capacity > 0)) {
       expect(cell.sugar.quantity).toBeCloseTo(0.5);
     }
-    sim.run(60); // into summer (ticks 51..100)
+    root.run(60); // into summer (periods 51..100)
     expect(top()).toBe(0);
   });
 
   it('II-8: pollution accumulates and diffuses', () => {
-    const sim = new Simulation(gasII8, { seed: 4 });
-    sim.run(10);
-    expect(sim.data.latest('pollution.sum')).toBeGreaterThan(0);
+    const root = new RootScape(gasII8, { seed: 4 });
+    root.run(10);
+    expect(root.data.latest('pollution.sum')).toBeGreaterThan(0);
   });
 
   it('III-2: agents are born and children start at age 0', () => {
-    const sim = new Simulation(gasIII2, { seed: 9 });
-    const firstIds = new Set(agents(sim).map((a) => a.id));
-    sim.run(40);
-    const children = agents(sim).filter((a) => !firstIds.has(a.id));
+    const root = new RootScape(gasIII2, { seed: 9 });
+    const firstIds = new Set(agents(root).map((a) => a.id));
+    root.run(40);
+    const children = agents(root).filter((a) => !firstIds.has(a.id));
     expect(children.length).toBeGreaterThan(0);
     for (const child of children) expect(child.age).toBeLessThanOrEqual(40);
   });
 
   it('III-6: cultural tags have 11 bits and both groups are counted', () => {
-    const sim = new Simulation(gasIII6, { seed: 6 });
-    sim.run(20);
-    expect(sim.data.latest('blue') + sim.data.latest('red')).toBe(sim.data.latest('population'));
+    const root = new RootScape(gasIII6, { seed: 6 });
+    root.run(20);
+    expect(root.data.latest('blue') + root.data.latest('red')).toBe(root.data.latest('population'));
   });
 
   it('IV-a and IV-c: neighbors trade', () => {
     for (const model of [gasIVa, gasIVc]) {
-      const sim = new Simulation(model, { seed: 8 });
-      sim.run(10);
-      const trades = sim.data.values('trades');
+      const root = new RootScape(model, { seed: 8 });
+      root.run(10);
+      const trades = root.data.values('trades');
       expect(trades.reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
     }
   });
 
   it('an executed exchange conserves sugar and spice between the two parties', () => {
-    const sim = new Simulation(gasIVa, { seed: 12 });
-    const [a, b] = agents(sim) as SpiceAgent[];
+    const root = new RootScape(gasIVa, { seed: 12 });
+    const [a, b] = agents(root) as SpiceAgent[];
     a!.sugar.stock = 20;
     a!.spice.stock = 2;
     b!.sugar.stock = 2;
@@ -199,11 +199,11 @@ describe('batch harnesses', () => {
     expect(sugarscapeBatches).toHaveLength(10);
     const rows = runExperiment(multipleGasII2.model, {
       ...multipleGasII2.design,
-      maxTicks: 5,
+      maxIterations: 5,
       parameters: { initialPopulation: [100] },
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.ticks).toBe(5);
+    expect(rows[0]!.iterations).toBe(5);
     expect(typeof rows[0]!['population']).toBe('number');
   });
 });
