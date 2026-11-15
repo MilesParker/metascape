@@ -218,10 +218,10 @@ export function buildPopulation(
   grid.addRule('Iterate', (person) => person.iterate());
 
   // Legacy `scapeIterated`: the youngest row moves up by one once each iteration's statistics
-  // are collected. The ages the statistics record depend on it, so it stays a scape listener,
+  // are collected. The ages the statistics record depend on it, so it is the root's self view,
   // as in Ascape, rather than a rule executed before the statistics.
   const height = (grid.space as Array2D<Person>).height;
-  root.addScapeListener({
+  root.setSelfView({
     scapeIterated() {
       state.youngestRow = state.youngestRow > 0 ? state.youngestRow - 1 : height - 1;
     },

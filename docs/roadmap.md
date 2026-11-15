@@ -54,13 +54,6 @@ second user appears.
 - **Graphs with Ascape semantics:** ordered neighbour lists that allow repeats, clearing both
   directions (`amp/markets/markets.ts`); breadth-first search over a `Graph`
   (`ascape/bionland/graph.ts`).
-- **Per-rule random order with one tour.** Rules now say whether they need a random order
-  (`randomExecution`), but a scape draws one tour per iteration for all its rules, where Ascape
-  reshuffles for each random rule when executing by rule. The coordination game keeps its own
-  scheduling scape for that (`brookings/coordination-game/coordination-game.ts`).
-- **Initial rules run for agents added mid-run.** Several families put start-up logic in an
-  initial rule of a scape with a `Singleton` space to avoid this; consider a scape option to run
-  initial rules only at start.
 - **Views:** a grid view cannot draw a network over the lattice (Sugarscape II-5); a continuous
   view takes one scape and cannot hide agents; there is no rotating view (Retirement); grid views
   use the first occupant's shape. One-row lattices (Norms, Bionland's strips) are now drawn as
@@ -72,9 +65,6 @@ second user appears.
 The engine now follows the three abstractions of Parker (2001); see `docs/architecture.md`. Every
 model gives the numbers it gave before, checked run by run against the old engine.
 
-- **End-of-period work after statistics.** Civil Violence and Retirement adjust state once each
-  period's statistics are collected, as their legacy models did in `scapeIterated`; they use a
-  root scape listener for it. A rule cannot run at that moment.
 - **Ported structure kept for faithful numbers.** Regional epidemic cities are agents beside
   their map and people scapes rather than scapes standing on the regional map, and Sugarscape's
   rule M, Boids and Schelling read their space directly, because changing either would change

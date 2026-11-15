@@ -21,7 +21,6 @@ import {
   rgb,
   type RootScape,
   Scape,
-  Singleton,
   stat,
   timeSeriesView,
 } from '@metascape/engine';
@@ -212,6 +211,8 @@ export function buildCivilViolence(
     new Scape<Citizen>({
       name: 'people',
       size: Math.trunc(sites * s.initialPopulationDensity),
+      // Citizens cloned during the run are placed by their parent, not moved at random.
+      initialRulesAtStartOnly: true,
       prototypeAgent: () => (intergroup ? new CitizenBlueGreen(world) : new Citizen(world)),
     }),
   );
@@ -236,21 +237,16 @@ export function buildCivilViolence(
       name: 'cops',
       size: Math.trunc(sites * s.initialCopDensity),
       prototypeAgent: () => new Cop(world),
+      initialRulesAtStartOnly: true,
     }),
   );
   cops.addRule('Patrol', (c) => c.patrol());
   cops.addRule('Random Walk', (c) => c.randomWalk());
 
-  // Legacy initial rule "move to random location", people first, then cops. A rule of the
-  // model as a whole rather than of each scape, so that cloned citizens are not re-placed.
-  root.add(new Scape({ name: 'Placement', space: new Singleton() })).addInitialRule(
-    'Move to random location',
-    () => {
-      for (const c of people.members) c.moveToRandomLocation();
-      for (const c of cops.members) c.moveToRandomLocation();
-    },
-    { randomExecution: false },
-  );
+  // Legacy initial rule "move to random location", people first, then cops.
+  const place = { randomExecution: false } as const;
+  people.addInitialRule('Move to random location', (c) => c.moveToRandomLocation(), place);
+  cops.addInitialRule('Move to random location', (c) => c.moveToRandomLocation(), place);
 
   const matchTargetCopDensity = (): void => {
     const target = (): number => Math.trunc(world.targetCopDensity * sites);
@@ -305,7 +301,7 @@ export function buildCivilViolence(
   if (intergroup) declareGroupData(root, world, people);
 
   // The legacy model's `scapeIterated`: once each iteration's statistics are collected.
-  root.addScapeListener({
+  root.setSelfView({
     scapeIterated: () => {
       matchTargetCopDensity();
       variant.afterIteration?.(world, root.iteration);

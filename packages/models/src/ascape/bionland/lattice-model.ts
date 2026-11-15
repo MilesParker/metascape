@@ -455,22 +455,15 @@ function buildLattice(root: RootScape, config: LatticeConfig): void {
     });
   }
 
-  // Ascape's initial rule MOVE_RANDOM_LOCATION_RULE. It is run once from here, not as an
-  // initial rule, because bions born later by fission must not be moved to a random tile.
-  const whole = root.add(new Scape({ name: 'Placement', space: new Singleton() }));
-  whole.addInitialRule(
-    'Move to random location',
-    () => {
-      for (const scape of scapes) {
-        for (const bion of scape.random.shuffle([...scape.members])) {
-          const home = grid.findRandom((cell) => cell.isAvailable);
-          if (home) bion.moveTo(home);
-          else bion.die();
-        }
-      }
-    },
-    { randomExecution: false },
-  );
+  // Ascape's initial rule MOVE_RANDOM_LOCATION_RULE, in a random order. Only at the start
+  // (see `bionScape`): bions born later by fission must not be moved to a random tile.
+  for (const scape of scapes) {
+    scape.addInitialRule('Move to random location', (bion) => {
+      const home = grid.findRandom((cell) => cell.isAvailable);
+      if (home) bion.moveTo(home);
+      else bion.die();
+    });
+  }
 
   // Statistics and charts.
   const names = config.species === 'one' ? ['Bions'] : [...SPECIES];
@@ -521,7 +514,7 @@ function buildLattice(root: RootScape, config: LatticeConfig): void {
 
   if (config.stopPeriod !== undefined) {
     const stopPeriod = config.stopPeriod;
-    whole.addRule(
+    root.add(new Scape({ name: 'Stop period', space: new Singleton() })).addRule(
       'Stop at period',
       () => {
         if (root.iteration >= stopPeriod) root.stop(`legacy stop period ${stopPeriod} reached`);
@@ -534,7 +527,12 @@ function buildLattice(root: RootScape, config: LatticeConfig): void {
 /** A scape of bions of one species and the rules it follows, in Ascape's rule-list order. */
 function bionScape(world: LatticeWorld, name: string, species: number, size: number): Scape<Bion> {
   const { config } = world;
-  const scape = new Scape<Bion>({ name, size, prototypeAgent: () => new Bion(species, world) });
+  const scape = new Scape<Bion>({
+    name,
+    size,
+    prototypeAgent: () => new Bion(species, world),
+    initialRulesAtStartOnly: true,
+  });
   const rules: Rule<Bion>[] = [];
   const add = (ruleName: string, execute: (b: Bion) => void): void => {
     rules.push({ name: ruleName, execute });

@@ -48,11 +48,26 @@ export interface ScapeOptions<A extends Agent> {
    * A scape with a {@link Singleton} space always uses its parent's.
    */
   readonly randomStream?: 'own' | 'parent';
+  /**
+   * When executing by rule, whether each rule that needs a random order gets
+   * a fresh one, as in Ascape's `Scape.execute(rules, agents)`; the other
+   * rules visit the members in order of joining. Default false: one order is
+   * drawn per iteration for all the rules, as Ascape's execution strategies
+   * do. Ignored when executing by agent.
+   */
+  readonly randomOrderPerRule?: boolean;
+  /**
+   * Whether the initial rules run only on the initial population. Default
+   * false: as in Ascape, an agent added while the model runs is given the
+   * initial rules too.
+   */
+  readonly initialRulesAtStartOnly?: boolean;
 }
 
 /**
- * Hears what happens to a scape. For the run time and for views: a model
- * behaves through rules, never through listeners.
+ * Hears what happens to a scape. For the run time and for views; work a
+ * scape does itself once a period's statistics are collected belongs in its
+ * self view (see {@link Scape.setSelfView}).
  */
 export interface ScapeListener {
   /** The initial population exists, initial rules have run and statistics are collected. */
@@ -93,6 +108,10 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
   executionOrder: ExecutionOrder;
   executionStyle: ExecutionStyle;
   agentsPerIteration: number | undefined;
+  /** See {@link ScapeOptions.randomOrderPerRule}. */
+  randomOrderPerRule: boolean;
+  /** See {@link ScapeOptions.initialRulesAtStartOnly}. */
+  readonly initialRulesAtStartOnly: boolean;
 
   readonly prototypeAgent: ((index: number) => A) | undefined;
 
@@ -100,6 +119,7 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
   #dead = 0;
   readonly #memberScapes: Scape[] = [];
   readonly #listeners: ScapeListener[] = [];
+  #selfView: ScapeListener | undefined;
   readonly #single: boolean;
   readonly #sharesRandom: boolean;
   #root: RootScape | undefined;
@@ -115,6 +135,8 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
     this.executionOrder = options.executionOrder ?? 'byAgent';
     this.executionStyle = options.executionStyle ?? 'completeTour';
     this.agentsPerIteration = options.agentsPerIteration;
+    this.randomOrderPerRule = options.randomOrderPerRule ?? false;
+    this.initialRulesAtStartOnly = options.initialRulesAtStartOnly ?? false;
     this.space = options.space ?? new ListSpace<A>();
     this.space.attach(this, {
       extent: options.extent,
@@ -250,8 +272,21 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
     };
   }
 
-  /** Tells this scape's listeners of an event. Called by the model. */
+  /**
+   * Makes the scape a view of itself, as Ascape's `createSelfView`: the scape
+   * hears its own events before any other listener does. This is where a
+   * scape does work once each period's statistics are collected, as an
+   * Ascape model does in `scapeIterated`. A scape has one self view; setting
+   * another replaces it.
+   */
+  setSelfView(view: ScapeListener | undefined): this {
+    this.#selfView = view;
+    return this;
+  }
+
+  /** Tells this scape's self view, then its listeners, of an event. Called by the model. */
   notifyListeners(event: keyof ScapeListener): void {
+    this.#selfView?.[event]?.(this);
     for (const listener of [...this.#listeners]) listener[event]?.(this);
   }
 
@@ -261,7 +296,8 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
    * By default this scape becomes the agent's parent: its behavioural
    * context, the scape `agent.scape` names and whose random stream the agent
    * uses. Once the scape is initialized, the agent is initialized and given
-   * the initial rules straight away.
+   * the initial rules straight away, unless the scape runs them only at the
+   * start.
    *
    * With `isParent` false, an agent that already lives in another scape also
    * becomes a member of this one: it takes part in this scape's rules,
@@ -293,10 +329,11 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
     if (this.#initialized) {
       if (agent instanceof Scape) raise(agent as Scape);
       agent.initialize();
-      for (const rule of this.initialRules) {
-        if (!agent.alive) break;
-        runRule(rule, agent);
-      }
+      if (!this.initialRulesAtStartOnly)
+        for (const rule of this.initialRules) {
+          if (!agent.alive) break;
+          runRule(rule, agent);
+        }
     }
     return agent;
   }
@@ -406,10 +443,26 @@ export class Scape<A extends Agent = Agent> extends CellOccupant implements Iter
   executeOnMembers(): void {
     const rules = this.rules.filter((entry) => entry.enabled).map((entry) => entry.rule);
     if (rules.length === 0) return;
-    const agents = this.#tour(rules, false);
+    const perRule = this.executionOrder === 'byRule' && this.randomOrderPerRule;
+    // With an order per rule, the tour itself is drawn at random only to choose some of the members.
+    const agents = this.#tour(perRule ? [] : rules, false);
     const self = this as unknown as Scape<Agent>;
     // Only rules that may remove agents make it necessary to check membership as the tour goes.
     const check = !this.#single && rules.some((rule) => rule.causesRemoval !== false);
+
+    if (perRule) {
+      // As Ascape's `Scape.execute(rules, agents)`: each rule, and its update, in an order of its own.
+      const visit = (rule: Rule<A>, act: (agent: A) => void): void => {
+        const order = rule.randomExecution !== false ? this.random.shuffle([...agents]) : agents;
+        for (const agent of order) if (!check || isMember(agent, self)) act(agent);
+      };
+      for (const rule of rules) {
+        visit(rule, (agent) => rule.execute(agent));
+        const update = rule.update;
+        if (update) visit(rule, (agent) => update.call(rule, agent));
+      }
+      return;
+    }
 
     if (this.executionOrder === 'byAgent') {
       for (const agent of agents) {

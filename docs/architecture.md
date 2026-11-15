@@ -71,9 +71,13 @@ walks a Moore lattice, a von Neumann lattice or a graph of cells.
 only through rules (`addRule`) and initial rules (`addInitialRule`) of its scapes. A behaviour
 of the model as a whole, such as wiring a network after every agent exists or stopping once a
 condition holds, is a rule of a scape with a `Singleton` space, whose only member is itself, or
-a rule of the root, which is iterated across the root's scapes. Listeners
-(`addScapeListener`) are for the run time and for views, and for the few ported models whose
-Ascape originals change state in `scapeIterated`, after each period's statistics.
+a rule of the root, which is iterated across the root's scapes.
+
+Work a scape does once each period's statistics are collected, which an Ascape model does in
+its `scapeIterated`, goes in the scape's self view (`setSelfView`), as Ascape's
+`createSelfView` makes a scape a view of itself. The self view is told of the scape's events
+before its other listeners, in the same propagated notification that follows statistic
+collection. Listeners (`addScapeListener`) are for the run time and for views.
 
 A rule object can be added to more than one scape, and rules "carry important information of
 their own" (p. 28): `randomExecution` (whether the rule needs its agents in a fresh random
@@ -81,6 +85,16 @@ order) and `causesRemoval` (whether it may remove agents). The scape uses both: 
 random tour only when a selected rule needs one, and checks membership between rules only when
 a rule may remove agents. A rule with `update` is executed then updated, as Ascape's
 `ExecuteThenUpdate`.
+
+Ascape has two ways of ordering agents when executing by rule. Its execution strategies, used
+for each iteration, draw one random order for all the rules when any needs one; the engine does
+the same by default. Its `Scape.execute(rules, agents)` draws a fresh order for each random rule;
+a scape made with `randomOrderPerRule` does that instead, and visits the members in order of
+joining for the rules that are not random. (Ascape keeps the last random rule's order for them.)
+
+Initial rules run on the initial population and, as in Ascape, on every agent added while the
+model runs. A scape made with `initialRulesAtStartOnly` runs them only at the start, for
+families whose agents are born in place, such as cloned citizens or bions born by fission.
 
 The run-time control of the paper's Figure 4 is kept per scape (`settings.ts`): select and order
 the rules, the execution order (`byAgent` or `byRule`), the execution style (`completeTour` or

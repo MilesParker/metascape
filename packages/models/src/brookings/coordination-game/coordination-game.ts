@@ -5,7 +5,6 @@
 // All rights reserved. Used under the BSD license in LICENSES/brookings-models-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
 import {
-  Agent,
   Array2DVonNeumann,
   barsView,
   CellOccupant,
@@ -16,7 +15,6 @@ import {
   networkView,
   type RootScape,
   Scape,
-  Singleton,
   stat,
   timeSeriesView,
 } from '@metascape/engine';
@@ -213,31 +211,6 @@ export class Player extends CellOccupant {
   }
 }
 
-/** One pass of a rule over the players, in the visiting order the legacy rule asks for. */
-interface Pass {
-  readonly random: boolean;
-  readonly run: (player: Player) => void;
-}
-
-/**
- * Ascape runs a scape by rule, and each rule shuffles the visiting order
- * afresh if it is a "random execution" rule and keeps the creation order
- * otherwise. The engine has one order per scape, so the passes are run by a
- * single driver agent in its own scape, after the players' scape.
- */
-function addPasses(root: RootScape, players: Scape<Player>, passes: readonly Pass[]): void {
-  const driver = root.add(
-    new Scape<Agent>({ name: 'Schedule', size: 1, prototypeAgent: () => new Agent() }),
-  );
-  driver.addRule('Rules by rule order', () => {
-    for (const pass of passes) {
-      const order = [...players.members];
-      if (pass.random) players.random.shuffle(order);
-      for (const player of order) if (player.alive) pass.run(player);
-    }
-  });
-}
-
 /** Builds one step of the tutorial. */
 export function buildCoordinationGame(
   root: RootScape,
@@ -263,15 +236,22 @@ export function buildCoordinationGame(
       name: 'Players',
       size: parameters.nPlayers,
       prototypeAgent: () => new Player(context),
+      // As Ascape runs this scape: by rule, each random rule in a fresh random order and the
+      // others in creation order.
+      executionOrder: 'byRule',
+      randomOrderPerRule: true,
     }),
   );
   context.players = players;
 
-  const passes: Pass[] = [{ random: true, run: (p) => p.randomWalk() }];
-  if (config.revision !== 'none') passes.push({ random: false, run: (p) => p.update() });
-  passes.push({ random: true, run: (p) => p.playRandomNeighbor() });
-  if (config.demography) passes.push({ random: false, run: (p) => p.metabolism() });
-  addPasses(root, players, passes);
+  players.addRule('Random Walk', (p) => p.randomWalk(), { causesRemoval: false });
+  if (config.revision !== 'none') {
+    players.addRule('Update', (p) => p.update(), { randomExecution: false, causesRemoval: false });
+  }
+  players.addRule('Play Random Neighbor', (p) => p.playRandomNeighbor(), { causesRemoval: false });
+  if (config.demography) {
+    players.addRule('Metabolism', (p) => p.metabolism(), { randomExecution: false });
+  }
 
   // The legacy initial rule SetNewNetwork: four players drawn at random, with repetition, possibly oneself.
   // The friends, as a graph whose members are the players it links. It draws nothing
@@ -279,14 +259,13 @@ export function buildCoordinationGame(
   const network = new Graph<Player>({ directed: true });
   if (config.friends) {
     root.add(new Scape<Player>({ name: 'Friends', space: network, randomStream: 'parent' }));
-    root.add(new Scape({ name: 'Set New Network', space: new Singleton() })).addInitialRule(
+    players.addInitialRule(
       'Set New Network',
-      () => {
-        for (const player of players.members) {
-          for (let i = 0; i < FRIENDS_SIZE; i++)
-            player.friends.push(players.random.pick(players.members));
-          for (const friend of player.friends) network.connect(player, friend);
+      (player) => {
+        for (let i = 0; i < FRIENDS_SIZE; i++) {
+          player.friends.push(players.random.pick(players.members));
         }
+        for (const friend of player.friends) network.connect(player, friend);
       },
       { randomExecution: false },
     );

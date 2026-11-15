@@ -447,3 +447,64 @@ describe('live parameters', () => {
     expect(root.iteration).toBe(10);
   });
 });
+
+describe('Ascape behaviour that a scape opts into', () => {
+  it("tells a scape's self view of its events once statistics are collected, before other listeners", () => {
+    const events: string[] = [];
+    const model: Model = {
+      name: 'self view',
+      parameters: {},
+      build(root) {
+        const scape = root.add(walkers(2).addRule('move', (walker) => walker.position++, inOrder));
+        scape.addStatCollector(stat.measure('position', (walker) => walker.position));
+        root.addScapeListener({ scapeIterated: () => events.push('listener') });
+        root.setSelfView({
+          scapeIterated: () => {
+            events.push(`self saw ${root.data.latest('position.sum')}`);
+            for (const walker of scape) walker.position = 0;
+          },
+        });
+      },
+    };
+    const root = new RootScape(model);
+    root.run(2);
+    expect(events).toEqual(['self saw 2', 'listener', 'self saw 2', 'listener']);
+  });
+
+  it('draws a fresh random order for each random rule when executing by rule, if asked', () => {
+    const orders = (perRule: boolean): string[] => {
+      const seen: number[][] = [[], [], []];
+      const model = hosting(() =>
+        walkers(8, { executionOrder: 'byRule', randomOrderPerRule: perRule })
+          .addRule('first', (w) => void seen[0]!.push(w.id))
+          .addRule('second', (w) => void seen[1]!.push(w.id))
+          .addRule('in order', (w) => void seen[2]!.push(w.id), inOrder),
+      );
+      new RootScape(model, { seed: 3 }).iterate();
+      return seen.map((ids) => ids.join(','));
+    };
+    const [a, b, c] = orders(true);
+    expect(a).not.toBe(b);
+    expect(c).toBe('0,1,2,3,4,5,6,7');
+    const [d, e, f] = orders(false);
+    expect(d).toBe(e);
+    expect(f).toBe(d);
+  });
+
+  it('gives agents added during a run the initial rules unless they run only at the start', () => {
+    const marked = (atStartOnly: boolean): boolean[] => {
+      const model = hosting(() =>
+        walkers(2, { initialRulesAtStartOnly: atStartOnly }).addInitialRule(
+          'mark',
+          (w) => void (w.position = 1),
+        ),
+      );
+      const root = new RootScape(model);
+      model.scape.newAgent();
+      void root;
+      return model.scape.members.map((w) => w.position === 1);
+    };
+    expect(marked(false)).toEqual([true, true, true]);
+    expect(marked(true)).toEqual([true, true, false]);
+  });
+});

@@ -2459,7 +2459,7 @@
         "lattice"
       ],
       "parameterCount": 3,
-      "ruleCount": 1,
+      "ruleCount": 3,
       "portedFrom": "Ascape 5.6.1, edu.brook.manual.model1.CoordinationGame",
       "thumb": {
         "file": "thumbs/coordination-game-step-1.png",
@@ -2482,7 +2482,7 @@
         "lattice"
       ],
       "parameterCount": 4,
-      "ruleCount": 1,
+      "ruleCount": 3,
       "portedFrom": "Ascape 5.6.1, edu.brook.manual.model2.CoordinationGame",
       "thumb": {
         "file": "thumbs/coordination-game-step-2.png",
@@ -2505,7 +2505,7 @@
         "lattice"
       ],
       "parameterCount": 4,
-      "ruleCount": 1,
+      "ruleCount": 3,
       "portedFrom": "Ascape 5.6.1, edu.brook.manual.model3.CoordinationGame",
       "thumb": {
         "file": "thumbs/coordination-game-step-3.png",
@@ -2528,7 +2528,7 @@
         "lattice"
       ],
       "parameterCount": 6,
-      "ruleCount": 1,
+      "ruleCount": 3,
       "portedFrom": "Ascape 5.6.1, edu.brook.manual.model4.CoordinationGame",
       "thumb": {
         "file": "thumbs/coordination-game-step-4.png",
@@ -2552,7 +2552,7 @@
         "network"
       ],
       "parameterCount": 4,
-      "ruleCount": 1,
+      "ruleCount": 3,
       "portedFrom": "Ascape 5.6.1, edu.brook.manual.model5.CoordinationGame",
       "thumb": {
         "file": "thumbs/coordination-game-step-5.png",
