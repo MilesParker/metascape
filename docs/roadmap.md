@@ -20,6 +20,11 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
   settle it.
 - **Demographic PD wealth.** In the introductory `prisoners-dilemma` model, wealth grows very
   large in cooperator clusters; check against Epstein's model.
+- **Ported structure kept for faithful numbers.** Regional epidemic cities are agents beside
+  their map and people scapes rather than scapes standing on the regional map, and Sugarscape's
+  rule M, Boids and Schelling read their space directly. Giving them Ascape's structure would
+  change agent ids or the order of random draws, so their numbers would no longer match the
+  current ports. Keep the numbers, or restructure and accept new ones?
 
 ## Next work
 
@@ -65,10 +70,6 @@ second user appears.
 The engine now follows the three abstractions of Parker (2001); see `docs/architecture.md`. Every
 model gives the numbers it gave before, checked run by run against the old engine.
 
-- **Ported structure kept for faithful numbers.** Regional epidemic cities are agents beside
-  their map and people scapes rather than scapes standing on the regional map, and Sugarscape's
-  rule M, Boids and Schelling read their space directly, because changing either would change
-  agent ids or the order of random draws.
 - **Studio counts rules of the model as a whole** (stopping, set-up) in a model's rule count and
   lists their scapes in the rules panel.
 
