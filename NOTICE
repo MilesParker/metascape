@@ -50,5 +50,14 @@ packages/models/src/amp/
   SIR), ported from their .metaabm model files. These were made available
   under the Eclipse Public License and are distributed under EPL-2.0.
 
+packages/spec/src/metamodel/
+  The model format is derived from the MetaABM metamodel, which began as
+  "score", a component of Repast Simphony contributed under the Eclipse
+  Public License by Argonne National Laboratory; was developed by Metascape
+  from 2007 as MetaABM; and was contributed to Eclipse as part of the Agent
+  Modeling Platform in 2009. The core function library is translated from
+  AMP's core_library.metaabm. Both were made available under the Eclipse
+  Public License and are distributed under EPL-2.0.
+
 The Heatbugs model in Ascape's edu.brooksantafe package was not ported: that
 directory carries a GNU GPL notice.

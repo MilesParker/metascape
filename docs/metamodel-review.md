@@ -1,6 +1,8 @@
 # The model format, taken from the MetaABM metamodel
 
-Status: draft for review, 2026-11-16. Nothing here is implemented yet.
+Status: 2026-11-16. Work items 2 and 3 (the format, its checker, and the core library as data)
+are implemented in `packages/spec/src/metamodel`, exported as `@metascape/spec/metamodel`. The
+function implementations, the interpreter and the translation are not.
 
 ## Why
 
@@ -315,16 +317,89 @@ Modeling Platform (AMP) in 2009. The name MetaABM is still not used for the form
 Places where the guide, the generators and the examples leave the meaning unclear, collected as
 the work finds them. Each one is resolved by a decision recorded here, not by the implementation.
 
-- None recorded yet.
+Structure and references:
+
+- **ID scope.** R1 says IDs are unique among siblings. Two references need more: act IDs are
+  unique within an agent or style across all its nested groups, because acts refer to each other
+  by bare ID; and agent, scape and space IDs are unique across the model, because an attribute
+  reference (`owner.attribute`) starts with one. That second rule is MetaABM's own (model-wide
+  IDs). A style's acts are a namespace of their own, apart from its agent's (`bugRule` is in both
+  in StupidModel 1).
+- **The root group.** Kept as an object, `acts: { id, label, members }`, since its ID and label
+  vary in the examples (`rootActGroup`, `actions`, `executeBuy`, `definition`). Groups are not
+  flow nodes: a group in `targets` is an error.
+- **Root acts carry no `agent` and no `selected`.** In every example a root's agent is the agent
+  that owns it (for a style, the styled agent), and its selection is itself. The translation
+  drops both, with a warning if one ever differs.
+- **Disconnect has no destination.** The generators ignore it (`clearNeighbors(mover)` in
+  `inferascape.ext`, which Escape uses), and the two examples disagree on what it holds. Same
+  treatment as die and leave (R19). Connect and replace keep theirs.
+- **Cause.** `result` names a root act of the same agent, as acts do. The one example (Markets)
+  causes the firm's own initialize.
+- **Core library constants.** `core_library.metaabm` also defines the attributes `true`,
+  `false`, `zero` and `unit`, which the examples use 92 times as values. The translation writes
+  them as literals (`true`, `false`, `0`, `1`). `path` and `self` are unused and dropped.
+- **Literals** are `{ literal, type? }`. The generators type a literal from its text (`1.0` is
+  real, `1` integer); JSON numbers lose that, so the translation writes `type: 'real'` for a
+  literal with a decimal point (`1.0` and `10.0` occur in the examples).
+- **Grid neighbourhood** is required. In XMI an omitted `neighborhood` means the ecore default,
+  Euclidean (three Escape grids omit it), so the translation must write `euclidean` then.
+- **Left out of the structure:** a style's attributes (`SStyle` is attributed in the ecore; no
+  example uses it) and `SContext.library` (user libraries, R9). `ABuildProjection.attributes` is
+  kept as a list of attribute references, though nothing sets it and its meaning is unknown.
+- **Typed IDs** are type aliases (`ActId`, `AgentId`, `AttributeRef` and so on), not branded
+  types, so a model written in TypeScript stays a plain object literal. The checker resolves them.
+- **Execution settings** (R14's proposal) are not in the format yet.
+
+Core library:
+
+- `not` takes a boolean. Its prototype has no type in `core_library.metaabm`, which makes it the
+  ecore default, integer.
+- `randomState` yields an option of its input state. The library declares an integer output; the
+  format gives it a generic one, whose type then follows the input.
+- `pow` is in the library twice (the operator `^` and Java's `Math.pow`). The math one is left
+  out; the translation maps it onto the operator. Neither is used by the examples.
+- `withinBoundaries` is left out with the array functions (R3): its only input is an array of four
+  bounds.
+- `original`'s one input has no ID; it is called `value`.
+- Prototype types `UNDEFINED` and `NUMERIC` are `generic` and `numeric` (the generators'
+  `typeLongName` calls the first "Generic"). `FMultiArgumentPrototype` is a prototype with
+  `multiple: true`, which takes one multi-value input.
+- Plural labels are not carried over (they are editor defaults such as "Core Functionss").
+  Descriptions are kept as written, except that `timeNow`'s "current simulation period" is "current
+  period".
+
+Checking:
+
+- **Types of values**, following `types.ext`: a logical function gives a boolean; a function
+  with a concrete output type gives that; otherwise the inputs decide (symbol if any is a
+  symbol, boolean if all are, real if any is real, integer if all are, else numeric). Values of
+  one state keep that state. A function with no output (colours, shapes, `graphicFill`) has no
+  value, so it cannot be an input. An integer fits where a real is expected (Java widening); a
+  `numeric` result fits an integer, since it cannot be told apart. A state's options fit only
+  generic inputs.
+- **Upstream.** An act's selection, a move's or connect's destination, an input's `selected`
+  and an evaluate used as a value must be upstream of the act, since they are bound only on
+  the flows that pass through them. All twelve Escape examples satisfy this.
+- **Selections.** Spatial query terms are the functions in the library's `spatial`
+  sub-library (`isSpatialControl` in `infer.ext`). They cannot be evaluates, and all but `all`,
+  `minimize` and `maximize` need their selection to name a space. A selection picks by at most
+  one of `nearest`, `minimize` and `maximize`; `all` combines with any of them. Logic acts take
+  only queries and logic acts as sources, which may belong to different selections (the
+  Demographic Prisoner's Dilemma combines queries of two). The R18 warning applies to a query
+  whose source is a logic act, on a selection without an `all` term.
+- **Severity.** Things not supported yet (geography, value layers, shaped and loaded agents,
+  building geographies, shape styles, extensions) are warnings: the model is valid, and the
+  interpreter will reject it.
 
 ## Work, in order
 
 1. Settle the review items. Still open: R21's method API, and where condition-based stopping
    belongs (R24).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
-   types of inputs against function prototypes, acyclic flows, boundaries).
-3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations of
-   every function the examples use.
+   types of inputs against function prototypes, acyclic flows, boundaries). _Done._
+3. **Core library:** `core_library.metaabm` translated to data (_done_), with TypeScript
+   implementations of every function the examples use (with the interpreter).
 4. **Interpreter:** acts compiled once into closures over the engine, following the semantics above.
 5. **Translation:** `.metaabm` → format, with diagnostics for anything dropped or not supported. Its
    tests are the AMF test models (`tests/*/TestBasics.metaabm`, `TestSpatial`, `TestMovement`).
