@@ -172,9 +172,10 @@ compute them however it likes, as long as the result is the same.
   agent. Recursion is possible only through cause.
 - **Order is not part of a flow's meaning**, but state changes make it observable: two sets on
   separate branches, or two agents of the same rule, can see each other's changes. The interpreter
-  needs a defined, deterministic order for branches, rules and agents (**R14**).
-- **Initialize and created agents.** The guide says initialize acts don't run for agents created
-  during the run (the sentence is cut off in the source) (**R15**).
+  needs a defined, deterministic order for branches, rules and agents. Rules and agents follow the
+  generators (**R14**); branches follow the order of the acts in the file.
+- **Initialize runs only at the start**, over the agents present then; agents created during
+  the run don't get it (**R15**).
 
 ## Review items
 
@@ -199,9 +200,10 @@ only addition to the structure.
 the root container. _Proposed:_ flatten to an `acts` record, and keep group as an act type only if
 you meant it to be used for nested grouping.
 
-**R6. Border rules.** Four example grids use `STRICT`, which the guide calls obsolete. Its
-"APeriodic" isn't in the enum. _Proposed:_ `periodic` and `sticky` (= aperiodic); the translation
-maps `STRICT` to `sticky`. Was there a real difference between strict and sticky?
+**R6. Border rules.** Settled by the generators: the Ascape and Escape generators only ask whether
+a space is periodic; `STRICT`, `STICKY` and `BOUNCY` all mean "not periodic" there. Only the Repast
+generator tells them apart (Repast's strict, sticky and bouncy borders). _Proposed:_ the format has
+`periodic` and `sticky`, and the translation maps `STRICT` and `BOUNCY` to `sticky` with a note.
 
 **R7. Unused metaclasses.** Geography, value layers, shaped and loaded agents, and build geography
 are not used by any example. _Proposed:_ keep them in the format so the translation is complete,
@@ -220,10 +222,10 @@ a non-default implementation mode.
 variables) hooked in through `IAgentChild`. _Proposed:_ keep the extension point, and treat the SD
 metamodel as a second, later port. Until then SIR stays as code.
 
-**R11. Functions with several outputs.** `FGenericFunction` can have several outputs, but
-`AInput.value` refers to the whole evaluate act, so it isn't clear how an input picks one output.
-I haven't found an example that uses a second output yet. Do you remember how this was meant to
-work?
+**R11. Functions with several outputs.** Settled by the generators: a function's result type is
+taken from its output prototypes (`types.ext`, `resultType`), and only one function in the core
+library, `boundary2D` (X and Y), declares more than one output. No example uses it. _Proposed:_ a
+function has one result; `boundary2D` is left out until something needs it.
 
 **R12. Function semantics.** The meaning of each function is defined only by the generator
 templates, and those differ between Ascape, Escape and Repast. _Proposed:_ treat the Escape
@@ -235,13 +237,15 @@ function's meaning into the core library's description as it is ported.
 drops `for`, and the translation drops it with a warning if it disagrees with the query terms.
 (The first draft of this item, which said a select could return only one agent, was wrong.)
 
-**R14. Execution order.** MetaABM leaves rule order undefined. Metascape's run-time settings
-(Ascape's execution order, random execution, rule order, all editable while running) have no place
-in the metamodel. _Proposed:_ add Ascape's execution settings to the context as optional fields,
-defaulting to what the Escape target did.
+**R14. Execution order.** Settled by the generators: every scape, including grids, gets
+`setExecutionOrder(Scape.RULE_ORDER)`, rules are added in the order the acts appear, and agents are
+visited in Ascape's default random order. _Proposed:_ those are the defaults, held as optional
+execution settings on each scape (Ascape's execution order, random execution and rule order), so
+Metascape's run-time editing of them keeps working.
 
-**R15. Initialize for created agents.** The guide says initialize acts don't run for agents created
-during the run, but the sentence is cut off. Confirm, or say what was intended.
+**R15. Initialize for created agents.** Settled by the generators: initialize acts become Ascape
+initial rules (`addInitialRule`), which run once over the agents present when the scape starts.
+Agents created during the run don't get them, as the guide says.
 
 **R16. Watch and derive.** A watch fires inside the set that triggers it, so a chain of watches is
 recursive and can loop (the guide warns about it). A derive is computed lazily. _Proposed:_ watches
