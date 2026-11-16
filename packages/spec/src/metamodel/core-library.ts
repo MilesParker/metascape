@@ -19,9 +19,19 @@ import type { Library } from './types';
  * boolean, `randomState` yields an option of its input state, the math
  * library's duplicate `pow` is left out, and `original`'s unnamed input is
  * called `value`.
+ *
+ * The constants are the attributes `true`, `false`, `zero` and `unit` of the
+ * original's context. `zero` and `unit` are numeric, so they take the type of
+ * where they are used. The untyped `path` and `self` are unused and left out.
  */
 export const coreLibrary: Library = {
   label: 'Core Functions',
+  constants: {
+    true: { type: 'boolean', value: true, label: 'True' },
+    false: { type: 'boolean', value: false, label: 'False' },
+    zero: { type: 'numeric', value: 0, label: 'Zero', description: 'The value 0.' },
+    unit: { type: 'numeric', value: 1, label: 'Unit', description: 'The unit value, e.g. 1.' },
+  },
   subs: {
     operators: {
       label: 'Operators',

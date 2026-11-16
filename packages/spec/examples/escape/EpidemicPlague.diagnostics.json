@@ -114,6 +114,18 @@
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
   },
   {
+    "path": "//@agents[ID='flea']/@styles[ID='fleaStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='flea']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='rat']/@implementation",
     "severity": "note",
     "kind": "dropped",
@@ -124,6 +136,18 @@
     "severity": "note",
     "kind": "dropped",
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='rat']/@styles[ID='ratStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='rat']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
   },
   {
     "path": "//@projections[ID='city']/@attributes[ID='dimensions']",

@@ -20,7 +20,7 @@ import {
   type Neighborhood,
   type Prototype,
   type PrototypeType,
-  type RootGroup,
+  type Constant,
   type Scape,
   type ShapeType,
   type Space,
@@ -44,17 +44,19 @@ const id = z
     ID_PATTERN,
     'An ID starts with a letter or underscore, then letters, digits and underscores',
   );
+const PATH = new RegExp(`^${ID_PART}(\\.${ID_PART})*$`);
+/** A path of IDs: an act within its agent's acts, or an agent or space from the root scape. */
+const path = z
+  .string()
+  .regex(PATH, 'A reference is a path of IDs separated by dots, such as region.farmer');
 const attributeRef = z
   .string()
-  .regex(
-    new RegExp(`^${ID_PART}\\.${ID_PART}$`),
-    'An attribute is written owner.attribute, such as bug.energy',
-  );
+  .regex(PATH, 'An attribute is written as the path of its owner, then its ID, such as bug.energy');
 const optionRef = z
   .string()
   .regex(
-    new RegExp(`^${ID_PART}\\.${ID_PART}\\.${ID_PART}$`),
-    'An option is written owner.attribute.option, such as person.status.infected',
+    new RegExp(`^${ID_PART}(\\.${ID_PART})+$`),
+    'An option is written as its attribute, then its ID, such as person.status.infected',
   );
 
 const named = {
@@ -135,9 +137,10 @@ const valueLayer: z.ZodType<ValueLayer> = namedSchema;
 // ───────────────────────────── Values ─────────────────────────────
 
 const value: z.ZodType<Value> = z.union([
-  z.strictObject({ attribute: attributeRef, selected: id.optional() }),
+  z.strictObject({ attribute: attributeRef, selected: path.optional() }),
   z.strictObject({ option: optionRef }),
-  z.strictObject({ evaluate: id }),
+  z.strictObject({ evaluate: path }),
+  z.strictObject({ constant: id }),
   z.strictObject({ literal: literalValue, type: attributeType.optional() }),
 ]);
 
@@ -148,13 +151,13 @@ const input: z.ZodType<Input> = z.union([
 
 // ────────────────────────────── Acts ──────────────────────────────
 
-const flow = { ...named, targets: z.array(id).optional() };
-const selectedFlow = { ...flow, selected: id };
-const root = { ...flow, space: id.optional() };
+const flow = { ...named, targets: z.array(path).optional() };
+const selectedFlow = { ...flow, selected: path };
+const root = { ...flow, space: path.optional() };
 const buildSpace = {
   ...selectedFlow,
-  agents: z.array(id).optional(),
-  space: id,
+  agents: z.array(path).optional(),
+  space: path,
   attributes: z.array(attributeRef).optional(),
 };
 const sink = { ...selectedFlow, function: id, inputs: z.array(input).optional() };
@@ -192,22 +195,22 @@ const act: z.ZodType<Act> = z.discriminatedUnion('kind', [
   z.strictObject({
     ...selectedFlow,
     kind: z.literal('select'),
-    agent: id.optional(),
-    space: id.optional(),
+    agent: path.optional(),
+    space: path.optional(),
   }),
   z.strictObject({
     ...selectedFlow,
     kind: z.literal('create'),
-    agent: id,
-    space: id.optional(),
+    agent: path,
+    space: path.optional(),
     agentCount: value.optional(),
     shape: shapeType.optional(),
   }),
   z.strictObject({
     ...selectedFlow,
     kind: z.literal('load'),
-    agent: id,
-    space: id.optional(),
+    agent: path,
+    space: path.optional(),
     agentCount: value.optional(),
     sourceURL: z.string(),
     shape: shapeType.optional(),
@@ -221,46 +224,42 @@ const act: z.ZodType<Act> = z.discriminatedUnion('kind', [
     attribute: attributeRef,
     parameter: value,
   }),
-  z.strictObject({ ...selectedFlow, kind: z.literal('move'), destination: id }),
+  z.strictObject({ ...selectedFlow, kind: z.literal('move'), destination: path }),
   z.strictObject({ ...selectedFlow, kind: z.literal('leave') }),
   z.strictObject({ ...selectedFlow, kind: z.literal('die') }),
   z.strictObject({
     ...selectedFlow,
     kind: z.literal('connect'),
-    destination: id,
-    within: id,
+    destination: path,
+    within: path,
     directed: z.boolean().optional(),
   }),
-  z.strictObject({ ...selectedFlow, kind: z.literal('disconnect'), within: id }),
+  z.strictObject({ ...selectedFlow, kind: z.literal('disconnect'), within: path }),
   z.strictObject({
     ...selectedFlow,
     kind: z.literal('replace'),
-    destination: id,
-    within: id,
+    destination: path,
+    within: path,
     directed: z.boolean().optional(),
   }),
-  z.strictObject({ ...selectedFlow, kind: z.literal('cause'), result: id }),
+  z.strictObject({ ...selectedFlow, kind: z.literal('cause'), result: path }),
   z.strictObject({
     ...flow,
     kind: z.literal('method'),
-    selected: id.optional(),
+    selected: path.optional(),
     body: z.string().optional(),
   }),
-  z.strictObject({ ...buildSpace, kind: z.literal('buildGrid'), fillAgent: id.optional() }),
+  z.strictObject({ ...buildSpace, kind: z.literal('buildGrid'), fillAgent: path.optional() }),
   z.strictObject({ ...buildSpace, kind: z.literal('buildSpace') }),
   z.strictObject({ ...buildSpace, kind: z.literal('buildNetwork') }),
   z.strictObject({ ...buildSpace, kind: z.literal('buildGeography') }),
 ]);
 
-const rootGroup: z.ZodType<RootGroup> = z.strictObject({
-  ...named,
-  id,
-  members: z.record(id, act),
-});
+const acts = z.record(id, act).optional();
 
 // ───────────────────────────── Styles ─────────────────────────────
 
-const styleBase = { ...named, acts: rootGroup.optional() };
+const styleBase = { ...named, acts };
 const style: z.ZodType<Style> = z.discriminatedUnion('kind', [
   z.strictObject({ ...styleBase, kind: z.literal('2d') }),
   z.strictObject({ ...styleBase, kind: z.literal('3d') }),
@@ -272,7 +271,7 @@ const style: z.ZodType<Style> = z.discriminatedUnion('kind', [
 const agentBase = {
   ...named,
   attributes,
-  acts: rootGroup.optional(),
+  acts,
   styles: z.record(id, style).optional(),
   extensions: z.array(extension).optional(),
 };
@@ -321,6 +320,12 @@ const prototype: z.ZodType<Prototype> = z.strictObject({
   multiple: z.boolean().optional(),
 });
 
+const constant: z.ZodType<Constant> = z.strictObject({
+  ...named,
+  type: prototypeType,
+  value: literalValue,
+});
+
 const functionBase = { ...named, inputs: z.record(id, prototype).optional() };
 
 const libraryFunction: z.ZodType<LibraryFunction> = z.discriminatedUnion('kind', [
@@ -341,6 +346,7 @@ const libraryFunction: z.ZodType<LibraryFunction> = z.discriminatedUnion('kind',
 /** Validates the structure of a function library. */
 export const librarySchema: z.ZodType<Library> = z.strictObject({
   ...named,
+  constants: z.record(id, constant).optional(),
   functions: z.record(id, libraryFunction).optional(),
   subs: z
     .record(
@@ -363,7 +369,7 @@ export class ModelFormatError extends Error {
   }
 }
 
-/** Writes a path as `agents.bug.acts.members.rule.targets[0]`. */
+/** Writes a path as `agents.bug.acts.rule.targets[0]`. */
 export function formatPath(path: readonly PropertyKey[]): string {
   let text = '';
   for (const part of path) {

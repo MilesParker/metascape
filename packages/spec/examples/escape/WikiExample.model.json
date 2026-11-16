@@ -25,39 +25,34 @@
     }
   },
   "acts": {
-    "id": "rootActGroup",
-    "label": "Root Act Group",
-    "pluralLabel": "Root Act Groups",
-    "members": {
-      "buildWikiExample": {
-        "kind": "build",
-        "label": "Build WikiExample",
-        "pluralLabel": "Build WikiExamples",
-        "targets": [
-          "createIndividuals",
-          "buildGrid2D"
-        ]
-      },
-      "createIndividuals": {
-        "kind": "create",
-        "label": "Create Individuals",
-        "selected": "buildWikiExample",
-        "agent": "individual",
-        "agentCount": {
-          "attribute": "wikiExample.individualCount"
-        }
-      },
-      "buildGrid2D": {
-        "kind": "buildGrid",
-        "label": "Build Grid 2D",
-        "pluralLabel": "Build Grid 2Ds",
-        "selected": "buildWikiExample",
-        "agents": [
-          "individual"
-        ],
-        "space": "city",
-        "fillAgent": "block"
+    "buildWikiExample": {
+      "kind": "build",
+      "label": "Build WikiExample",
+      "pluralLabel": "Build WikiExamples",
+      "targets": [
+        "createIndividuals",
+        "buildGrid2D"
+      ]
+    },
+    "createIndividuals": {
+      "kind": "create",
+      "label": "Create Individuals",
+      "selected": "buildWikiExample",
+      "agent": "individual",
+      "agentCount": {
+        "attribute": "individualCount"
       }
+    },
+    "buildGrid2D": {
+      "kind": "buildGrid",
+      "label": "Build Grid 2D",
+      "pluralLabel": "Build Grid 2Ds",
+      "selected": "buildWikiExample",
+      "agents": [
+        "individual"
+      ],
+      "space": "city",
+      "fillAgent": "block"
     }
   },
   "agents": {
@@ -84,198 +79,193 @@
         }
       },
       "acts": {
-        "id": "rootActGroup",
-        "label": "Root Act Group",
-        "pluralLabel": "Root Act Groups",
-        "members": {
-          "findPartner": {
-            "kind": "rule",
-            "label": "Find Partner",
-            "pluralLabel": "Find Partners",
-            "targets": [
-              "partner"
-            ]
-          },
-          "partner": {
-            "kind": "select",
-            "label": "Partner",
-            "selected": "findPartner",
-            "agent": "individual",
-            "space": "city",
-            "targets": [
-              "partnerWithinVision",
-              "partnerAgeIdentical"
-            ]
-          },
-          "partnerWithinVision": {
-            "kind": "query",
-            "label": "Partner Within Vision",
-            "selected": "partner",
-            "function": "within",
-            "inputs": [
-              {
-                "attribute": "individual.vision",
-                "selected": "findPartner"
-              }
-            ],
-            "targets": [
-              "partnerResult"
-            ]
-          },
-          "partnerNeighbor": {
-            "kind": "select",
-            "label": "Partner Neighbor",
-            "selected": "partner",
-            "agent": "block",
-            "space": "city",
-            "targets": [
-              "availableLocation",
-              "neighborLocation"
-            ]
-          },
-          "availableLocation": {
-            "kind": "query",
-            "label": "Available Location",
-            "selected": "partnerNeighbor",
-            "function": "available",
-            "targets": [
-              "locationResult"
-            ]
-          },
-          "neighborLocation": {
-            "kind": "query",
-            "label": "Neighbor Location",
-            "selected": "partnerNeighbor",
-            "function": "neighbor",
-            "targets": [
-              "locationResult"
-            ]
-          },
-          "moveIndividual": {
-            "kind": "move",
-            "label": "Move Individual",
-            "selected": "findPartner",
-            "destination": "partnerNeighbor"
-          },
-          "initialState": {
-            "kind": "initialize",
-            "label": "Initial State",
-            "pluralLabel": "Initial States",
-            "space": "city",
-            "targets": [
-              "initialStateRandomToLimit_MaximumAge_",
-              "initialStateRandomUnit"
-            ]
-          },
-          "setAgeToInitialStateRandomToLimit_MaximumAge_": {
-            "kind": "set",
-            "label": "Set Age To Initial State: Random To Limit(Maximum Age)",
-            "selected": "initialState",
-            "attribute": "individual.age",
-            "parameter": {
-              "evaluate": "initialStateRandomToLimit_MaximumAge_"
+        "findPartner": {
+          "kind": "rule",
+          "label": "Find Partner",
+          "pluralLabel": "Find Partners",
+          "targets": [
+            "partner"
+          ]
+        },
+        "partner": {
+          "kind": "select",
+          "label": "Partner",
+          "selected": "findPartner",
+          "agent": "individual",
+          "space": "city",
+          "targets": [
+            "partnerWithinVision",
+            "partnerAgeIdentical"
+          ]
+        },
+        "partnerWithinVision": {
+          "kind": "query",
+          "label": "Partner Within Vision",
+          "selected": "partner",
+          "function": "within",
+          "inputs": [
+            {
+              "attribute": "individual.vision",
+              "selected": "findPartner"
             }
-          },
-          "initialStateRandomToLimit_MaximumAge_": {
-            "kind": "evaluate",
-            "label": "Initial State: Random To Limit(Maximum Age)",
-            "selected": "initialState",
-            "function": "randomToLimit",
-            "inputs": [
-              {
-                "attribute": "wikiExample.maximumAge"
-              }
-            ],
-            "targets": [
-              "setAgeToInitialStateRandomToLimit_MaximumAge_"
-            ]
-          },
-          "initialMovement": {
-            "kind": "initialize",
-            "label": "Initial Movement",
-            "pluralLabel": "Initial Movements",
-            "space": "city",
-            "targets": [
-              "individual"
-            ]
-          },
-          "individual": {
-            "kind": "select",
-            "label": "Individual",
-            "selected": "initialMovement",
-            "agent": "block",
-            "space": "city",
-            "targets": [
-              "individualAvailableQuery"
-            ]
-          },
-          "individualAvailableQuery": {
-            "kind": "query",
-            "label": "Individual: Available() Query",
-            "selected": "individual",
-            "function": "available",
-            "targets": [
-              "moveIndividualCopy"
-            ]
-          },
-          "moveIndividualCopy": {
-            "kind": "move",
-            "label": "Move Individual Copy",
-            "selected": "initialMovement",
-            "destination": "individual"
-          },
-          "initialStateRandomUnit": {
-            "kind": "evaluate",
-            "label": "Initial State: Random Unit()",
-            "selected": "initialState",
-            "function": "randomUnit",
-            "targets": [
-              "setWealthToInitialStateRandomUnit"
-            ]
-          },
-          "setWealthToInitialStateRandomUnit": {
-            "kind": "set",
-            "label": "Set Wealth To Initial State: Random Unit()",
-            "selected": "initialState",
-            "attribute": "individual.wealth",
-            "parameter": {
-              "evaluate": "initialStateRandomUnit"
-            }
-          },
-          "partnerAgeIdentical": {
-            "kind": "query",
-            "label": "Partner Age Identical",
-            "selected": "partner",
-            "function": "identical",
-            "inputs": [
-              {
-                "attribute": "individual.age",
-                "selected": "findPartner"
-              },
-              {
-                "attribute": "individual.age"
-              }
-            ],
-            "targets": [
-              "partnerResult"
-            ]
-          },
-          "locationResult": {
-            "kind": "all",
-            "label": "Location Result",
-            "selected": "partnerNeighbor",
-            "targets": [
-              "moveIndividual"
-            ]
-          },
-          "partnerResult": {
-            "kind": "all",
-            "label": "Partner Result",
-            "selected": "partner",
-            "targets": [
-              "partnerNeighbor"
-            ]
+          ],
+          "targets": [
+            "partnerResult"
+          ]
+        },
+        "partnerNeighbor": {
+          "kind": "select",
+          "label": "Partner Neighbor",
+          "selected": "partner",
+          "agent": "block",
+          "space": "city",
+          "targets": [
+            "availableLocation",
+            "neighborLocation"
+          ]
+        },
+        "availableLocation": {
+          "kind": "query",
+          "label": "Available Location",
+          "selected": "partnerNeighbor",
+          "function": "available",
+          "targets": [
+            "locationResult"
+          ]
+        },
+        "neighborLocation": {
+          "kind": "query",
+          "label": "Neighbor Location",
+          "selected": "partnerNeighbor",
+          "function": "neighbor",
+          "targets": [
+            "locationResult"
+          ]
+        },
+        "moveIndividual": {
+          "kind": "move",
+          "label": "Move Individual",
+          "selected": "findPartner",
+          "destination": "partnerNeighbor"
+        },
+        "initialState": {
+          "kind": "initialize",
+          "label": "Initial State",
+          "pluralLabel": "Initial States",
+          "space": "city",
+          "targets": [
+            "initialStateRandomToLimit_MaximumAge_",
+            "initialStateRandomUnit"
+          ]
+        },
+        "setAgeToInitialStateRandomToLimit_MaximumAge_": {
+          "kind": "set",
+          "label": "Set Age To Initial State: Random To Limit(Maximum Age)",
+          "selected": "initialState",
+          "attribute": "individual.age",
+          "parameter": {
+            "evaluate": "initialStateRandomToLimit_MaximumAge_"
           }
+        },
+        "initialStateRandomToLimit_MaximumAge_": {
+          "kind": "evaluate",
+          "label": "Initial State: Random To Limit(Maximum Age)",
+          "selected": "initialState",
+          "function": "randomToLimit",
+          "inputs": [
+            {
+              "attribute": "maximumAge"
+            }
+          ],
+          "targets": [
+            "setAgeToInitialStateRandomToLimit_MaximumAge_"
+          ]
+        },
+        "initialMovement": {
+          "kind": "initialize",
+          "label": "Initial Movement",
+          "pluralLabel": "Initial Movements",
+          "space": "city",
+          "targets": [
+            "individual"
+          ]
+        },
+        "individual": {
+          "kind": "select",
+          "label": "Individual",
+          "selected": "initialMovement",
+          "agent": "block",
+          "space": "city",
+          "targets": [
+            "individualAvailableQuery"
+          ]
+        },
+        "individualAvailableQuery": {
+          "kind": "query",
+          "label": "Individual: Available() Query",
+          "selected": "individual",
+          "function": "available",
+          "targets": [
+            "moveIndividualCopy"
+          ]
+        },
+        "moveIndividualCopy": {
+          "kind": "move",
+          "label": "Move Individual Copy",
+          "selected": "initialMovement",
+          "destination": "individual"
+        },
+        "initialStateRandomUnit": {
+          "kind": "evaluate",
+          "label": "Initial State: Random Unit()",
+          "selected": "initialState",
+          "function": "randomUnit",
+          "targets": [
+            "setWealthToInitialStateRandomUnit"
+          ]
+        },
+        "setWealthToInitialStateRandomUnit": {
+          "kind": "set",
+          "label": "Set Wealth To Initial State: Random Unit()",
+          "selected": "initialState",
+          "attribute": "individual.wealth",
+          "parameter": {
+            "evaluate": "initialStateRandomUnit"
+          }
+        },
+        "partnerAgeIdentical": {
+          "kind": "query",
+          "label": "Partner Age Identical",
+          "selected": "partner",
+          "function": "identical",
+          "inputs": [
+            {
+              "attribute": "individual.age",
+              "selected": "findPartner"
+            },
+            {
+              "attribute": "individual.age"
+            }
+          ],
+          "targets": [
+            "partnerResult"
+          ]
+        },
+        "locationResult": {
+          "kind": "all",
+          "label": "Location Result",
+          "selected": "partnerNeighbor",
+          "targets": [
+            "moveIndividual"
+          ]
+        },
+        "partnerResult": {
+          "kind": "all",
+          "label": "Partner Result",
+          "selected": "partner",
+          "targets": [
+            "partnerNeighbor"
+          ]
         }
       },
       "styles": {
@@ -284,54 +274,49 @@
           "label": "Simple Draw",
           "pluralLabel": "Simple Draws",
           "acts": {
-            "id": "definition",
-            "label": "Definition",
-            "pluralLabel": "Definitions",
-            "members": {
-              "individualRule": {
-                "kind": "rule",
-                "label": "Individual Rule",
-                "pluralLabel": "Individual Rules",
-                "space": "city",
-                "targets": [
-                  "individualRuleColorRGB_WealthUnitUnit_"
-                ]
-              },
-              "individualRuleGraphicFill": {
-                "kind": "evaluate",
-                "label": "Individual Rule: Graphic Fill()",
-                "selected": "individualRule",
-                "function": "graphicFill"
-              },
-              "individualRuleShapeOval": {
-                "kind": "evaluate",
-                "label": "Individual Rule: Shape Oval()",
-                "selected": "individualRule",
-                "function": "shapeOval",
-                "targets": [
-                  "individualRuleGraphicFill"
-                ]
-              },
-              "individualRuleColorRGB_WealthUnitUnit_": {
-                "kind": "evaluate",
-                "label": "Individual Rule: Color RGB(Wealth, Unit, Unit)",
-                "selected": "individualRule",
-                "function": "colorRGB",
-                "inputs": [
-                  {
-                    "attribute": "individual.wealth"
-                  },
-                  {
-                    "literal": 1
-                  },
-                  {
-                    "literal": 1
-                  }
-                ],
-                "targets": [
-                  "individualRuleShapeOval"
-                ]
-              }
+            "individualRule": {
+              "kind": "rule",
+              "label": "Individual Rule",
+              "pluralLabel": "Individual Rules",
+              "space": "city",
+              "targets": [
+                "individualRuleColorRGB_WealthUnitUnit_"
+              ]
+            },
+            "individualRuleGraphicFill": {
+              "kind": "evaluate",
+              "label": "Individual Rule: Graphic Fill()",
+              "selected": "individualRule",
+              "function": "graphicFill"
+            },
+            "individualRuleShapeOval": {
+              "kind": "evaluate",
+              "label": "Individual Rule: Shape Oval()",
+              "selected": "individualRule",
+              "function": "shapeOval",
+              "targets": [
+                "individualRuleGraphicFill"
+              ]
+            },
+            "individualRuleColorRGB_WealthUnitUnit_": {
+              "kind": "evaluate",
+              "label": "Individual Rule: Color RGB(Wealth, Unit, Unit)",
+              "selected": "individualRule",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "attribute": "individual.wealth"
+                },
+                {
+                  "constant": "unit"
+                },
+                {
+                  "constant": "unit"
+                }
+              ],
+              "targets": [
+                "individualRuleShapeOval"
+              ]
             }
           }
         }
@@ -341,12 +326,7 @@
       "kind": "agent",
       "label": "Block",
       "pluralLabel": "Blocks",
-      "acts": {
-        "id": "rootActGroup",
-        "label": "Root Act Group",
-        "pluralLabel": "Root Act Groups",
-        "members": {}
-      }
+      "acts": {}
     }
   },
   "spaces": {

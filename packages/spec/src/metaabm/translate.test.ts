@@ -21,7 +21,7 @@ function translate(parts: { root?: string; agent?: string; space?: string; attri
   ${parts.attributes ?? ''}
   ${parts.root ?? ''}
   <agents label="A" ID="a" pluralLabel="As">
-    <rootActivity xsi:type="act:AGroup" label="Root" ID="rootActGroup">${parts.agent ?? ''}</rootActivity>
+    <rootActivity xsi:type="act:AGroup" label="Root Act Group" ID="rootActGroup">${parts.agent ?? ''}</rootActivity>
   </agents>
   ${grid}
 </metaabm:SContext>`);
@@ -30,7 +30,7 @@ function translate(parts: { root?: string; agent?: string; space?: string; attri
 const rule = `<members xsi:type="act:ARule" label="Rule" ID="rule" selected="//@agents[ID='a']/@rootActivity/@members[ID='rule']" agent="//@agents[ID='a']" space="//@projections[ID='grid']"`;
 const at = (id: string) => `//@agents[ID='a']/@rootActivity/@members[ID='${id}']`;
 const member = (model: Model | undefined, id: string): Act => {
-  const act = model?.agents?.['a']?.acts?.members[id];
+  const act = model?.agents?.['a']?.acts?.[id];
   if (!act) throw new Error(`no act ${id}`);
   return act;
 };
@@ -112,7 +112,7 @@ describe('translateMetaabm', () => {
     expect(result.diagnostics[0]?.message).toContain('system dynamics');
   });
 
-  it('writes the core library constants as literals', () => {
+  it('refers to the core library constants by ID', () => {
     const k = "http://metaabm.org/core_library.metaabm#//@attributes[ID='";
     const { model, diagnostics } = translate({
       attributes: `<attributes label="N" ID="n" sType="INTEGER"/><attributes label="F" ID="f" sType="BOOLEAN"/>`,
@@ -121,8 +121,8 @@ describe('translateMetaabm', () => {
         <members xsi:type="act:ASet" label="Set F" ID="setF" sources="${at('rule')}" selected="${at('rule')}" attribute="//@attributes[ID='f']"><parameter xsi:type="metaabm:SAttribute" href="${k}true']"/></members>`,
     });
     expect(diagnostics.filter((d) => d.severity !== 'note')).toEqual([]);
-    expect(member(model, 'setN')).toMatchObject({ parameter: { literal: 1 } });
-    expect(member(model, 'setF')).toMatchObject({ parameter: { literal: true } });
+    expect(member(model, 'setN')).toMatchObject({ parameter: { constant: 'unit' } });
+    expect(member(model, 'setF')).toMatchObject({ parameter: { constant: 'true' } });
     expect(checkModel(model!)).toEqual([]);
   });
 
@@ -152,7 +152,7 @@ describe('translateMetaabm', () => {
         </members>`,
     });
     expect(member(model, 'q')).toMatchObject({
-      inputs: [{ attribute: 'test.n', selected: 'rule' }, { attribute: 'test.n' }],
+      inputs: [{ attribute: 'n', selected: 'rule' }, { attribute: 'n' }],
     });
   });
 
@@ -285,11 +285,11 @@ describe('translateMetaabm', () => {
         <members xsi:type="act:ADie" label="X" ID="x" selected="//@agents[ID='a']/@rootActivity/@members[ID='rule']"/></rootActivity></agents>
     </metaabm:SContext>`);
     // The flow starts in agent a, so the die act belongs to a, wherever its group is.
-    expect(moved.model?.agents?.['a']?.acts?.members['x']).toMatchObject({
+    expect(moved.model?.agents?.['a']?.acts?.['x']).toMatchObject({
       kind: 'die',
       selected: 'rule',
     });
-    expect(moved.model?.agents?.['b']?.acts?.members).toEqual({});
+    expect(moved.model?.agents?.['b']?.acts).toEqual({});
     expect(moved.diagnostics.filter((d) => d.kind === 'moved')).toHaveLength(1);
   });
 

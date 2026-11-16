@@ -25,16 +25,16 @@ function bug(model: Model): Agent | Scape {
 
 /** An act of the bug agent, to change in place. */
 function bugAct(model: Model, id: string): Act {
-  const act = bug(model).acts?.members[id];
+  const act = bug(model).acts?.[id];
   if (!act) throw new Error(`no act ${id}`);
   return act;
 }
 
 function addBugActs(model: Model, acts: Record<string, Act>): void {
-  Object.assign(bug(model).acts!.members, acts);
+  Object.assign(bug(model).acts!, acts);
 }
 
-const BUG = 'agents.bug.acts.members';
+const BUG = 'agents.bug.acts';
 
 function expectFound(
   diagnostics: Diagnostic[],
@@ -68,7 +68,7 @@ describe('structure', () => {
 
   it('requires IDs and references to be written as IDs', () => {
     const model = variant((m) => {
-      Object.assign(bugAct(m, 'habitatWItin'), { inputs: [{ attribute: 'bugVision' }] });
+      Object.assign(bugAct(m, 'habitatWItin'), { inputs: [{ attribute: 'bug..vision' }] });
       m.attributes!['bug count'] = { type: 'integer' };
     });
     const paths = checkModel(model).map((d) => d.path);
@@ -92,14 +92,14 @@ describe('references', () => {
   it('does not resolve acts across agents or styles', () => {
     const diagnostics = checkModel(
       variant((m) =>
-        Object.assign(bug(m).styles!.bugStyle2D!.acts!.members.bugRuleColorRed!, {
+        Object.assign(bug(m).styles!.bugStyle2D!.acts!.bugRuleColorRed!, {
           targets: ['nearbySpace'],
         }),
       ),
     );
     expectFound(
       diagnostics,
-      'agents.bug.styles.bugStyle2D.acts.members.bugRuleColorRed.targets[0]',
+      'agents.bug.styles.bugStyle2D.acts.bugRuleColorRed.targets[0]',
       'is not an act of style `bugStyle2D`',
     );
   });
@@ -117,23 +117,23 @@ describe('references', () => {
     );
   });
 
-  it('resolves attributes as owner.attribute', () => {
+  it('resolves attributes by their path from the root scape', () => {
     const diagnostics = checkModel(
       variant((m) => {
         Object.assign(bugAct(m, 'habitatWItin'), {
-          inputs: [{ attribute: 'stupidModel1.bugVisions', selected: 'bugRule' }],
+          inputs: [{ attribute: 'bugVisions', selected: 'bugRule' }],
         });
-        Object.assign(m.acts!.members.createBugs!, { agentCount: { attribute: 'model.bugCount' } });
+        Object.assign(m.acts!.createBugs!, { agentCount: { attribute: 'model.bugCount' } });
       }),
     );
     expectFound(
       diagnostics,
       `${BUG}.habitatWItin.inputs[0].attribute`,
-      'Scape `stupidModel1` has no attribute `bugVisions` (did you mean `bugVision`?)',
+      'The root scape has no attribute `bugVisions` (did you mean `bugVision`?)',
     );
     expectFound(
       diagnostics,
-      'acts.members.createBugs.agentCount.attribute',
+      'acts.createBugs.agentCount.attribute',
       '`model` is not an agent, scape or space of this model',
     );
   });
@@ -152,27 +152,23 @@ describe('references', () => {
   it('resolves agents and spaces, of the right kind', () => {
     const diagnostics = checkModel(
       variant((m) => {
-        Object.assign(m.acts!.members.fillGrid!, { space: 'bug', fillAgent: 'grid2D' });
+        Object.assign(m.acts!.fillGrid!, { space: 'bug', fillAgent: 'grid2D' });
         Object.assign(bugAct(m, 'nearbySpace'), { agent: 'habitats' });
         m.spaces!.links = { kind: 'network' };
-        Object.assign(m.acts!.members.createHabitats!, { space: 'links' });
-        m.acts!.members.connectAll = {
+        Object.assign(m.acts!.createHabitats!, { space: 'links' });
+        m.acts!.connectAll = {
           kind: 'connect',
           selected: 'createBugs',
           destination: 'createHabitats',
           within: 'grid2D',
         };
-        Object.assign(m.acts!.members.createBugs!, { targets: ['connectAll'] });
+        Object.assign(m.acts!.createBugs!, { targets: ['connectAll'] });
       }),
     );
+    expectFound(diagnostics, 'acts.fillGrid.space', '`bug` is an agent; a space is expected here.');
     expectFound(
       diagnostics,
-      'acts.members.fillGrid.space',
-      '`bug` is an agent; a space is expected here.',
-    );
-    expectFound(
-      diagnostics,
-      'acts.members.fillGrid.fillAgent',
+      'acts.fillGrid.fillAgent',
       '`grid2D` is a space; an agent or scape is expected here.',
     );
     expectFound(
@@ -182,10 +178,10 @@ describe('references', () => {
     );
     expectFound(
       diagnostics,
-      'acts.members.connectAll.within',
+      'acts.connectAll.within',
       '`grid2D` is a grid space; a network space is expected here.',
     );
-    expect(diagnostics.filter((d) => d.path === 'acts.members.createHabitats.space')).toEqual([]);
+    expect(diagnostics.filter((d) => d.path === 'acts.createHabitats.space')).toEqual([]);
   });
 
   it('requires a cause to run a root act', () => {
@@ -202,21 +198,30 @@ describe('references', () => {
 });
 
 describe('IDs (R1)', () => {
-  it('requires act IDs to be unique within an agent, across groups', () => {
-    const diagnostics = checkModel(
-      variant((m) =>
-        addBugActs(m, {
-          moves: {
-            kind: 'group',
-            members: { bugRule: { kind: 'rule' } },
+  it('refers to acts in groups by their path within the agent', () => {
+    const model = variant((m) => {
+      addBugActs(m, {
+        moves: {
+          kind: 'group',
+          members: {
+            bugRule: { kind: 'rule', targets: ['moves.step'] },
+            step: { kind: 'move', selected: 'moves.bugRule', destination: 'moves.bugRule' },
           },
-        }),
-      ),
-    );
+        },
+      });
+    });
+    expect(checkModel(model)).toEqual([]);
+    const bare = clone(model);
+    Object.assign(bugAct(bare, 'moves'), {
+      members: {
+        bugRule: { kind: 'rule', targets: ['step'] },
+        step: { kind: 'move', selected: 'moves.bugRule', destination: 'moves.bugRule' },
+      },
+    });
     expectFound(
-      diagnostics,
-      `${BUG}.moves.members.bugRule`,
-      `Act ID \`bugRule\` is already used at ${BUG}.bugRule.`,
+      checkModel(bare),
+      `${BUG}.moves.members.bugRule.targets[0]`,
+      '`step` is not an act of agent `bug`',
     );
   });
 
@@ -239,19 +244,94 @@ describe('IDs (R1)', () => {
     );
   });
 
-  it('requires agent, scape and space IDs to be unique across the model', () => {
-    const diagnostics = checkModel(
-      variant((m) => {
-        m.agents!.region = {
-          kind: 'scape',
-          spaces: { grid2D: { kind: 'network' } },
-        };
-      }),
+  it('allows the same ID in different scapes, referred to by path', () => {
+    const model = variant((m) => {
+      m.agents!.region = {
+        kind: 'scape',
+        spaces: { grid2D: { kind: 'network' } },
+        agents: { bug: { kind: 'agent', attributes: { bugCount: { type: 'integer' } } } },
+      };
+      m.acts!.createRegionBugs = {
+        kind: 'create',
+        selected: 'buildStupidModel1',
+        agent: 'region.bug',
+        space: 'region.grid2D',
+        agentCount: { attribute: 'region.bug.bugCount' },
+      };
+      Object.assign(m.acts!.buildStupidModel1!, {
+        targets: ['createBugs', 'createHabitats', 'fillGrid', 'createRegionBugs'],
+      });
+    });
+    expect(checkModel(model)).toEqual([]);
+    Object.assign(model.acts!.createRegionBugs!, { agent: 'region.bugs', space: 'grid2D.x' });
+    const diagnostics = checkModel(model);
+    expectFound(
+      diagnostics,
+      'acts.createRegionBugs.agent',
+      '`region.bugs` is not an agent or scape of this model (did you mean `region.bug`?)',
     );
     expectFound(
       diagnostics,
-      'agents.region.spaces.grid2D',
-      '`grid2D` is already the ID of the space at spaces.grid2D.',
+      'acts.createRegionBugs.space',
+      '`grid2D.x` is not a space of this model',
+    );
+  });
+
+  it('refers to constants of the library, which take the type of where they are used', () => {
+    const model = variant((m) => {
+      bug(m).attributes = { age: { type: 'integer' }, weight: { type: 'real' } };
+      addBugActs(m, {
+        older: {
+          kind: 'evaluate',
+          selected: 'bugRule',
+          function: 'add',
+          inputs: [{ attribute: 'bug.age' }, { constant: 'unit' }],
+          targets: ['setAge'],
+        },
+        setAge: {
+          kind: 'set',
+          selected: 'bugRule',
+          attribute: 'bug.age',
+          parameter: { evaluate: 'older' },
+          targets: ['setWeight'],
+        },
+        setWeight: {
+          kind: 'set',
+          selected: 'bugRule',
+          attribute: 'bug.weight',
+          parameter: { constant: 'zero' },
+          targets: ['setOther'],
+        },
+        setOther: {
+          kind: 'set',
+          selected: 'bugRule',
+          attribute: 'bug.age',
+          parameter: { constant: 'true' },
+          targets: ['setUnknown'],
+        },
+        setUnknown: {
+          kind: 'set',
+          selected: 'bugRule',
+          attribute: 'bug.age',
+          parameter: { constant: 'units' },
+        },
+      });
+      Object.assign(bugAct(m, 'bugRule'), { targets: ['nearbySpace', 'older'] });
+    });
+    const diagnostics = checkModel(model);
+    expect(diagnostics.map((d) => d.path)).toEqual([
+      `${BUG}.setOther.parameter`,
+      `${BUG}.setUnknown.parameter.constant`,
+    ]);
+    expectFound(
+      diagnostics,
+      `${BUG}.setOther.parameter`,
+      '`bug.age` takes an integer; `true` is a boolean.',
+    );
+    expectFound(
+      diagnostics,
+      `${BUG}.setUnknown.parameter.constant`,
+      '`units` is not a constant of the library (did you mean `unit`?)',
     );
   });
 
@@ -268,7 +348,7 @@ describe('IDs (R1)', () => {
             kind: 'query',
             selected: 'bugRule',
             function: 'lesser',
-            inputs: [{ attribute: 'farmer.wealth' }, { attribute: 'region.rainfall' }],
+            inputs: [{ attribute: 'region.farmer.wealth' }, { attribute: 'region.rainfall' }],
           },
         });
         Object.assign(bugAct(m, 'bugRule'), { targets: ['nearbySpace', 'wet'] });
@@ -322,7 +402,7 @@ describe('flows', () => {
       variant((m) => {
         Object.assign(bugAct(m, 'habitatAvailable'), { selected: 'randomHabitat' });
         Object.assign(bugAct(m, 'habitatWItin'), {
-          inputs: [{ attribute: 'stupidModel1.bugVision', selected: 'initialize' }],
+          inputs: [{ attribute: 'bugVision', selected: 'initialize' }],
         });
         Object.assign(bugAct(m, 'movetoBuginGrid2D'), { destination: 'randomHabitat' });
       }),
@@ -670,7 +750,7 @@ describe('selections', () => {
             kind: 'query',
             selected: 'nearbySpace',
             function: 'maximize',
-            inputs: [{ attribute: 'stupidModel1.bugVision' }],
+            inputs: [{ attribute: 'bugVision' }],
             targets: ['nearbySpace_HabitatAvailableAndHabitatWItin_'],
           },
         });
@@ -751,19 +831,19 @@ describe('not supported yet', () => {
         m.spaces!.world = { kind: 'geography' };
         m.valueLayers = { rainfall: {} };
         m.extensions = [{ kind: 'systemDynamics' }];
-        Object.assign(m.acts!.members.createBugs!, { shape: 'point' });
-        m.acts!.members.loadHabitats = {
+        Object.assign(m.acts!.createBugs!, { shape: 'point' });
+        m.acts!.loadHabitats = {
           kind: 'load',
           selected: 'buildStupidModel1',
           agent: 'habitat',
           sourceURL: 'habitats.csv',
         };
-        m.acts!.members.buildWorld = {
+        m.acts!.buildWorld = {
           kind: 'buildGeography',
           selected: 'buildStupidModel1',
           space: 'world',
         };
-        Object.assign(m.acts!.members.buildStupidModel1!, {
+        Object.assign(m.acts!.buildStupidModel1!, {
           targets: ['createBugs', 'createHabitats', 'fillGrid', 'loadHabitats', 'buildWorld'],
         });
       }),
@@ -774,9 +854,9 @@ describe('not supported yet', () => {
         ['spaces.world', 'Geography spaces are not supported yet.'],
         ['valueLayers.rainfall', 'Value layers are not supported yet.'],
         ['extensions[0]', 'Extensions (here `systemDynamics`) are not supported yet.'],
-        ['acts.members.createBugs.shape', 'Shaped agents are not supported yet.'],
-        ['acts.members.loadHabitats', 'Loading agents is not supported yet.'],
-        ['acts.members.buildWorld', 'Building geographies is not supported yet.'],
+        ['acts.createBugs.shape', 'Shaped agents are not supported yet.'],
+        ['acts.loadHabitats', 'Loading agents is not supported yet.'],
+        ['acts.buildWorld', 'Building geographies is not supported yet.'],
       ]),
     );
   });

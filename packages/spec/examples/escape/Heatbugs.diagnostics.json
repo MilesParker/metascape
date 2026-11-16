@@ -18,6 +18,12 @@
     "message": "No type is given, so it is the default, integer."
   },
   {
+    "path": "//@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='heatBug']/@implementation",
     "severity": "note",
     "kind": "dropped",
@@ -30,6 +36,18 @@
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
   },
   {
+    "path": "//@agents[ID='heatBug']/@styles[ID='heatBugStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='heatBug']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='heatCell']/@implementation",
     "severity": "note",
     "kind": "dropped",
@@ -40,6 +58,18 @@
     "severity": "note",
     "kind": "dropped",
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='heatCell']/@styles[ID='heatCellStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='heatCell']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
   },
   {
     "path": "//@projections[ID='heatGrid']/@attributes[ID='width']/@sType",

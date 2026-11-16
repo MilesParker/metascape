@@ -22,8 +22,8 @@ const everyAct: Record<string, Act> = {
   diffuse: {
     kind: 'diffuse',
     diffused: 'cell.heat',
-    diffusionRate: 'm.rate',
-    evaporationRate: 'm.rate',
+    diffusionRate: 'rate',
+    evaporationRate: 'rate',
   },
   perform: { kind: 'perform' },
   select: { kind: 'select', selected: 'rule', agent: 'cell', space: 'grid' },
@@ -47,7 +47,7 @@ const everyAct: Record<string, Act> = {
     kind: 'query',
     selected: 'select',
     function: 'within',
-    inputs: [{ attribute: 'm.rate', selected: 'rule' }],
+    inputs: [{ attribute: 'rate', selected: 'rule' }, { constant: 'unit' }],
   },
   evaluate: {
     kind: 'evaluate',
@@ -118,7 +118,7 @@ const everything: Model = {
     },
     on: { type: 'boolean', default: true, extensions: [{ kind: 'x', anything: [1] }] },
   },
-  acts: { id: 'root', members: everyAct },
+  acts: everyAct,
   agents: {
     cell: {
       kind: 'agent',
@@ -127,7 +127,7 @@ const everything: Model = {
         state: { type: 'state', options: { on: { label: 'On' }, off: {} }, defaultOption: 'off' },
       },
       styles: {
-        flat: { kind: '2d', acts: { id: 'root', members: {} } },
+        flat: { kind: '2d', acts: {} },
         solid: { kind: '3d' },
         outline: { kind: 'shape', shape: 'line' },
       },
@@ -171,8 +171,8 @@ describe('parseModel', () => {
 
   it('does not let a root act name a selection: it is its own', () => {
     const model = JSON.parse(JSON.stringify(stupidModel1)) as Model;
-    Object.assign(model.agents!.bug!.acts!.members.bugRule!, { selected: 'bugRule' });
-    expect(() => parseModel(model)).toThrow(/agents\.bug\.acts\.members\.bugRule/);
+    Object.assign(model.agents!.bug!.acts!.bugRule!, { selected: 'bugRule' });
+    expect(() => parseModel(model)).toThrow(/agents\.bug\.acts\.bugRule/);
   });
 
   it('requires the format version and implementation language', () => {
@@ -198,7 +198,7 @@ describe('parseModel', () => {
 
   it('reads a literal type only from the attribute types', () => {
     const model = JSON.parse(JSON.stringify(stupidModel1)) as Model;
-    Object.assign(model.agents!.bug!.acts!.members.habitatWItin!, {
+    Object.assign(model.agents!.bug!.acts!.habitatWItin!, {
       inputs: [{ literal: 1, type: 'numeric' }],
     });
     expect(() => parseModel(model)).toThrow(ModelFormatError);

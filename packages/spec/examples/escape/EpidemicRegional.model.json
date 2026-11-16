@@ -109,38 +109,33 @@
     }
   },
   "acts": {
-    "id": "rootActGroup",
-    "label": "Root Act Group",
-    "pluralLabel": "Root Act Groups",
-    "members": {
-      "buildRegion": {
-        "kind": "build",
-        "label": "Build Region",
-        "pluralLabel": "Build Regions",
-        "targets": [
-          "buildRegionalMap",
-          "createAgents"
-        ]
-      },
-      "buildRegionalMap": {
-        "kind": "buildGrid",
-        "label": "Build Regional Map",
-        "pluralLabel": "Build Regional Maps",
-        "selected": "buildRegion",
-        "agents": [
-          "city"
-        ],
-        "space": "regionalMap",
-        "fillAgent": "regionalLocation"
-      },
-      "createAgents": {
-        "kind": "create",
-        "label": "Create Agents",
-        "selected": "buildRegion",
-        "agent": "city",
-        "agentCount": {
-          "attribute": "region.cityCount"
-        }
+    "buildRegion": {
+      "kind": "build",
+      "label": "Build Region",
+      "pluralLabel": "Build Regions",
+      "targets": [
+        "buildRegionalMap",
+        "createAgents"
+      ]
+    },
+    "buildRegionalMap": {
+      "kind": "buildGrid",
+      "label": "Build Regional Map",
+      "pluralLabel": "Build Regional Maps",
+      "selected": "buildRegion",
+      "agents": [
+        "city"
+      ],
+      "space": "regionalMap",
+      "fillAgent": "regionalLocation"
+    },
+    "createAgents": {
+      "kind": "create",
+      "label": "Create Agents",
+      "selected": "buildRegion",
+      "agent": "city",
+      "agentCount": {
+        "attribute": "cityCount"
       }
     }
   },
@@ -192,73 +187,68 @@
         }
       },
       "acts": {
-        "id": "rootActGroup",
-        "label": "Root Act Group",
-        "pluralLabel": "Root Act Groups",
-        "members": {
-          "buildEpidemic": {
-            "kind": "build",
-            "label": "Build Epidemic",
-            "pluralLabel": "Build Epidemics",
-            "targets": [
-              "createIndividuals",
-              "buildCity"
-            ]
-          },
-          "createIndividuals": {
-            "kind": "create",
-            "label": "Create Individuals",
-            "selected": "buildEpidemic",
-            "agent": "individual",
-            "agentCount": {
-              "attribute": "city.individualCount"
-            }
-          },
-          "buildCity": {
-            "kind": "buildGrid",
-            "label": "Build City",
-            "pluralLabel": "Build Citys",
-            "selected": "buildEpidemic",
-            "agents": [
-              "individual"
-            ],
-            "space": "map",
-            "fillAgent": "place"
-          },
-          "setupLocation": {
-            "kind": "initialize",
-            "label": "Setup Location",
-            "pluralLabel": "Setup Locations",
-            "space": "regionalMap",
-            "targets": [
-              "cityLocation"
-            ]
-          },
-          "cityLocationAvailableQuery": {
-            "kind": "query",
-            "label": "City Location: Available() Query",
-            "selected": "cityLocation",
-            "function": "available",
-            "targets": [
-              "moveCity"
-            ]
-          },
-          "moveCity": {
-            "kind": "move",
-            "label": "Move City",
-            "selected": "setupLocation",
-            "destination": "cityLocation"
-          },
-          "cityLocation": {
-            "kind": "select",
-            "label": "City Location",
-            "selected": "setupLocation",
-            "agent": "regionalLocation",
-            "space": "regionalMap",
-            "targets": [
-              "cityLocationAvailableQuery"
-            ]
+        "buildEpidemic": {
+          "kind": "build",
+          "label": "Build Epidemic",
+          "pluralLabel": "Build Epidemics",
+          "targets": [
+            "createIndividuals",
+            "buildCity"
+          ]
+        },
+        "createIndividuals": {
+          "kind": "create",
+          "label": "Create Individuals",
+          "selected": "buildEpidemic",
+          "agent": "city.individual",
+          "agentCount": {
+            "attribute": "city.individualCount"
           }
+        },
+        "buildCity": {
+          "kind": "buildGrid",
+          "label": "Build City",
+          "pluralLabel": "Build Citys",
+          "selected": "buildEpidemic",
+          "agents": [
+            "city.individual"
+          ],
+          "space": "city.map",
+          "fillAgent": "city.place"
+        },
+        "setupLocation": {
+          "kind": "initialize",
+          "label": "Setup Location",
+          "pluralLabel": "Setup Locations",
+          "space": "regionalMap",
+          "targets": [
+            "cityLocation"
+          ]
+        },
+        "cityLocationAvailableQuery": {
+          "kind": "query",
+          "label": "City Location: Available() Query",
+          "selected": "cityLocation",
+          "function": "available",
+          "targets": [
+            "moveCity"
+          ]
+        },
+        "moveCity": {
+          "kind": "move",
+          "label": "Move City",
+          "selected": "setupLocation",
+          "destination": "cityLocation"
+        },
+        "cityLocation": {
+          "kind": "select",
+          "label": "City Location",
+          "selected": "setupLocation",
+          "agent": "regionalLocation",
+          "space": "regionalMap",
+          "targets": [
+            "cityLocationAvailableQuery"
+          ]
         }
       },
       "styles": {
@@ -267,105 +257,100 @@
           "label": "City Style 2D",
           "pluralLabel": "City Style 2Ds",
           "acts": {
-            "id": "rootActGroup",
-            "label": "Root Act Group",
-            "pluralLabel": "Root Act Groups",
-            "members": {
-              "cityRule": {
-                "kind": "rule",
-                "label": "City Rule",
-                "pluralLabel": "City Rules",
-                "space": "regionalMap",
-                "targets": [
-                  "cityRuleCommunityInfectionStatusIdenticalInfectionsObservedQuery",
-                  "cityRuleCommunityInfectionStatusIdenticalOriginCityQuery"
-                ]
-              },
-              "cityRuleCommunityInfectionStatusIdenticalInfectionsObservedQuery": {
-                "kind": "query",
-                "label": "City Rule: Community Infection Status Identical Infections Observed Query",
-                "selected": "cityRule",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "city.communityInfectionStatus"
-                  },
-                  {
-                    "option": "city.communityInfectionStatus.infectionsObserved"
-                  }
-                ],
-                "targets": [
-                  "cityRuleColorYellow",
-                  "not_CityRule_CityRuleOrIdentityOutbreakCityQuery__"
-                ]
-              },
-              "cityRuleColorYellow": {
-                "kind": "evaluate",
-                "label": "City Rule: Color Yellow()",
-                "selected": "cityRule",
-                "function": "colorYellow",
-                "targets": [
-                  "cityRuleShapeOval"
-                ]
-              },
-              "not_CityRule_CityRuleOrIdentityOutbreakCityQuery__": {
-                "kind": "none",
-                "label": "!(City Rule (City Rule | Identity Outbreak City Query))",
-                "selected": "cityRule",
-                "targets": [
-                  "cityRuleColorBlue"
-                ]
-              },
-              "cityRuleColorBlue": {
-                "kind": "evaluate",
-                "label": "City Rule: Color Blue()",
-                "selected": "cityRule",
-                "function": "colorBlue",
-                "targets": [
-                  "cityRuleShapeOval"
-                ]
-              },
-              "cityRuleShapeOval": {
-                "kind": "evaluate",
-                "label": "City Rule: Shape Oval()",
-                "selected": "cityRule",
-                "function": "shapeOval",
-                "targets": [
-                  "cityRuleGraphicFill"
-                ]
-              },
-              "cityRuleGraphicFill": {
-                "kind": "evaluate",
-                "label": "City Rule: Graphic Fill()",
-                "selected": "cityRule",
-                "function": "graphicFill"
-              },
-              "cityRuleCommunityInfectionStatusIdenticalOriginCityQuery": {
-                "kind": "query",
-                "label": "City Rule: Community Infection Status Identical Origin City Query",
-                "selected": "cityRule",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "city.communityInfectionStatus"
-                  },
-                  {
-                    "option": "city.communityInfectionStatus.originCity"
-                  }
-                ],
-                "targets": [
-                  "cityRuleColorGray"
-                ]
-              },
-              "cityRuleColorGray": {
-                "kind": "evaluate",
-                "label": "City Rule: Color Gray()",
-                "selected": "cityRule",
-                "function": "colorGray",
-                "targets": [
-                  "cityRuleShapeOval"
-                ]
-              }
+            "cityRule": {
+              "kind": "rule",
+              "label": "City Rule",
+              "pluralLabel": "City Rules",
+              "space": "regionalMap",
+              "targets": [
+                "cityRuleCommunityInfectionStatusIdenticalInfectionsObservedQuery",
+                "cityRuleCommunityInfectionStatusIdenticalOriginCityQuery"
+              ]
+            },
+            "cityRuleCommunityInfectionStatusIdenticalInfectionsObservedQuery": {
+              "kind": "query",
+              "label": "City Rule: Community Infection Status Identical Infections Observed Query",
+              "selected": "cityRule",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.communityInfectionStatus"
+                },
+                {
+                  "option": "city.communityInfectionStatus.infectionsObserved"
+                }
+              ],
+              "targets": [
+                "cityRuleColorYellow",
+                "not_CityRule_CityRuleOrIdentityOutbreakCityQuery__"
+              ]
+            },
+            "cityRuleColorYellow": {
+              "kind": "evaluate",
+              "label": "City Rule: Color Yellow()",
+              "selected": "cityRule",
+              "function": "colorYellow",
+              "targets": [
+                "cityRuleShapeOval"
+              ]
+            },
+            "not_CityRule_CityRuleOrIdentityOutbreakCityQuery__": {
+              "kind": "none",
+              "label": "!(City Rule (City Rule | Identity Outbreak City Query))",
+              "selected": "cityRule",
+              "targets": [
+                "cityRuleColorBlue"
+              ]
+            },
+            "cityRuleColorBlue": {
+              "kind": "evaluate",
+              "label": "City Rule: Color Blue()",
+              "selected": "cityRule",
+              "function": "colorBlue",
+              "targets": [
+                "cityRuleShapeOval"
+              ]
+            },
+            "cityRuleShapeOval": {
+              "kind": "evaluate",
+              "label": "City Rule: Shape Oval()",
+              "selected": "cityRule",
+              "function": "shapeOval",
+              "targets": [
+                "cityRuleGraphicFill"
+              ]
+            },
+            "cityRuleGraphicFill": {
+              "kind": "evaluate",
+              "label": "City Rule: Graphic Fill()",
+              "selected": "cityRule",
+              "function": "graphicFill"
+            },
+            "cityRuleCommunityInfectionStatusIdenticalOriginCityQuery": {
+              "kind": "query",
+              "label": "City Rule: Community Infection Status Identical Origin City Query",
+              "selected": "cityRule",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.communityInfectionStatus"
+                },
+                {
+                  "option": "city.communityInfectionStatus.originCity"
+                }
+              ],
+              "targets": [
+                "cityRuleColorGray"
+              ]
+            },
+            "cityRuleColorGray": {
+              "kind": "evaluate",
+              "label": "City Rule: Color Gray()",
+              "selected": "cityRule",
+              "function": "colorGray",
+              "targets": [
+                "cityRuleShapeOval"
+              ]
             }
           }
         }
@@ -433,884 +418,879 @@
             }
           },
           "acts": {
-            "id": "rootActGroup",
-            "label": "Root Act Group",
-            "pluralLabel": "Root Act Groups",
-            "members": {
-              "initializeLocation": {
-                "kind": "initialize",
-                "label": "Initialize Location",
-                "pluralLabel": "Initialize Locations",
-                "space": "map",
-                "targets": [
-                  "individual"
-                ]
-              },
-              "individual": {
-                "kind": "select",
-                "label": "Individual",
-                "selected": "initializeLocation",
-                "agent": "place",
-                "space": "map",
-                "targets": [
-                  "individualAvailableQuery"
-                ]
-              },
-              "individualAvailableQuery": {
-                "kind": "query",
-                "label": "Individual: Available() Query",
-                "selected": "individual",
-                "function": "available",
-                "targets": [
-                  "moveIndividual"
-                ]
-              },
-              "moveIndividual": {
-                "kind": "move",
-                "label": "Move Individual",
-                "selected": "initializeLocation",
-                "destination": "individual"
-              },
-              "movement": {
-                "kind": "rule",
-                "label": "Movement",
-                "pluralLabel": "Movements",
-                "space": "map",
-                "targets": [
-                  "movementDraw"
-                ]
-              },
-              "neighboringLocation": {
-                "kind": "select",
-                "label": "Neighboring Location",
-                "selected": "movement",
-                "agent": "place",
-                "space": "map",
-                "targets": [
-                  "available",
-                  "neighbor"
-                ]
-              },
-              "available": {
-                "kind": "query",
-                "label": "Available",
-                "selected": "neighboringLocation",
-                "function": "available",
-                "targets": [
-                  "availableNeighboring"
-                ]
-              },
-              "neighbor": {
-                "kind": "query",
-                "label": "Neighbor",
-                "selected": "neighboringLocation",
-                "function": "neighbor",
-                "targets": [
-                  "availableNeighboring"
-                ]
-              },
-              "availableNeighboring": {
-                "kind": "all",
-                "label": "Available Neighboring",
-                "selected": "neighboringLocation",
-                "targets": [
-                  "moveIndividualCopy"
-                ]
-              },
-              "moveIndividualCopy": {
-                "kind": "move",
-                "label": "Move Individual Copy",
-                "selected": "movement",
-                "destination": "neighboringLocation"
-              },
-              "initializeState": {
-                "kind": "initialize",
-                "label": "Initialize State",
-                "pluralLabel": "Initialize States",
-                "space": "map",
-                "targets": [
-                  "individualTransmissionRate",
-                  "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery",
-                  "initializeStateNotInitialCityAssignedQuery"
-                ]
-              },
-              "infectionDraw": {
-                "kind": "evaluate",
-                "label": "Infection Draw",
-                "selected": "initializeState",
-                "function": "randomUnit",
-                "targets": [
-                  "initializeStateInfectionDrawLesserInitialInfectionProbabilityQuery"
-                ]
-              },
-              "initializeStateInfectionDrawLesserInitialInfectionProbabilityQuery": {
-                "kind": "query",
-                "label": "Initialize State: Infection Draw Lesser Initial Infection Probability Query",
-                "selected": "initializeState",
-                "function": "lesser",
-                "inputs": [
-                  {
-                    "evaluate": "infectionDraw"
-                  },
-                  {
-                    "attribute": "region.initialInfectionProbability"
-                  }
-                ],
-                "targets": [
-                  "setStatusToExposed"
-                ]
-              },
-              "setStatusToExposed": {
-                "kind": "set",
-                "label": "Set Status To Exposed",
-                "selected": "initializeState",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.exposed"
+            "initializeLocation": {
+              "kind": "initialize",
+              "label": "Initialize Location",
+              "pluralLabel": "Initialize Locations",
+              "space": "city.map",
+              "targets": [
+                "individual"
+              ]
+            },
+            "individual": {
+              "kind": "select",
+              "label": "Individual",
+              "selected": "initializeLocation",
+              "agent": "city.place",
+              "space": "city.map",
+              "targets": [
+                "individualAvailableQuery"
+              ]
+            },
+            "individualAvailableQuery": {
+              "kind": "query",
+              "label": "Individual: Available() Query",
+              "selected": "individual",
+              "function": "available",
+              "targets": [
+                "moveIndividual"
+              ]
+            },
+            "moveIndividual": {
+              "kind": "move",
+              "label": "Move Individual",
+              "selected": "initializeLocation",
+              "destination": "individual"
+            },
+            "movement": {
+              "kind": "rule",
+              "label": "Movement",
+              "pluralLabel": "Movements",
+              "space": "city.map",
+              "targets": [
+                "movementDraw"
+              ]
+            },
+            "neighboringLocation": {
+              "kind": "select",
+              "label": "Neighboring Location",
+              "selected": "movement",
+              "agent": "city.place",
+              "space": "city.map",
+              "targets": [
+                "available",
+                "neighbor"
+              ]
+            },
+            "available": {
+              "kind": "query",
+              "label": "Available",
+              "selected": "neighboringLocation",
+              "function": "available",
+              "targets": [
+                "availableNeighboring"
+              ]
+            },
+            "neighbor": {
+              "kind": "query",
+              "label": "Neighbor",
+              "selected": "neighboringLocation",
+              "function": "neighbor",
+              "targets": [
+                "availableNeighboring"
+              ]
+            },
+            "availableNeighboring": {
+              "kind": "all",
+              "label": "Available Neighboring",
+              "selected": "neighboringLocation",
+              "targets": [
+                "moveIndividualCopy"
+              ]
+            },
+            "moveIndividualCopy": {
+              "kind": "move",
+              "label": "Move Individual Copy",
+              "selected": "movement",
+              "destination": "neighboringLocation"
+            },
+            "initializeState": {
+              "kind": "initialize",
+              "label": "Initialize State",
+              "pluralLabel": "Initialize States",
+              "space": "city.map",
+              "targets": [
+                "individualTransmissionRate",
+                "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery",
+                "initializeStateNotInitialCityAssignedQuery"
+              ]
+            },
+            "infectionDraw": {
+              "kind": "evaluate",
+              "label": "Infection Draw",
+              "selected": "initializeState",
+              "function": "randomUnit",
+              "targets": [
+                "initializeStateInfectionDrawLesserInitialInfectionProbabilityQuery"
+              ]
+            },
+            "initializeStateInfectionDrawLesserInitialInfectionProbabilityQuery": {
+              "kind": "query",
+              "label": "Initialize State: Infection Draw Lesser Initial Infection Probability Query",
+              "selected": "initializeState",
+              "function": "lesser",
+              "inputs": [
+                {
+                  "evaluate": "infectionDraw"
+                },
+                {
+                  "attribute": "initialInfectionProbability"
                 }
-              },
-              "transmission": {
-                "kind": "rule",
-                "label": "Transmission",
-                "pluralLabel": "Transmissions",
-                "space": "map",
-                "targets": [
-                  "transmitStatusIdenticalInfectiousQuery",
-                  "transmissionStatusIdenticalSymptomInfectiousQuery"
-                ]
-              },
-              "transmitStatusIdenticalInfectiousQuery": {
-                "kind": "query",
-                "label": "Transmit: Status Identical Infectious Query",
-                "selected": "transmission",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.asymptomInfectious"
-                  }
-                ],
-                "targets": [
-                  "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_"
-                ]
-              },
-              "vulnerable": {
-                "kind": "select",
-                "label": "Vulnerable",
-                "selected": "transmission",
-                "agent": "individual",
-                "space": "map",
-                "targets": [
-                  "vulnerableNeighbor"
-                ]
-              },
-              "vulnerableNeighbor": {
-                "kind": "query",
-                "label": "Vulnerable Neighbor",
-                "selected": "vulnerable",
-                "function": "neighbor",
-                "targets": [
-                  "susceptible"
-                ]
-              },
-              "susceptible": {
-                "kind": "query",
-                "label": "Susceptible",
-                "selected": "vulnerable",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.susceptible"
-                  }
-                ],
-                "targets": [
-                  "transmissionDraw"
-                ]
-              },
-              "transmissionDraw": {
-                "kind": "evaluate",
-                "label": "Transmission Draw",
-                "selected": "vulnerable",
-                "function": "randomUnit",
-                "targets": [
-                  "transmitted"
-                ]
-              },
-              "transmitted": {
-                "kind": "query",
-                "label": "Transmitted",
-                "selected": "vulnerable",
-                "function": "lesser",
-                "inputs": [
-                  {
-                    "evaluate": "transmissionDraw"
-                  },
-                  {
-                    "attribute": "individual.contactTransmissionProbability"
-                  }
-                ],
-                "targets": [
-                  "setStatusToExposedCopy"
-                ]
-              },
-              "setStatusToExposedCopy": {
-                "kind": "set",
-                "label": "Set Status To Exposed Copy",
-                "selected": "vulnerable",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.exposed"
+              ],
+              "targets": [
+                "setStatusToExposed"
+              ]
+            },
+            "setStatusToExposed": {
+              "kind": "set",
+              "label": "Set Status To Exposed",
+              "selected": "initializeState",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.exposed"
+              }
+            },
+            "transmission": {
+              "kind": "rule",
+              "label": "Transmission",
+              "pluralLabel": "Transmissions",
+              "space": "city.map",
+              "targets": [
+                "transmitStatusIdenticalInfectiousQuery",
+                "transmissionStatusIdenticalSymptomInfectiousQuery"
+              ]
+            },
+            "transmitStatusIdenticalInfectiousQuery": {
+              "kind": "query",
+              "label": "Transmit: Status Identical Infectious Query",
+              "selected": "transmission",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.asymptomInfectious"
                 }
-              },
-              "progression": {
-                "kind": "rule",
-                "label": "Progression",
-                "pluralLabel": "Progressions",
-                "space": "map",
-                "targets": [
-                  "progressionPeriod"
-                ]
-              },
-              "exposureEnds": {
-                "kind": "query",
-                "label": "Exposure Ends",
-                "selected": "progression",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "evaluate": "progressionPeriod"
-                  },
-                  {
-                    "attribute": "individual.exposureEndPeriod"
-                  }
-                ],
-                "targets": [
-                  "exposureEndsNoAsymptomatic",
-                  "exposureEndsAsymtomatic"
-                ]
-              },
-              "infectionEnds": {
-                "kind": "query",
-                "label": "Infection Ends",
-                "selected": "progression",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "evaluate": "progressionPeriod"
-                  },
-                  {
-                    "attribute": "individual.outcomePeriod"
-                  }
-                ],
-                "targets": [
-                  "mortalityDraw"
-                ]
-              },
-              "progressionMortalityDrawLesserCaseMortalityRateQuery": {
-                "kind": "query",
-                "label": "Progression: Mortality Draw Lesser Case Mortality Rate Query",
-                "selected": "progression",
-                "function": "lesser",
-                "inputs": [
-                  {
-                    "evaluate": "mortalityDraw"
-                  },
-                  {
-                    "attribute": "region.caseMortalityRate"
-                  }
-                ],
-                "targets": [
-                  "setStatusToDead",
-                  "survived"
-                ]
-              },
-              "mortalityDraw": {
-                "kind": "evaluate",
-                "label": "Mortality Draw",
-                "selected": "progression",
-                "function": "randomUnit",
-                "targets": [
-                  "progressionMortalityDrawLesserCaseMortalityRateQuery"
-                ]
-              },
-              "setStatusToDead": {
-                "kind": "set",
-                "label": "Set Status To Dead",
-                "selected": "progression",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.dead"
+              ],
+              "targets": [
+                "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_"
+              ]
+            },
+            "vulnerable": {
+              "kind": "select",
+              "label": "Vulnerable",
+              "selected": "transmission",
+              "agent": "city.individual",
+              "space": "city.map",
+              "targets": [
+                "vulnerableNeighbor"
+              ]
+            },
+            "vulnerableNeighbor": {
+              "kind": "query",
+              "label": "Vulnerable Neighbor",
+              "selected": "vulnerable",
+              "function": "neighbor",
+              "targets": [
+                "susceptible"
+              ]
+            },
+            "susceptible": {
+              "kind": "query",
+              "label": "Susceptible",
+              "selected": "vulnerable",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.susceptible"
                 }
-              },
-              "survived": {
-                "kind": "none",
-                "label": "Survived",
-                "selected": "progression",
-                "targets": [
-                  "setStatusToRecovered"
-                ]
-              },
-              "setStatusToRecovered": {
-                "kind": "set",
-                "label": "Set Status To Recovered",
-                "selected": "progression",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.recovered"
+              ],
+              "targets": [
+                "transmissionDraw"
+              ]
+            },
+            "transmissionDraw": {
+              "kind": "evaluate",
+              "label": "Transmission Draw",
+              "selected": "vulnerable",
+              "function": "randomUnit",
+              "targets": [
+                "transmitted"
+              ]
+            },
+            "transmitted": {
+              "kind": "query",
+              "label": "Transmitted",
+              "selected": "vulnerable",
+              "function": "lesser",
+              "inputs": [
+                {
+                  "evaluate": "transmissionDraw"
+                },
+                {
+                  "attribute": "city.individual.contactTransmissionProbability"
                 }
-              },
-              "exposure": {
-                "kind": "watch",
-                "label": "Exposure",
-                "space": "map",
-                "attribute": "individual.status",
-                "targets": [
-                  "exposureStatusIdenticalExposedQuery"
-                ]
-              },
-              "exposureLength": {
-                "kind": "evaluate",
-                "label": "Exposure Length",
-                "selected": "exposure",
-                "function": "randomInRange",
-                "inputs": [
-                  {
-                    "attribute": "region.minPeriodExposure"
-                  },
-                  {
-                    "attribute": "region.maxPeriodExposure"
-                  }
-                ],
-                "targets": [
-                  "endExposure"
-                ]
-              },
-              "setExposureEndPeriodToEndExposure": {
-                "kind": "set",
-                "label": "Set Exposure End Period To End Exposure",
-                "selected": "exposure",
-                "attribute": "individual.exposureEndPeriod",
-                "parameter": {
+              ],
+              "targets": [
+                "setStatusToExposedCopy"
+              ]
+            },
+            "setStatusToExposedCopy": {
+              "kind": "set",
+              "label": "Set Status To Exposed Copy",
+              "selected": "vulnerable",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.exposed"
+              }
+            },
+            "progression": {
+              "kind": "rule",
+              "label": "Progression",
+              "pluralLabel": "Progressions",
+              "space": "city.map",
+              "targets": [
+                "progressionPeriod"
+              ]
+            },
+            "exposureEnds": {
+              "kind": "query",
+              "label": "Exposure Ends",
+              "selected": "progression",
+              "function": "identical",
+              "inputs": [
+                {
+                  "evaluate": "progressionPeriod"
+                },
+                {
+                  "attribute": "city.individual.exposureEndPeriod"
+                }
+              ],
+              "targets": [
+                "exposureEndsNoAsymptomatic",
+                "exposureEndsAsymtomatic"
+              ]
+            },
+            "infectionEnds": {
+              "kind": "query",
+              "label": "Infection Ends",
+              "selected": "progression",
+              "function": "identical",
+              "inputs": [
+                {
+                  "evaluate": "progressionPeriod"
+                },
+                {
+                  "attribute": "city.individual.outcomePeriod"
+                }
+              ],
+              "targets": [
+                "mortalityDraw"
+              ]
+            },
+            "progressionMortalityDrawLesserCaseMortalityRateQuery": {
+              "kind": "query",
+              "label": "Progression: Mortality Draw Lesser Case Mortality Rate Query",
+              "selected": "progression",
+              "function": "lesser",
+              "inputs": [
+                {
+                  "evaluate": "mortalityDraw"
+                },
+                {
+                  "attribute": "caseMortalityRate"
+                }
+              ],
+              "targets": [
+                "setStatusToDead",
+                "survived"
+              ]
+            },
+            "mortalityDraw": {
+              "kind": "evaluate",
+              "label": "Mortality Draw",
+              "selected": "progression",
+              "function": "randomUnit",
+              "targets": [
+                "progressionMortalityDrawLesserCaseMortalityRateQuery"
+              ]
+            },
+            "setStatusToDead": {
+              "kind": "set",
+              "label": "Set Status To Dead",
+              "selected": "progression",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.dead"
+              }
+            },
+            "survived": {
+              "kind": "none",
+              "label": "Survived",
+              "selected": "progression",
+              "targets": [
+                "setStatusToRecovered"
+              ]
+            },
+            "setStatusToRecovered": {
+              "kind": "set",
+              "label": "Set Status To Recovered",
+              "selected": "progression",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.recovered"
+              }
+            },
+            "exposure": {
+              "kind": "watch",
+              "label": "Exposure",
+              "space": "city.map",
+              "attribute": "city.individual.status",
+              "targets": [
+                "exposureStatusIdenticalExposedQuery"
+              ]
+            },
+            "exposureLength": {
+              "kind": "evaluate",
+              "label": "Exposure Length",
+              "selected": "exposure",
+              "function": "randomInRange",
+              "inputs": [
+                {
+                  "attribute": "minPeriodExposure"
+                },
+                {
+                  "attribute": "maxPeriodExposure"
+                }
+              ],
+              "targets": [
+                "endExposure"
+              ]
+            },
+            "setExposureEndPeriodToEndExposure": {
+              "kind": "set",
+              "label": "Set Exposure End Period To End Exposure",
+              "selected": "exposure",
+              "attribute": "city.individual.exposureEndPeriod",
+              "parameter": {
+                "evaluate": "endExposure"
+              }
+            },
+            "endExposure": {
+              "kind": "evaluate",
+              "label": "End Exposure",
+              "selected": "exposure",
+              "function": "add",
+              "inputs": [
+                {
+                  "evaluate": "exposureNow"
+                },
+                {
+                  "evaluate": "exposureLength"
+                }
+              ],
+              "targets": [
+                "setExposureEndPeriodToEndExposure",
+                "asymptomaticLength"
+              ]
+            },
+            "exposureNow": {
+              "kind": "evaluate",
+              "label": "Exposure: Now()",
+              "selected": "exposure",
+              "function": "timeNow",
+              "targets": [
+                "exposureLength"
+              ]
+            },
+            "asymptomaticLength": {
+              "kind": "evaluate",
+              "label": "Asymptomatic Length",
+              "selected": "exposure",
+              "function": "randomInRange",
+              "inputs": [
+                {
+                  "attribute": "minPeriodAsymptomInfection"
+                },
+                {
+                  "attribute": "maxPeriodAsymptomInfection"
+                }
+              ],
+              "targets": [
+                "endAsymptomatic"
+              ]
+            },
+            "endAsymptomatic": {
+              "kind": "evaluate",
+              "label": "End Asymptomatic",
+              "selected": "exposure",
+              "function": "add",
+              "inputs": [
+                {
                   "evaluate": "endExposure"
+                },
+                {
+                  "evaluate": "asymptomaticLength"
                 }
-              },
-              "endExposure": {
-                "kind": "evaluate",
-                "label": "End Exposure",
-                "selected": "exposure",
-                "function": "add",
-                "inputs": [
-                  {
-                    "evaluate": "exposureNow"
-                  },
-                  {
-                    "evaluate": "exposureLength"
-                  }
-                ],
-                "targets": [
-                  "setExposureEndPeriodToEndExposure",
-                  "asymptomaticLength"
-                ]
-              },
-              "exposureNow": {
-                "kind": "evaluate",
-                "label": "Exposure: Now()",
-                "selected": "exposure",
-                "function": "timeNow",
-                "targets": [
-                  "exposureLength"
-                ]
-              },
-              "asymptomaticLength": {
-                "kind": "evaluate",
-                "label": "Asymptomatic Length",
-                "selected": "exposure",
-                "function": "randomInRange",
-                "inputs": [
-                  {
-                    "attribute": "region.minPeriodAsymptomInfection"
-                  },
-                  {
-                    "attribute": "region.maxPeriodAsymptomInfection"
-                  }
-                ],
-                "targets": [
-                  "endAsymptomatic"
-                ]
-              },
-              "endAsymptomatic": {
-                "kind": "evaluate",
-                "label": "End Asymptomatic",
-                "selected": "exposure",
-                "function": "add",
-                "inputs": [
-                  {
-                    "evaluate": "endExposure"
-                  },
-                  {
-                    "evaluate": "asymptomaticLength"
-                  }
-                ],
-                "targets": [
-                  "setAsymptomaticEndPeriodToEndAsymptomatic",
-                  "symptomLength"
-                ]
-              },
-              "setAsymptomaticEndPeriodToEndAsymptomatic": {
-                "kind": "set",
-                "label": "Set Asymptomatic End Period To End Asymptomatic",
-                "selected": "exposure",
-                "attribute": "individual.asymptomaticEndPeriod",
-                "parameter": {
+              ],
+              "targets": [
+                "setAsymptomaticEndPeriodToEndAsymptomatic",
+                "symptomLength"
+              ]
+            },
+            "setAsymptomaticEndPeriodToEndAsymptomatic": {
+              "kind": "set",
+              "label": "Set Asymptomatic End Period To End Asymptomatic",
+              "selected": "exposure",
+              "attribute": "city.individual.asymptomaticEndPeriod",
+              "parameter": {
+                "evaluate": "endAsymptomatic"
+              }
+            },
+            "exposureStatusIdenticalExposedQuery": {
+              "kind": "query",
+              "label": "Exposure: Status Identical Exposed Query",
+              "selected": "exposure",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.exposed"
+                }
+              ],
+              "targets": [
+                "exposureNow"
+              ]
+            },
+            "progressionPeriod": {
+              "kind": "evaluate",
+              "label": "Progression Period",
+              "selected": "progression",
+              "function": "timeNow",
+              "targets": [
+                "exposureEnds",
+                "infectionEnds",
+                "noAsymptomaticPeriod",
+                "asymptomaticPeriodExists",
+                "asmytomaticEnds"
+              ]
+            },
+            "symptomLength": {
+              "kind": "evaluate",
+              "label": "Symptom Length",
+              "selected": "exposure",
+              "function": "randomInRange",
+              "inputs": [
+                {
+                  "attribute": "minPeriodSymptomInfection"
+                },
+                {
+                  "attribute": "maxPeriodSymptomInfection"
+                }
+              ],
+              "targets": [
+                "endInfection"
+              ]
+            },
+            "endInfection": {
+              "kind": "evaluate",
+              "label": "End Infection",
+              "selected": "exposure",
+              "function": "add",
+              "inputs": [
+                {
                   "evaluate": "endAsymptomatic"
-                }
-              },
-              "exposureStatusIdenticalExposedQuery": {
-                "kind": "query",
-                "label": "Exposure: Status Identical Exposed Query",
-                "selected": "exposure",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.exposed"
-                  }
-                ],
-                "targets": [
-                  "exposureNow"
-                ]
-              },
-              "progressionPeriod": {
-                "kind": "evaluate",
-                "label": "Progression Period",
-                "selected": "progression",
-                "function": "timeNow",
-                "targets": [
-                  "exposureEnds",
-                  "infectionEnds",
-                  "noAsymptomaticPeriod",
-                  "asymptomaticPeriodExists",
-                  "asmytomaticEnds"
-                ]
-              },
-              "symptomLength": {
-                "kind": "evaluate",
-                "label": "Symptom Length",
-                "selected": "exposure",
-                "function": "randomInRange",
-                "inputs": [
-                  {
-                    "attribute": "region.minPeriodSymptomInfection"
-                  },
-                  {
-                    "attribute": "region.maxPeriodSymptomInfection"
-                  }
-                ],
-                "targets": [
-                  "endInfection"
-                ]
-              },
-              "endInfection": {
-                "kind": "evaluate",
-                "label": "End Infection",
-                "selected": "exposure",
-                "function": "add",
-                "inputs": [
-                  {
-                    "evaluate": "endAsymptomatic"
-                  },
-                  {
-                    "evaluate": "symptomLength"
-                  }
-                ],
-                "targets": [
-                  "setOutcomePeriodToEndInfection"
-                ]
-              },
-              "setOutcomePeriodToEndInfection": {
-                "kind": "set",
-                "label": "Set Outcome Period To End Infection",
-                "selected": "exposure",
-                "attribute": "individual.outcomePeriod",
-                "parameter": {
-                  "evaluate": "endInfection"
-                }
-              },
-              "asymptomaticPeriodExists": {
-                "kind": "query",
-                "label": "Asymptomatic Period Exists",
-                "selected": "progression",
-                "function": "different",
-                "inputs": [
-                  {
-                    "attribute": "individual.exposureEndPeriod"
-                  },
-                  {
-                    "attribute": "individual.asymptomaticEndPeriod"
-                  }
-                ],
-                "targets": [
-                  "exposureEndsAsymtomatic",
-                  "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_"
-                ]
-              },
-              "noAsymptomaticPeriod": {
-                "kind": "query",
-                "label": "No Asymptomatic Period",
-                "selected": "progression",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "individual.exposureEndPeriod"
-                  },
-                  {
-                    "attribute": "individual.asymptomaticEndPeriod"
-                  }
-                ],
-                "targets": [
-                  "exposureEndsNoAsymptomatic"
-                ]
-              },
-              "setStatusToAsymptomInfectious": {
-                "kind": "set",
-                "label": "Set Status To Asymptom Infectious",
-                "selected": "progression",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.symptomInfectious"
-                }
-              },
-              "exposureEndsNoAsymptomatic": {
-                "kind": "all",
-                "label": "Exposure Ends No Asymptomatic",
-                "selected": "progression",
-                "targets": [
-                  "setStatusToAsymptomInfectious"
-                ]
-              },
-              "exposureEndsAsymtomatic": {
-                "kind": "all",
-                "label": "Exposure Ends Asymtomatic",
-                "selected": "progression",
-                "targets": [
-                  "setStatusToAsymptomInfectiousCopy"
-                ]
-              },
-              "setStatusToAsymptomInfectiousCopy": {
-                "kind": "set",
-                "label": "Set Status To Asymptom Infectious Copy",
-                "selected": "progression",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.asymptomInfectious"
-                }
-              },
-              "asmytomaticEnds": {
-                "kind": "query",
-                "label": "Asmytomatic Ends",
-                "selected": "progression",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "evaluate": "progressionPeriod"
-                  },
-                  {
-                    "attribute": "individual.asymptomaticEndPeriod"
-                  }
-                ],
-                "targets": [
-                  "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_"
-                ]
-              },
-              "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_": {
-                "kind": "all",
-                "label": "Progression (Asmytomatic Ends & Asymptomatic Period Exists)",
-                "selected": "progression",
-                "targets": [
-                  "setStatusToSymptomInfectious"
-                ]
-              },
-              "setStatusToSymptomInfectious": {
-                "kind": "set",
-                "label": "Set Status To Symptom Infectious",
-                "selected": "progression",
-                "attribute": "individual.status",
-                "parameter": {
-                  "option": "individual.status.symptomInfectious"
                 },
-                "targets": [
-                  "setCommunityInfectionStatusToInfectionsObserved"
-                ]
-              },
-              "transmissionStatusIdenticalSymptomInfectiousQuery": {
-                "kind": "query",
-                "label": "Transmission: Status Identical Symptom Infectious Query",
-                "selected": "transmission",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.symptomInfectious"
-                  }
-                ],
-                "targets": [
-                  "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_"
-                ]
-              },
-              "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_": {
-                "kind": "any",
-                "label": "Transmission (Status Identical Symptom Infectious Query | Transmit: Status Identical Infectious Query)",
-                "selected": "transmission",
-                "targets": [
-                  "vulnerable"
-                ]
-              },
-              "movementStatusDifferentDeadQuery": {
-                "kind": "query",
-                "label": "Movement: Status Different Dead Query",
-                "selected": "movement",
-                "function": "different",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.dead"
-                  }
-                ],
-                "targets": [
-                  "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_"
-                ]
-              },
-              "movementStatusDifferentSymptomInfectiousQuery": {
-                "kind": "query",
-                "label": "Movement: Status Different Symptom Infectious Query",
-                "selected": "movement",
-                "function": "different",
-                "inputs": [
-                  {
-                    "attribute": "individual.status"
-                  },
-                  {
-                    "option": "individual.status.symptomInfectious"
-                  }
-                ],
-                "targets": [
-                  "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_"
-                ]
-              },
-              "movementMovementDrawLesserMovementProbabilityQuery": {
-                "kind": "query",
-                "label": "Movement: Movement Draw Lesser Movement Probability Query",
-                "selected": "movement",
-                "function": "lesser",
-                "inputs": [
-                  {
-                    "evaluate": "movementDraw"
-                  },
-                  {
-                    "attribute": "region.movementProbability"
-                  }
-                ],
-                "targets": [
-                  "movementStatusDifferentDeadQuery",
-                  "movementStatusDifferentSymptomInfectiousQuery"
-                ]
-              },
-              "movementDraw": {
-                "kind": "evaluate",
-                "label": "Movement Draw",
-                "selected": "movement",
-                "function": "randomUnit",
-                "targets": [
-                  "movementMovementDrawLesserMovementProbabilityQuery"
-                ]
-              },
-              "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_": {
-                "kind": "all",
-                "label": "Movement (Status Different Dead Query & Status Different Symptom Infectious Query)",
-                "selected": "movement",
-                "targets": [
-                  "neighboringLocation"
-                ]
-              },
-              "individualTransmissionRate": {
-                "kind": "evaluate",
-                "label": "Individual Transmission Rate",
-                "selected": "initializeState",
-                "function": "randomInRange",
-                "inputs": [
-                  {
-                    "attribute": "region.minContactTransmissionProbability"
-                  },
-                  {
-                    "attribute": "region.maxContactTransmissionProbability"
-                  }
-                ],
-                "targets": [
-                  "setContactTransmissionProbabilityToIndividualTransmissionRate"
-                ]
-              },
-              "setContactTransmissionProbabilityToIndividualTransmissionRate": {
-                "kind": "set",
-                "label": "Set Contact Transmission Probability To Individual Transmission Rate",
-                "selected": "initializeState",
-                "attribute": "individual.contactTransmissionProbability",
-                "parameter": {
-                  "evaluate": "individualTransmissionRate"
+                {
+                  "evaluate": "symptomLength"
                 }
+              ],
+              "targets": [
+                "setOutcomePeriodToEndInfection"
+              ]
+            },
+            "setOutcomePeriodToEndInfection": {
+              "kind": "set",
+              "label": "Set Outcome Period To End Infection",
+              "selected": "exposure",
+              "attribute": "city.individual.outcomePeriod",
+              "parameter": {
+                "evaluate": "endInfection"
+              }
+            },
+            "asymptomaticPeriodExists": {
+              "kind": "query",
+              "label": "Asymptomatic Period Exists",
+              "selected": "progression",
+              "function": "different",
+              "inputs": [
+                {
+                  "attribute": "city.individual.exposureEndPeriod"
+                },
+                {
+                  "attribute": "city.individual.asymptomaticEndPeriod"
+                }
+              ],
+              "targets": [
+                "exposureEndsAsymtomatic",
+                "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_"
+              ]
+            },
+            "noAsymptomaticPeriod": {
+              "kind": "query",
+              "label": "No Asymptomatic Period",
+              "selected": "progression",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.individual.exposureEndPeriod"
+                },
+                {
+                  "attribute": "city.individual.asymptomaticEndPeriod"
+                }
+              ],
+              "targets": [
+                "exposureEndsNoAsymptomatic"
+              ]
+            },
+            "setStatusToAsymptomInfectious": {
+              "kind": "set",
+              "label": "Set Status To Asymptom Infectious",
+              "selected": "progression",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.symptomInfectious"
+              }
+            },
+            "exposureEndsNoAsymptomatic": {
+              "kind": "all",
+              "label": "Exposure Ends No Asymptomatic",
+              "selected": "progression",
+              "targets": [
+                "setStatusToAsymptomInfectious"
+              ]
+            },
+            "exposureEndsAsymtomatic": {
+              "kind": "all",
+              "label": "Exposure Ends Asymtomatic",
+              "selected": "progression",
+              "targets": [
+                "setStatusToAsymptomInfectiousCopy"
+              ]
+            },
+            "setStatusToAsymptomInfectiousCopy": {
+              "kind": "set",
+              "label": "Set Status To Asymptom Infectious Copy",
+              "selected": "progression",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.asymptomInfectious"
+              }
+            },
+            "asmytomaticEnds": {
+              "kind": "query",
+              "label": "Asmytomatic Ends",
+              "selected": "progression",
+              "function": "identical",
+              "inputs": [
+                {
+                  "evaluate": "progressionPeriod"
+                },
+                {
+                  "attribute": "city.individual.asymptomaticEndPeriod"
+                }
+              ],
+              "targets": [
+                "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_"
+              ]
+            },
+            "progression_AsmytomaticEndsAndAsymptomaticPeriodExists_": {
+              "kind": "all",
+              "label": "Progression (Asmytomatic Ends & Asymptomatic Period Exists)",
+              "selected": "progression",
+              "targets": [
+                "setStatusToSymptomInfectious"
+              ]
+            },
+            "setStatusToSymptomInfectious": {
+              "kind": "set",
+              "label": "Set Status To Symptom Infectious",
+              "selected": "progression",
+              "attribute": "city.individual.status",
+              "parameter": {
+                "option": "city.individual.status.symptomInfectious"
               },
-              "migrate": {
-                "kind": "rule",
-                "label": "Migrate",
-                "pluralLabel": "Migrates",
-                "space": "map",
-                "targets": [
-                  "migrateRandomUnit"
-                ]
-              },
-              "migrateRandomUnit": {
-                "kind": "evaluate",
-                "label": "Migrate: Random Unit()",
-                "selected": "migrate",
-                "function": "randomUnit",
-                "targets": [
-                  "migrateMigrateRandomUnitLesserMigrationProbabilityQuery"
-                ]
-              },
-              "migrateMigrateRandomUnitLesserMigrationProbabilityQuery": {
-                "kind": "query",
-                "label": "Migrate: Migrate: Random Unit() Lesser Migration Probability Query",
-                "selected": "migrate",
-                "function": "lesser",
-                "inputs": [
-                  {
-                    "evaluate": "migrateRandomUnit"
-                  },
-                  {
-                    "attribute": "region.migrationProbability"
-                  }
-                ],
-                "targets": [
-                  "neighboringCity"
-                ]
-              },
-              "newLocation": {
-                "kind": "select",
-                "label": "New Location",
-                "selected": "neighboringCity",
-                "agent": "place",
-                "space": "map",
-                "targets": [
-                  "individualCopyCopy_Unspecified_Query"
-                ]
-              },
-              "individualCopyCopy_Unspecified_Query": {
-                "kind": "query",
-                "label": "Individual Copy Copy: [Unspecified]() Query",
-                "selected": "newLocation",
-                "function": "available",
-                "targets": [
-                  "moveCity"
-                ]
-              },
-              "neighboringCity": {
-                "kind": "select",
-                "label": "Neighboring City",
-                "selected": "migrate",
-                "agent": "city",
-                "space": "regionalMap",
-                "targets": [
-                  "individualCopy_Unspecified_Query"
-                ]
-              },
-              "individualCopy_Unspecified_Query": {
-                "kind": "query",
-                "label": "Individual Copy: [Unspecified]() Query",
-                "selected": "neighboringCity",
-                "function": "neighbor",
-                "targets": [
-                  "newLocation"
-                ]
-              },
-              "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery": {
-                "kind": "query",
-                "label": "Initialize State: Community Infection Status Identical Origin City Query",
-                "selected": "initializeState",
-                "function": "identical",
-                "inputs": [
-                  {
-                    "attribute": "city.communityInfectionStatus"
-                  },
-                  {
-                    "option": "city.communityInfectionStatus.originCity"
-                  }
-                ],
-                "targets": [
-                  "infectionDraw"
-                ]
-              },
-              "initializeStateNotInitialCityAssignedQuery": {
-                "kind": "query",
-                "label": "Initialize State: Not Initial City Assigned Query",
-                "selected": "initializeState",
-                "function": "not",
-                "inputs": [
-                  {
-                    "attribute": "region.initialCityAssigned"
-                  }
-                ],
-                "targets": [
-                  "setInitialCityAssignedToTrue"
-                ]
-              },
-              "setCommunityInfectionStatusToOriginCity": {
-                "kind": "set",
-                "label": "Set Community Infection Status To Origin City",
-                "selected": "initializeState",
-                "attribute": "city.communityInfectionStatus",
-                "parameter": {
+              "targets": [
+                "setCommunityInfectionStatusToInfectionsObserved"
+              ]
+            },
+            "transmissionStatusIdenticalSymptomInfectiousQuery": {
+              "kind": "query",
+              "label": "Transmission: Status Identical Symptom Infectious Query",
+              "selected": "transmission",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.symptomInfectious"
+                }
+              ],
+              "targets": [
+                "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_"
+              ]
+            },
+            "transmission_StatusIdenticalSymptomInfectiousQueryOrTransmitStatusIdenticalInfectiousQuery_": {
+              "kind": "any",
+              "label": "Transmission (Status Identical Symptom Infectious Query | Transmit: Status Identical Infectious Query)",
+              "selected": "transmission",
+              "targets": [
+                "vulnerable"
+              ]
+            },
+            "movementStatusDifferentDeadQuery": {
+              "kind": "query",
+              "label": "Movement: Status Different Dead Query",
+              "selected": "movement",
+              "function": "different",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.dead"
+                }
+              ],
+              "targets": [
+                "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_"
+              ]
+            },
+            "movementStatusDifferentSymptomInfectiousQuery": {
+              "kind": "query",
+              "label": "Movement: Status Different Symptom Infectious Query",
+              "selected": "movement",
+              "function": "different",
+              "inputs": [
+                {
+                  "attribute": "city.individual.status"
+                },
+                {
+                  "option": "city.individual.status.symptomInfectious"
+                }
+              ],
+              "targets": [
+                "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_"
+              ]
+            },
+            "movementMovementDrawLesserMovementProbabilityQuery": {
+              "kind": "query",
+              "label": "Movement: Movement Draw Lesser Movement Probability Query",
+              "selected": "movement",
+              "function": "lesser",
+              "inputs": [
+                {
+                  "evaluate": "movementDraw"
+                },
+                {
+                  "attribute": "movementProbability"
+                }
+              ],
+              "targets": [
+                "movementStatusDifferentDeadQuery",
+                "movementStatusDifferentSymptomInfectiousQuery"
+              ]
+            },
+            "movementDraw": {
+              "kind": "evaluate",
+              "label": "Movement Draw",
+              "selected": "movement",
+              "function": "randomUnit",
+              "targets": [
+                "movementMovementDrawLesserMovementProbabilityQuery"
+              ]
+            },
+            "movement_StatusDifferentDeadQueryAndStatusDifferentSymptomInfectiousQuery_": {
+              "kind": "all",
+              "label": "Movement (Status Different Dead Query & Status Different Symptom Infectious Query)",
+              "selected": "movement",
+              "targets": [
+                "neighboringLocation"
+              ]
+            },
+            "individualTransmissionRate": {
+              "kind": "evaluate",
+              "label": "Individual Transmission Rate",
+              "selected": "initializeState",
+              "function": "randomInRange",
+              "inputs": [
+                {
+                  "attribute": "minContactTransmissionProbability"
+                },
+                {
+                  "attribute": "maxContactTransmissionProbability"
+                }
+              ],
+              "targets": [
+                "setContactTransmissionProbabilityToIndividualTransmissionRate"
+              ]
+            },
+            "setContactTransmissionProbabilityToIndividualTransmissionRate": {
+              "kind": "set",
+              "label": "Set Contact Transmission Probability To Individual Transmission Rate",
+              "selected": "initializeState",
+              "attribute": "city.individual.contactTransmissionProbability",
+              "parameter": {
+                "evaluate": "individualTransmissionRate"
+              }
+            },
+            "migrate": {
+              "kind": "rule",
+              "label": "Migrate",
+              "pluralLabel": "Migrates",
+              "space": "city.map",
+              "targets": [
+                "migrateRandomUnit"
+              ]
+            },
+            "migrateRandomUnit": {
+              "kind": "evaluate",
+              "label": "Migrate: Random Unit()",
+              "selected": "migrate",
+              "function": "randomUnit",
+              "targets": [
+                "migrateMigrateRandomUnitLesserMigrationProbabilityQuery"
+              ]
+            },
+            "migrateMigrateRandomUnitLesserMigrationProbabilityQuery": {
+              "kind": "query",
+              "label": "Migrate: Migrate: Random Unit() Lesser Migration Probability Query",
+              "selected": "migrate",
+              "function": "lesser",
+              "inputs": [
+                {
+                  "evaluate": "migrateRandomUnit"
+                },
+                {
+                  "attribute": "migrationProbability"
+                }
+              ],
+              "targets": [
+                "neighboringCity"
+              ]
+            },
+            "newLocation": {
+              "kind": "select",
+              "label": "New Location",
+              "selected": "neighboringCity",
+              "agent": "city.place",
+              "space": "city.map",
+              "targets": [
+                "individualCopyCopy_Unspecified_Query"
+              ]
+            },
+            "individualCopyCopy_Unspecified_Query": {
+              "kind": "query",
+              "label": "Individual Copy Copy: [Unspecified]() Query",
+              "selected": "newLocation",
+              "function": "available",
+              "targets": [
+                "moveCity"
+              ]
+            },
+            "neighboringCity": {
+              "kind": "select",
+              "label": "Neighboring City",
+              "selected": "migrate",
+              "agent": "city",
+              "space": "regionalMap",
+              "targets": [
+                "individualCopy_Unspecified_Query"
+              ]
+            },
+            "individualCopy_Unspecified_Query": {
+              "kind": "query",
+              "label": "Individual Copy: [Unspecified]() Query",
+              "selected": "neighboringCity",
+              "function": "neighbor",
+              "targets": [
+                "newLocation"
+              ]
+            },
+            "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery": {
+              "kind": "query",
+              "label": "Initialize State: Community Infection Status Identical Origin City Query",
+              "selected": "initializeState",
+              "function": "identical",
+              "inputs": [
+                {
+                  "attribute": "city.communityInfectionStatus"
+                },
+                {
                   "option": "city.communityInfectionStatus.originCity"
-                },
-                "targets": [
-                  "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery"
-                ]
-              },
-              "setInitialCityAssignedToTrue": {
-                "kind": "set",
-                "label": "Set Initial City Assigned To True",
-                "selected": "initializeState",
-                "attribute": "region.initialCityAssigned",
-                "parameter": {
-                  "literal": true
-                },
-                "targets": [
-                  "setCommunityInfectionStatusToOriginCity"
-                ]
-              },
-              "moveCity": {
-                "kind": "move",
-                "label": "Move City",
-                "selected": "migrate",
-                "destination": "newLocation"
-              },
-              "setCommunityInfectionStatusToInfectionsObserved": {
-                "kind": "set",
-                "label": "Set Community Infection Status To Infections Observed",
-                "selected": "progression",
-                "attribute": "city.communityInfectionStatus",
-                "parameter": {
-                  "option": "city.communityInfectionStatus.infectionsObserved"
                 }
+              ],
+              "targets": [
+                "infectionDraw"
+              ]
+            },
+            "initializeStateNotInitialCityAssignedQuery": {
+              "kind": "query",
+              "label": "Initialize State: Not Initial City Assigned Query",
+              "selected": "initializeState",
+              "function": "not",
+              "inputs": [
+                {
+                  "attribute": "initialCityAssigned"
+                }
+              ],
+              "targets": [
+                "setInitialCityAssignedToTrue"
+              ]
+            },
+            "setCommunityInfectionStatusToOriginCity": {
+              "kind": "set",
+              "label": "Set Community Infection Status To Origin City",
+              "selected": "initializeState",
+              "attribute": "city.communityInfectionStatus",
+              "parameter": {
+                "option": "city.communityInfectionStatus.originCity"
+              },
+              "targets": [
+                "initializeStateCommunityInfectionStatusIdenticalOriginCityQuery"
+              ]
+            },
+            "setInitialCityAssignedToTrue": {
+              "kind": "set",
+              "label": "Set Initial City Assigned To True",
+              "selected": "initializeState",
+              "attribute": "initialCityAssigned",
+              "parameter": {
+                "constant": "true"
+              },
+              "targets": [
+                "setCommunityInfectionStatusToOriginCity"
+              ]
+            },
+            "moveCity": {
+              "kind": "move",
+              "label": "Move City",
+              "selected": "migrate",
+              "destination": "newLocation"
+            },
+            "setCommunityInfectionStatusToInfectionsObserved": {
+              "kind": "set",
+              "label": "Set Community Infection Status To Infections Observed",
+              "selected": "progression",
+              "attribute": "city.communityInfectionStatus",
+              "parameter": {
+                "option": "city.communityInfectionStatus.infectionsObserved"
               }
             }
           },
@@ -1320,195 +1300,190 @@
               "label": "Individual Style 2D",
               "pluralLabel": "Individual Style 2Ds",
               "acts": {
-                "id": "rootActGroup",
-                "label": "Root Act Group",
-                "pluralLabel": "Root Act Groups",
-                "members": {
-                  "individualRule": {
-                    "kind": "rule",
-                    "label": "Individual Rule",
-                    "pluralLabel": "Individual Rules",
-                    "space": "map",
-                    "targets": [
-                      "individualRuleStatusIdenticalSusceptibleQuery",
-                      "individualRuleStatusIdenticalExposedQuery",
-                      "individualRuleStatusIdenticalInfectiousQuery",
-                      "individualRuleStatusIdenticalRecoveredQuery",
-                      "individualRuleStatusIdenticalDeadQuery",
-                      "individualRuleStatusIdenticalSymptomInfectiousQuery"
-                    ]
-                  },
-                  "individualRuleColorBlue": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Blue()",
-                    "selected": "individualRule",
-                    "function": "colorBlue",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  },
-                  "individualRuleShapeOval": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Shape Oval()",
-                    "selected": "individualRule",
-                    "function": "shapeOval",
-                    "targets": [
-                      "individualRuleGraphicFill"
-                    ]
-                  },
-                  "individualRuleGraphicFill": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Graphic Fill()",
-                    "selected": "individualRule",
-                    "function": "graphicFill"
-                  },
-                  "individualRuleColorYellow": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Yellow()",
-                    "selected": "individualRule",
-                    "function": "colorYellow",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  },
-                  "individualRuleColorOrange": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Orange()",
-                    "selected": "individualRule",
-                    "function": "colorOrange",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  },
-                  "individualRuleColorGreen": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Green()",
-                    "selected": "individualRule",
-                    "function": "colorGreen",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalSusceptibleQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Susceptible Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.susceptible"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorBlue"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalExposedQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Exposed Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.exposed"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorYellow"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalInfectiousQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Infectious Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.asymptomInfectious"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorOrange"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalRecoveredQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Recovered Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.recovered"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorGreen"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalDeadQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Dead Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.dead"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorBlack"
-                    ]
-                  },
-                  "individualRuleColorBlack": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Black()",
-                    "selected": "individualRule",
-                    "function": "colorBlack",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  },
-                  "individualRuleStatusIdenticalSymptomInfectiousQuery": {
-                    "kind": "query",
-                    "label": "Individual Rule: Status Identical Symptom Infectious Query",
-                    "selected": "individualRule",
-                    "function": "identical",
-                    "inputs": [
-                      {
-                        "attribute": "individual.status"
-                      },
-                      {
-                        "option": "individual.status.symptomInfectious"
-                      }
-                    ],
-                    "targets": [
-                      "individualRuleColorRed"
-                    ]
-                  },
-                  "individualRuleColorRed": {
-                    "kind": "evaluate",
-                    "label": "Individual Rule: Color Red()",
-                    "selected": "individualRule",
-                    "function": "colorRed",
-                    "targets": [
-                      "individualRuleShapeOval"
-                    ]
-                  }
+                "individualRule": {
+                  "kind": "rule",
+                  "label": "Individual Rule",
+                  "pluralLabel": "Individual Rules",
+                  "space": "city.map",
+                  "targets": [
+                    "individualRuleStatusIdenticalSusceptibleQuery",
+                    "individualRuleStatusIdenticalExposedQuery",
+                    "individualRuleStatusIdenticalInfectiousQuery",
+                    "individualRuleStatusIdenticalRecoveredQuery",
+                    "individualRuleStatusIdenticalDeadQuery",
+                    "individualRuleStatusIdenticalSymptomInfectiousQuery"
+                  ]
+                },
+                "individualRuleColorBlue": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Blue()",
+                  "selected": "individualRule",
+                  "function": "colorBlue",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
+                },
+                "individualRuleShapeOval": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Shape Oval()",
+                  "selected": "individualRule",
+                  "function": "shapeOval",
+                  "targets": [
+                    "individualRuleGraphicFill"
+                  ]
+                },
+                "individualRuleGraphicFill": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Graphic Fill()",
+                  "selected": "individualRule",
+                  "function": "graphicFill"
+                },
+                "individualRuleColorYellow": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Yellow()",
+                  "selected": "individualRule",
+                  "function": "colorYellow",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
+                },
+                "individualRuleColorOrange": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Orange()",
+                  "selected": "individualRule",
+                  "function": "colorOrange",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
+                },
+                "individualRuleColorGreen": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Green()",
+                  "selected": "individualRule",
+                  "function": "colorGreen",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
+                },
+                "individualRuleStatusIdenticalSusceptibleQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Susceptible Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.susceptible"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorBlue"
+                  ]
+                },
+                "individualRuleStatusIdenticalExposedQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Exposed Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.exposed"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorYellow"
+                  ]
+                },
+                "individualRuleStatusIdenticalInfectiousQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Infectious Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.asymptomInfectious"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorOrange"
+                  ]
+                },
+                "individualRuleStatusIdenticalRecoveredQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Recovered Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.recovered"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorGreen"
+                  ]
+                },
+                "individualRuleStatusIdenticalDeadQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Dead Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.dead"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorBlack"
+                  ]
+                },
+                "individualRuleColorBlack": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Black()",
+                  "selected": "individualRule",
+                  "function": "colorBlack",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
+                },
+                "individualRuleStatusIdenticalSymptomInfectiousQuery": {
+                  "kind": "query",
+                  "label": "Individual Rule: Status Identical Symptom Infectious Query",
+                  "selected": "individualRule",
+                  "function": "identical",
+                  "inputs": [
+                    {
+                      "attribute": "city.individual.status"
+                    },
+                    {
+                      "option": "city.individual.status.symptomInfectious"
+                    }
+                  ],
+                  "targets": [
+                    "individualRuleColorRed"
+                  ]
+                },
+                "individualRuleColorRed": {
+                  "kind": "evaluate",
+                  "label": "Individual Rule: Color Red()",
+                  "selected": "individualRule",
+                  "function": "colorRed",
+                  "targets": [
+                    "individualRuleShapeOval"
+                  ]
                 }
               }
             }
@@ -1518,12 +1493,7 @@
           "kind": "agent",
           "label": "Place",
           "pluralLabel": "Places",
-          "acts": {
-            "id": "rootActGroup",
-            "label": "Root Act Group",
-            "pluralLabel": "Root Act Groups",
-            "members": {}
-          }
+          "acts": {}
         }
       },
       "spaces": {
@@ -1560,12 +1530,7 @@
       "kind": "agent",
       "label": "Regional Location",
       "pluralLabel": "Regional Locations",
-      "acts": {
-        "id": "rootActGroup",
-        "label": "Root Act Group",
-        "pluralLabel": "Root Act Groups",
-        "members": {}
-      }
+      "acts": {}
     }
   },
   "spaces": {

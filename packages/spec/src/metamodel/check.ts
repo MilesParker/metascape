@@ -8,6 +8,9 @@ import {
   ROOT_ACT_KINDS,
   type Act,
   type ActId,
+  type ActRef,
+  type AgentRef,
+  type Constant,
   type Agent,
   type Attribute,
   type AttributeRef,
@@ -20,10 +23,10 @@ import {
   type Prototype,
   type PrototypeType,
   type RootAct,
-  type RootGroup,
   type Scape,
   type SelectLikeAct,
   type Space,
+  type SpaceRef,
   type Value,
 } from './types';
 
@@ -44,7 +47,7 @@ export function checkModel(model: Model, library: Library = coreLibrary): Diagno
     if (error instanceof ModelFormatError) return [...error.diagnostics];
     throw error;
   }
-  return new Checker(model, indexLibrary(library).functions).run();
+  return new Checker(model, indexLibrary(library)).run();
 }
 
 /** Throws a {@link ModelFormatError} listing every error {@link checkModel} finds. */
@@ -54,9 +57,9 @@ export function assertValidModel(model: Model, library: Library = coreLibrary): 
 }
 
 /**
- * Checks a function library: its structure, that function IDs are unique
- * across the whole library (sinks refer to functions by ID alone), and that
- * optional inputs come last.
+ * Checks a function library: its structure, that function and constant IDs
+ * are unique across the whole library (models refer to them by ID alone), and
+ * that optional inputs come last.
  */
 export function checkLibrary(library: Library): Diagnostic[] {
   try {
@@ -77,14 +80,43 @@ interface FunctionInfo {
   libraries: string[];
 }
 
-function indexLibrary(library: Library): {
+interface LibraryIndex {
   functions: Map<string, FunctionInfo>;
+  constants: Map<string, Constant>;
   diagnostics: Diagnostic[];
-} {
+}
+
+function indexLibrary(library: Library): LibraryIndex {
   const functions = new Map<string, FunctionInfo>();
+  const constants = new Map<string, Constant>();
   const paths = new Map<string, string>();
+  const constantPaths = new Map<string, string>();
   const diagnostics: Diagnostic[] = [];
   const visit = (lib: Library, libraries: string[], path: PropertyKey[]) => {
+    for (const [id, constant] of Object.entries(lib.constants ?? {})) {
+      const at = formatPath([...path, 'constants', id]);
+      const earlier = constantPaths.get(id);
+      if (earlier !== undefined) {
+        diagnostics.push(
+          error(
+            at,
+            `Constant ID \`${id}\` is already used at ${earlier}. Constant IDs are unique across the library.`,
+          ),
+        );
+        continue;
+      }
+      constantPaths.set(id, at);
+      constants.set(id, constant);
+      const found = literalType(constant.value);
+      if (!fits(found, constant.type) || (constant.type === 'integer' && found !== 'integer')) {
+        diagnostics.push(
+          error(
+            `${at}.value`,
+            `The value must be ${describeType(constant.type)}; found ${JSON.stringify(constant.value)}.`,
+          ),
+        );
+      }
+    }
     for (const [id, fn] of Object.entries(lib.functions ?? {})) {
       const at = formatPath([...path, 'functions', id]);
       const earlier = paths.get(id);
@@ -117,7 +149,7 @@ function indexLibrary(library: Library): {
     }
   };
   visit(library, [], []);
-  return { functions, diagnostics };
+  return { functions, constants, diagnostics };
 }
 
 /** The query functions that set a selection's cardinality. */
@@ -206,27 +238,27 @@ function error(path: string, message: string): Diagnostic {
   return { path, severity: 'error', message };
 }
 
-/** An agent, scape or space: something that owns attributes and starts attribute references. */
+/** An agent, scape or space: something that owns attributes. */
 interface Owner {
   kind: 'agent' | 'scape' | 'space';
-  id: string;
+  /** Its path from the root scape, as references write it: `region.farmer`; empty for the root. */
+  ref: string;
   path: Path;
   attributes: Record<string, Attribute>;
   space?: Space;
 }
 
-/** An agent or style, whose acts refer to each other by ID. */
+/** An agent or style, whose acts refer to each other by their paths within it. */
 interface Actable {
-  /** The agent the acts belong to (for a style, the styled agent). */
-  agentId: string;
   /** For messages: "agent `bug`" or "style `bugStyle2D`". */
   name: string;
-  group: RootGroup;
+  acts: Record<ActId, Act>;
   path: Path;
 }
 
 interface ActInfo {
-  id: ActId;
+  /** The act's path within its agent or style: `bugRule`, `moves.step`. */
+  id: ActRef;
   act: Exclude<Act, { kind: 'group' }>;
   path: Path;
 }
@@ -242,14 +274,19 @@ class Checker {
   private readonly diagnostics: Diagnostic[] = [];
   readonly owners = new Map<string, Owner>();
   private readonly actables: Actable[] = [];
+  readonly functions: ReadonlyMap<string, FunctionInfo>;
+  readonly constants: ReadonlyMap<string, Constant>;
 
   constructor(
     private readonly model: Model,
-    readonly functions: ReadonlyMap<string, FunctionInfo>,
-  ) {}
+    library: LibraryIndex,
+  ) {
+    this.functions = library.functions;
+    this.constants = library.constants;
+  }
 
   run(): Diagnostic[] {
-    this.collectScape(this.model, this.model.id, []);
+    this.collectScape(this.model, '', `scape \`${this.model.id}\``, []);
     for (const actable of this.actables) new ActChecker(this, actable).run();
     return this.diagnostics;
   }
@@ -264,21 +301,13 @@ class Checker {
 
   // ─────────────────────────── Structure ───────────────────────────
 
+  /** Adds an owner. Siblings with the same ID are reported by {@link uniqueAmongSiblings}; the first is kept. */
   private addOwner(owner: Owner): void {
-    const earlier = this.owners.get(owner.id);
-    if (earlier) {
-      this.error(
-        owner.path,
-        `\`${owner.id}\` is already the ID of the ${earlier.kind} at ${formatPath(earlier.path) || '(model)'}. ` +
-          'Agent, scape and space IDs are unique across the model, because attribute references start with them.',
-      );
-      return;
-    }
-    this.owners.set(owner.id, owner);
+    if (!this.owners.has(owner.ref)) this.owners.set(owner.ref, owner);
   }
 
-  private collectScape(scape: Model | Scape, id: string, path: Path): void {
-    this.collectAgent(scape, 'scape', id, path);
+  private collectScape(scape: Model | Scape, ref: string, name: string, path: Path): void {
+    this.collectAgent(scape, 'scape', ref, name, path);
     this.uniqueAmongSiblings(path, {
       attributes: scape.attributes,
       agents: scape.agents,
@@ -290,7 +319,7 @@ class Checker {
       const spacePath = [...path, 'spaces', spaceId];
       this.addOwner({
         kind: 'space',
-        id: spaceId,
+        ref: childRef(ref, spaceId),
         path: spacePath,
         attributes: space.attributes ?? {},
         space,
@@ -303,39 +332,36 @@ class Checker {
     }
     for (const [agentId, agent] of Object.entries(scape.agents ?? {})) {
       const agentPath = [...path, 'agents', agentId];
-      if (agent.kind === 'scape') this.collectScape(agent, agentId, agentPath);
-      else this.collectAgent(agent, 'agent', agentId, agentPath);
+      const agentRef = childRef(ref, agentId);
+      const agentName = `${agent.kind} \`${agentRef}\``;
+      if (agent.kind === 'scape') this.collectScape(agent, agentRef, agentName, agentPath);
+      else this.collectAgent(agent, 'agent', agentRef, agentName, agentPath);
     }
   }
 
   private collectAgent(
     agent: Model | Scape | Agent,
     kind: 'agent' | 'scape',
-    id: string,
+    ref: string,
+    name: string,
     path: Path,
   ): void {
-    this.addOwner({ kind, id, path, attributes: agent.attributes ?? {} });
+    this.addOwner({ kind, ref, path, attributes: agent.attributes ?? {} });
     if (kind === 'agent') {
       this.uniqueAmongSiblings(path, { attributes: agent.attributes, styles: agent.styles });
     }
     this.checkAttributes(agent.attributes, path);
     this.checkExtensions(agent.extensions, path);
     if (agent.acts) {
-      this.actables.push({
-        agentId: id,
-        name: `${kind} \`${id}\``,
-        group: agent.acts,
-        path: [...path, 'acts'],
-      });
+      this.actables.push({ name, acts: agent.acts, path: [...path, 'acts'] });
     }
     for (const [styleId, style] of Object.entries(agent.styles ?? {})) {
       const stylePath = [...path, 'styles', styleId];
       if (style.kind === 'shape') this.warn(stylePath, 'Shape styles are not supported yet.');
       if (style.acts) {
         this.actables.push({
-          agentId: id,
-          name: `style \`${styleId}\``,
-          group: style.acts,
+          name: `style \`${styleId}\` of ${name}`,
+          acts: style.acts,
           path: [...stylePath, 'acts'],
         });
       }
@@ -465,17 +491,25 @@ class Checker {
 
   // ─────────────────────────── Resolution ───────────────────────────
 
-  /** Resolves `owner.attribute`, reporting at `path` if it does not resolve. */
+  /** The attribute a reference names, without reporting anything. */
+  findAttribute(ref: AttributeRef): { owner: Owner; attribute: Attribute } | undefined {
+    const [ownerRef, attributeId] = splitLast(ref);
+    const owner = this.owners.get(ownerRef);
+    const attribute = owner?.attributes[attributeId];
+    return owner && attribute ? { owner, attribute } : undefined;
+  }
+
+  /** Resolves an attribute reference, reporting at `path` if it does not resolve. */
   resolveAttribute(
     ref: AttributeRef,
     path: Path,
   ): { owner: Owner; attribute: Attribute } | undefined {
-    const [ownerId = '', attributeId = ''] = ref.split('.');
-    const owner = this.owners.get(ownerId);
+    const [ownerRef, attributeId] = splitLast(ref);
+    const owner = this.owners.get(ownerRef);
     if (!owner) {
       this.error(
         path,
-        `\`${ownerId}\` is not an agent, scape or space of this model${suggestion(ownerId, [...this.owners.keys()])}. Attributes are written owner.attribute.`,
+        `\`${ownerRef}\` is not an agent, scape or space of this model${suggestion(ownerRef, this.ownerRefs())}. An attribute is written as the path of its owner from the root scape, then its ID.`,
       );
       return undefined;
     }
@@ -483,50 +517,52 @@ class Checker {
     if (!attribute) {
       this.error(
         path,
-        `${capitalize(owner.kind)} \`${ownerId}\` has no attribute \`${attributeId}\`${suggestion(attributeId, Object.keys(owner.attributes))}.`,
+        `${capitalize(describeOwner(owner))} has no attribute \`${attributeId}\`${suggestion(attributeId, Object.keys(owner.attributes))}.`,
       );
       return undefined;
     }
     return { owner, attribute };
   }
 
-  /** Resolves the ID of an agent or scape. */
-  resolveAgent(id: string, path: Path): Owner | undefined {
-    const owner = this.owners.get(id);
+  /** Resolves the path of an agent or scape. */
+  resolveAgent(ref: AgentRef, path: Path): Owner | undefined {
+    const owner = ref === '' ? undefined : this.owners.get(ref);
     if (owner && owner.kind !== 'space') return owner;
     this.error(
       path,
       owner
-        ? `\`${id}\` is a space; an agent or scape is expected here.`
-        : `\`${id}\` is not an agent or scape of this model${suggestion(id, this.ownerIds('agent', 'scape'))}.`,
+        ? `\`${ref}\` is a space; an agent or scape is expected here.`
+        : `\`${ref}\` is not an agent or scape of this model${suggestion(ref, this.ownerRefs('agent', 'scape'))}. Agents are written as their path from the root scape.`,
     );
     return undefined;
   }
 
-  /** Resolves the ID of a space, of one of the given kinds if any are given. */
-  resolveSpace(id: string, path: Path, ...kinds: Space['kind'][]): Space | undefined {
-    const owner = this.owners.get(id);
+  /** Resolves the path of a space, of one of the given kinds if any are given. */
+  resolveSpace(ref: SpaceRef, path: Path, ...kinds: Space['kind'][]): Space | undefined {
+    const owner = this.owners.get(ref);
     if (!owner?.space) {
       this.error(
         path,
-        owner
-          ? `\`${id}\` is ${owner.kind === 'agent' ? 'an agent' : 'a scape'}; a space is expected here.`
-          : `\`${id}\` is not a space of this model${suggestion(id, this.ownerIds('space'))}.`,
+        owner && ref !== ''
+          ? `\`${ref}\` is ${owner.kind === 'agent' ? 'an agent' : 'a scape'}; a space is expected here.`
+          : `\`${ref}\` is not a space of this model${suggestion(ref, this.ownerRefs('space'))}. Spaces are written as their path from the root scape.`,
       );
       return undefined;
     }
     if (kinds.length > 0 && !kinds.includes(owner.space.kind)) {
       this.error(
         path,
-        `\`${id}\` is a ${owner.space.kind} space; ${kinds.map((k) => `a ${k} space`).join(' or ')} is expected here.`,
+        `\`${ref}\` is a ${owner.space.kind} space; ${kinds.map((k) => `a ${k} space`).join(' or ')} is expected here.`,
       );
       return undefined;
     }
     return owner.space;
   }
 
-  private ownerIds(...kinds: Owner['kind'][]): string[] {
-    return [...this.owners.values()].filter((o) => kinds.includes(o.kind)).map((o) => o.id);
+  private ownerRefs(...kinds: Owner['kind'][]): string[] {
+    return [...this.owners.values()]
+      .filter((o) => o.ref !== '' && (kinds.length === 0 || kinds.includes(o.kind)))
+      .map((o) => o.ref);
   }
 
   resolveFunction(id: string, path: Path): FunctionInfo | undefined {
@@ -540,6 +576,17 @@ class Checker {
     return info;
   }
 
+  resolveConstant(id: string, path: Path): Constant | undefined {
+    const constant = this.constants.get(id);
+    if (!constant) {
+      this.error(
+        path,
+        `\`${id}\` is not a constant of the library${suggestion(id, [...this.constants.keys()])}.`,
+      );
+    }
+    return constant;
+  }
+
   /** The type of an attribute's values. */
   attributeType(ref: AttributeRef, attribute: Attribute): ValueType {
     return attribute.type === 'state' ? `state:${ref}` : attribute.type;
@@ -548,13 +595,15 @@ class Checker {
 
 /** Checks the acts of one agent or style. */
 class ActChecker {
-  private readonly acts = new Map<ActId, ActInfo>();
-  private readonly sources = new Map<ActId, ActId[]>();
-  private readonly upstreamCache = new Map<ActId, ReadonlySet<ActId>>();
-  private readonly resultTypes = new Map<ActId, ValueType>();
-  private readonly computing = new Set<ActId>();
+  /** The acts, by their paths within the agent or style. */
+  private readonly acts = new Map<ActRef, ActInfo>();
+  private readonly groups = new Set<ActRef>();
+  private readonly sources = new Map<ActRef, ActRef[]>();
+  private readonly upstreamCache = new Map<ActRef, ReadonlySet<ActRef>>();
+  private readonly resultTypes = new Map<ActRef, ValueType>();
+  private readonly computing = new Set<ActRef>();
   /** The acts some root act's flow reaches. */
-  private readonly reached = new Set<ActId>();
+  private readonly reached = new Set<ActRef>();
 
   constructor(
     private readonly checker: Checker,
@@ -562,7 +611,7 @@ class ActChecker {
   ) {}
 
   run(): void {
-    this.collect(this.actable.group.members, [...this.actable.path, 'members']);
+    this.collect(this.actable.acts, '', this.actable.path);
     for (const info of this.acts.values()) this.checkReferences(info);
     this.checkAcyclic();
     this.checkReachable();
@@ -570,19 +619,13 @@ class ActChecker {
     this.checkSelections();
   }
 
-  private collect(members: Record<ActId, Act>, path: Path): void {
-    for (const [id, act] of Object.entries(members)) {
-      const at = [...path, id];
+  private collect(members: Record<ActId, Act>, prefix: string, path: Path): void {
+    for (const [key, act] of Object.entries(members)) {
+      const at = [...path, key];
+      const id = childRef(prefix, key);
       if (act.kind === 'group') {
-        this.collect(act.members, [...at, 'members']);
-        continue;
-      }
-      const earlier = this.acts.get(id);
-      if (earlier) {
-        this.checker.error(
-          at,
-          `Act ID \`${id}\` is already used at ${formatPath(earlier.path)}. Act IDs are unique within an agent or style, across its groups.`,
-        );
+        this.groups.add(id);
+        this.collect(act.members, id, [...at, 'members']);
         continue;
       }
       this.acts.set(id, { id, act, path: at });
@@ -601,7 +644,7 @@ class ActChecker {
     if (!info) {
       this.checker.error(
         path,
-        `\`${id}\` is not an act of ${this.actable.name}${suggestion(id, [...this.acts.keys()])}. Acts refer to acts of the same agent or style.`,
+        `\`${id}\` is not an act of ${this.actable.name}${suggestion(id, [...this.acts.keys()])}. Acts refer to acts of the same agent or style, by their path within it.`,
       );
     }
     return info;
@@ -632,7 +675,7 @@ class ActChecker {
             `\`${target}\` is a ${targetAct.kind} act, which starts its own flow; nothing flows into a root act.`,
           );
         }
-      } else if (this.isGroupId(target)) {
+      } else if (this.groups.has(target)) {
         checker.error(at, `\`${target}\` is a group; a flow goes to acts, not groups.`);
       } else {
         this.resolveAct(target, at);
@@ -751,14 +794,6 @@ class ActChecker {
       case 'none':
         break;
     }
-  }
-
-  private isGroupId(id: ActId): boolean {
-    const find = (members: Record<ActId, Act>): boolean =>
-      Object.entries(members).some(
-        ([key, act]) => act.kind === 'group' && (key === id || find(act.members)),
-      );
-    return find(this.actable.group.members);
   }
 
   // ───────────────────────────── Sinks ─────────────────────────────
@@ -882,19 +917,16 @@ class ActChecker {
     }
     if ('attribute' in value) {
       if (!report) {
-        const [ownerId = '', attributeId = ''] = value.attribute.split('.');
-        const attribute = checker.owners.get(ownerId)?.attributes[attributeId];
-        return attribute ? checker.attributeType(value.attribute, attribute) : undefined;
+        const found = checker.findAttribute(value.attribute);
+        return found ? checker.attributeType(value.attribute, found.attribute) : undefined;
       }
       const resolved = checker.resolveAttribute(value.attribute, [...path, 'attribute']);
       return resolved ? checker.attributeType(value.attribute, resolved.attribute) : undefined;
     }
     if ('option' in value) {
-      const [ownerId = '', attributeId = '', optionId = ''] = value.option.split('.');
-      const ref = `${ownerId}.${attributeId}`;
+      const [ref, optionId] = splitLast(value.option);
       if (!report) {
-        const attribute = checker.owners.get(ownerId)?.attributes[attributeId];
-        return attribute?.type === 'state' ? `state:${ref}` : undefined;
+        return checker.findAttribute(ref)?.attribute.type === 'state' ? `state:${ref}` : undefined;
       }
       const resolved = checker.resolveAttribute(ref, [...path, 'option']);
       if (!resolved) return undefined;
@@ -913,6 +945,12 @@ class ActChecker {
         return undefined;
       }
       return `state:${ref}`;
+    }
+    if ('constant' in value) {
+      const constant = report
+        ? checker.resolveConstant(value.constant, [...path, 'constant'])
+        : checker.constants.get(value.constant);
+      return constant?.type;
     }
     const info = report
       ? this.resolveAct(value.evaluate, [...path, 'evaluate'])
@@ -1152,12 +1190,28 @@ class ActChecker {
 function describeValue(value: Value): string {
   if ('attribute' in value) return `\`${value.attribute}\``;
   if ('option' in value) return `\`${value.option}\``;
+  if ('constant' in value) return `\`${value.constant}\``;
   if ('evaluate' in value) return `evaluate \`${value.evaluate}\``;
   return JSON.stringify(value.literal);
 }
 
 function describeAttributeType(attribute: Attribute): string {
   return attribute.type === 'state' ? 'a state' : describeType(attribute.type);
+}
+
+/** The path of a child: `region.farmer` from `region` and `farmer`. */
+function childRef(parent: string, id: string): string {
+  return parent === '' ? id : `${parent}.${id}`;
+}
+
+/** Splits a path into all but its last ID, and its last ID: `region.farmer.wealth` → `region.farmer`, `wealth`. */
+function splitLast(ref: string): [string, string] {
+  const dot = ref.lastIndexOf('.');
+  return dot < 0 ? ['', ref] : [ref.slice(0, dot), ref.slice(dot + 1)];
+}
+
+function describeOwner(owner: Owner): string {
+  return owner.ref === '' ? 'the root scape' : `${owner.kind} \`${owner.ref}\``;
 }
 
 function capitalize(text: string): string {

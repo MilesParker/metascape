@@ -19,7 +19,6 @@ import type {
   Model,
   Named,
   Neighborhood,
-  RootGroup,
   Scape,
   ShapeType,
   Space,
@@ -131,7 +130,8 @@ const NEIGHBORHOODS: Record<string, Neighborhood> = {
 const SHAPES: Record<string, ShapeType> = { POINT: 'point', LINE: 'line', POLYGON: 'polygon' };
 
 /** The attributes of the core library that models use as values. */
-const CORE_CONSTANTS: Record<string, LiteralValue> = { true: true, false: false, zero: 0, unit: 1 };
+/** The constants of the core library, which `core_library.metaabm` holds as attributes of its context. */
+const CORE_CONSTANTS = new Set(['true', 'false', 'zero', 'unit']);
 
 /** The types of root act: the sources of flows. */
 const ROOT_TYPES = new Set([
@@ -228,8 +228,6 @@ class Reader {
 
 class Translator {
   readonly diagnostics: TranslationDiagnostic[] = [];
-  /** The IDs of the acts of each agent or style, which are unique across its groups. */
-  private readonly actIds = new Map<XNode, Set<string>>();
   /** Attributes with no type that are set to `true` or `false`, so that they are booleans. */
   private readonly booleans = new Set<XNode>();
   /** The agent or style an act belongs to, where that is not the one whose group holds it. */
@@ -498,15 +496,40 @@ class Translator {
     return target;
   }
 
-  /** The agent or scape a reference points at. */
-  private agentId(node: XNode, attribute: string, text: string): string | undefined {
-    const target = this.local(node, attribute, text, ['agents', 'root']);
-    return target && this.id(target);
+  /**
+   * The path of an agent, scape or space from the root scape, as the format
+   * writes references: `region.farmer`. Empty for the root scape.
+   */
+  private pathFromRoot(node: XNode): string[] | undefined {
+    const ids: string[] = [];
+    for (let n: XNode | undefined = node; n && n !== this.root; n = n.parent) {
+      const id = this.id(n);
+      if (id === undefined) return undefined;
+      ids.unshift(id);
+    }
+    return ids;
   }
 
+  /** The agent or scape a reference points at, as its path from the root scape. */
+  private agentId(node: XNode, attribute: string, text: string): string | undefined {
+    const target = this.local(node, attribute, text, ['agents', 'root']);
+    if (target === this.root) {
+      this.report(
+        node,
+        'error',
+        'unsupported',
+        'The reference is to the root scape, which a reference to an agent cannot name.',
+        attribute,
+      );
+      return undefined;
+    }
+    return target && this.pathFromRoot(target)?.join('.');
+  }
+
+  /** The space a reference points at, as its path from the root scape. */
   private spaceId(node: XNode, attribute: string, text: string): string | undefined {
     const target = this.local(node, attribute, text, ['projections']);
-    return target && this.id(target);
+    return target && this.pathFromRoot(target)?.join('.');
   }
 
   private agentIds(node: XNode, attribute: string, text: string | undefined): string[] | undefined {
@@ -543,7 +566,23 @@ class Translator {
   private actId(node: XNode, attribute: string, text: string | undefined): ActId | undefined {
     if (text === undefined) return undefined;
     const target = this.actNode(node, attribute, text);
-    return target && this.id(target);
+    return target && this.actPath(target);
+  }
+
+  /**
+   * An act's path within the acts of its agent or style: its ID, after the IDs
+   * of the groups that hold it (`moves.step`). An act moved to another agent
+   * is placed among that agent's top-level acts.
+   */
+  private actPath(act: XNode): string | undefined {
+    const ids: string[] = [];
+    for (let n: XNode | undefined = act; n && n.tag === 'members'; n = n.parent) {
+      const id = this.id(n);
+      if (id === undefined) return undefined;
+      ids.unshift(id);
+      if (this.home.has(n)) break;
+    }
+    return ids.join('.');
   }
 
   private actTargets(node: XNode, attribute: string, text: string | undefined): XNode[] {
@@ -568,7 +607,7 @@ class Translator {
     return target;
   }
 
-  /** An attribute, written `owner.attribute`. */
+  /** An attribute, written as the path of its owner from the root scape, then its ID: `bug.energy`. */
   private attributeRef(
     node: XNode,
     attribute: string,
@@ -591,11 +630,11 @@ class Translator {
       );
       return undefined;
     }
-    const ownerId = this.id(owner);
+    const ownerPath = this.pathFromRoot(owner);
     const attributeId = this.id(target);
-    return ownerId === undefined || attributeId === undefined
+    return ownerPath === undefined || attributeId === undefined
       ? undefined
-      : `${ownerId}.${attributeId}`;
+      : [...ownerPath, attributeId].join('.');
   }
 
   private attributeRefs(
@@ -985,7 +1024,12 @@ class Translator {
 
   // ─────────────────────────────── Acts ───────────────────────────────
 
-  private rootGroup(node: XNode): RootGroup | undefined {
+  /**
+   * The acts of an agent or style: the members of its root group. The group's
+   * own ID and labels are dropped, since nothing refers to them; a label other
+   * than the editor's default is noted.
+   */
+  private rootGroup(node: XNode): Record<string, Act> | undefined {
     const reader = new Reader(node, this);
     if (this.type(node) !== 'AGroup') {
       this.report(
@@ -996,33 +1040,24 @@ class Translator {
       );
       return undefined;
     }
-    const id = this.id(node);
-    const named = this.named(reader);
+    const { label, description } = this.named(reader);
+    if ((label !== undefined && label !== 'Root Act Group') || description !== undefined) {
+      this.report(
+        node,
+        'note',
+        'dropped',
+        `The root group's ${description === undefined ? `label (${JSON.stringify(label)}) is` : 'label and description are'} not translated: the format holds an agent's acts directly.`,
+      );
+    }
     const members = this.members(reader, node);
     reader.finish();
-    return id === undefined ? undefined : { id, ...named, members };
+    return members;
   }
 
   private members(reader: Reader, group: XNode): Record<string, Act> {
     const members: Record<string, Act> = {};
     const owner = this.ownerOf(group);
-    let ids = this.actIds.get(owner);
-    if (!ids) this.actIds.set(owner, (ids = new Set()));
-    const add = (member: XNode) => {
-      const id = this.id(member);
-      if (id !== undefined && ids.has(id)) {
-        this.report(
-          member,
-          'error',
-          'invalid',
-          `The act ID \`${id}\` is used twice in this agent. Acts refer to each other by ID alone.`,
-          'ID',
-        );
-        return;
-      }
-      if (id !== undefined) ids.add(id);
-      this.put(members, member, this.act(member));
-    };
+    const add = (member: XNode) => this.put(members, member, this.act(member));
     for (const member of reader.children('members')) {
       if (!this.home.has(member)) add(member);
     }
@@ -1038,7 +1073,7 @@ class Translator {
     const targetText = reader.attr('targets');
     const targetNodes = this.actTargets(node, 'targets', targetText);
     const targetIds = targetNodes
-      .map((t) => this.id(t))
+      .map((t) => this.actPath(t))
       .filter((id): id is string => id !== undefined);
     const targets = targetIds.length > 0 ? targetIds : undefined;
     this.acts.push({
@@ -1517,7 +1552,7 @@ class Translator {
       if (
         !resolved.reference.file.endsWith('core_library.metaabm') ||
         id === undefined ||
-        !(id in CORE_CONSTANTS)
+        !CORE_CONSTANTS.has(id)
       ) {
         this.report(
           node,
@@ -1528,8 +1563,7 @@ class Translator {
         );
         return undefined;
       }
-      const literal = CORE_CONSTANTS[id]!;
-      return { literal };
+      return { constant: id };
     }
     const target = resolved.node;
     const reportSelection = (what: string) => {
@@ -1558,9 +1592,10 @@ class Translator {
         const attributeNode = target.parent;
         const owner = attributeNode?.parent;
         if (!attributeNode || !owner) return undefined;
-        const ids = [owner, attributeNode, target].map((n) => this.id(n));
-        if (ids.some((id) => id === undefined)) return undefined;
-        return { option: ids.join('.') };
+        const ownerPath = this.pathFromRoot(owner);
+        const ids = [attributeNode, target].map((n) => this.id(n));
+        if (ownerPath === undefined || ids.some((id) => id === undefined)) return undefined;
+        return { option: [...ownerPath, ...ids].join('.') };
       }
       case 'members': {
         const type = this.type(target);
@@ -1585,8 +1620,8 @@ class Translator {
           return undefined;
         }
         reportSelection('an evaluate');
-        const id = this.id(target);
-        return id === undefined ? undefined : { evaluate: id };
+        const ref = this.actPath(target);
+        return ref === undefined ? undefined : { evaluate: ref };
       }
       case 'literal': {
         reportSelection('a literal');

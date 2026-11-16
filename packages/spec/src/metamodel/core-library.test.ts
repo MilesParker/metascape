@@ -21,6 +21,15 @@ describe('the core library', () => {
     expect(checkLibrary(coreLibrary)).toEqual([]);
   });
 
+  it('has the constants of the original, numeric ones taking the type of where they are used', () => {
+    expect(coreLibrary.constants).toMatchObject({
+      true: { type: 'boolean', value: true },
+      false: { type: 'boolean', value: false },
+      zero: { type: 'numeric', value: 0 },
+      unit: { type: 'numeric', value: 1 },
+    });
+  });
+
   it('reports duplicate function IDs across sub-libraries', () => {
     const library: Library = {
       subs: {

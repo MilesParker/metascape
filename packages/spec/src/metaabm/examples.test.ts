@@ -75,7 +75,12 @@ describe('the Escape examples', () => {
       let n = 0;
       const visit = (value: unknown) => {
         if (value && typeof value === 'object') {
-          const members = (value as { members?: Record<string, unknown> }).members;
+          // An agent's or style's acts, and the members of each group.
+          const { acts, members } = value as {
+            acts?: Record<string, unknown>;
+            members?: Record<string, unknown>;
+          };
+          if (acts) n += Object.keys(acts).length;
           if (members) n += Object.keys(members).length;
           Object.values(value).forEach(visit);
         }
@@ -91,7 +96,7 @@ describe('the Escape examples', () => {
 
   it('keep the text of labels, plural labels and descriptions as they are', () => {
     const model = translateMetaabm(read('escape/StupidModel1.metaabm')).model!;
-    expect(model.agents?.['bug']?.acts?.members['bugRule']).toMatchObject({
+    expect(model.agents?.['bug']?.acts?.['bugRule']).toMatchObject({
       label: 'Bug Rule',
       pluralLabel: 'Bug Rules',
       description:
@@ -113,7 +118,7 @@ describe('StupidModel1', () => {
 describe('StupidModel5', () => {
   it('keeps the Java of ConsumeFood as a comment, for a hand-written TypeScript body', () => {
     const { model, diagnostics } = translateMetaabm(read('escape/StupidModel5.metaabm'));
-    const method = model?.agents?.['bug']?.acts?.members['consumeFood'];
+    const method = model?.agents?.['bug']?.acts?.['consumeFood'];
     expect(method).toMatchObject({ kind: 'method', label: 'ConsumeFood', selected: 'grow' });
     const body = method && 'body' in method ? method.body : undefined;
     expect(body).toContain('Port it to TypeScript by hand');
@@ -158,8 +163,8 @@ describe('the AMF test models', () => {
     expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(errors('TestMovement')).toEqual([]);
     expect(diagnostics.filter((d) => d.kind === 'moved')).toHaveLength(9);
-    expect(model?.agents?.['basicMovementAgent']?.acts?.members['goalinArea2']).toBeDefined();
-    expect(model?.agents?.['networkAgent']?.acts?.members['goalinArea2']).toBeUndefined();
+    expect(model?.agents?.['basicMovementAgent']?.acts?.['goalinArea2']).toBeDefined();
+    expect(model?.agents?.['networkAgent']?.acts?.['goalinArea2']).toBeUndefined();
   });
 
   it('TestSpatial translates except for its arrays, which the format does not have', () => {
@@ -176,12 +181,12 @@ describe('the AMF test models', () => {
     // The queries using the arrays name withinBoundaries, which is left out of the library with
     // arrays; and two sets read an evaluate that is not upstream of them, as the original has them.
     expect(errors('TestSpatial')).toEqual([
-      'agents.complexMovementAgent.acts.members.testParallelRootWithin2DBoundary_WithinSpace_Query.function',
-      'agents.complexMovementAgent.acts.members.testParallelRootWithin2DBoundary_WithinSpace_QueryCopy.function',
-      'agents.complexMovementAgent.acts.members.setResultToTestParallelRootResultAddUnitCopy.parameter.evaluate',
-      'agents.complexMovementAgent.acts.members.setResultToTestParallelRootResultAddUnitCopyCopy.parameter.evaluate',
-      'agents.complexLocation.acts.members.selfAvailableWithinCopy.function',
-      'agents.complexLocation.acts.members.testSelfWithinBoundsWithin2DBoundary_GoodBoundary_Query.function',
+      'agents.complexMovementAgent.acts.testParallelRootWithin2DBoundary_WithinSpace_Query.function',
+      'agents.complexMovementAgent.acts.testParallelRootWithin2DBoundary_WithinSpace_QueryCopy.function',
+      'agents.complexMovementAgent.acts.setResultToTestParallelRootResultAddUnitCopy.parameter.evaluate',
+      'agents.complexMovementAgent.acts.setResultToTestParallelRootResultAddUnitCopyCopy.parameter.evaluate',
+      'agents.complexLocation.acts.selfAvailableWithinCopy.function',
+      'agents.complexLocation.acts.testSelfWithinBoundsWithin2DBoundary_GoodBoundary_Query.function',
     ]);
   });
 });

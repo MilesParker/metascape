@@ -35,9 +35,11 @@ for each, under [Review items](#review-items).
   attributes. Contexts can be nested inside contexts.
 - **Every element is keyed by its MetaABM `ID`.** Records are keyed by ID, so `label`,
   `pluralLabel` and `description` stay plain fields.
-- **Cross-references are typed IDs**, resolved and checked by the checker. In XMI they are paths
-  (`//@agents[ID='bug']/@rootActivity/@members[ID='bugRule']`). In the new format, an act refers to
-  another act in the same agent by its bare ID, and to an attribute by `agent.attribute` (**R1**).
+- **Cross-references are paths of IDs**, following the nesting, resolved and checked by the
+  checker. In XMI they are paths too (`//@agents[ID='bug']/@rootActivity/@members[ID='bugRule']`).
+  In the new format, agents, spaces and attributes are referred to by their path from the root
+  scape (`bug`, `region.farmer`, `bug.energy`, or `bugCount` for an attribute of the root scape),
+  and acts by their path within their agent's acts (`bugRule`, `moves.step`) (**R1**).
 - **Only one side of each two-way reference is stored.** The ecore keeps both sides
   (`sources`/`targets`, `owner`/`attributes`); the format keeps `targets` and the containment side,
   and the checker derives the other side.
@@ -185,8 +187,9 @@ compute them however it likes, as long as the result is the same.
 
 **R1. ID scope.** _Decided:_ IDs are unique among siblings. MetaABM says IDs are unique across
 the model, but act IDs repeat from agent to agent (`rootActGroup` in every agent, `bugRule` in an
-agent and in its style). Acts are referred to within their agent; attributes and agents by
-`agent.attribute` paths.
+agent and in its style). References are paths that follow the nesting, so uniqueness among
+siblings is all they need: acts by their path within their agent or style, agents, spaces and
+attributes by their path from the root scape.
 
 **R2. Names.** _Decided:_ drop the ecore prefixes; context → scape, projection → space (as the guide
 anticipated: "in future releases, we will probably refer to Contexts as 'Scapes'"). Other names
@@ -321,15 +324,18 @@ the work finds them. Each one is resolved by a decision recorded here, not by th
 
 Structure and references:
 
-- **ID scope.** R1 says IDs are unique among siblings. Two references need more: act IDs are
-  unique within an agent or style across all its nested groups, because acts refer to each other
-  by bare ID; and agent, scape and space IDs are unique across the model, because an attribute
-  reference (`owner.attribute`) starts with one. That second rule is MetaABM's own (model-wide
-  IDs). A style's acts are a namespace of their own, apart from its agent's (`bugRule` is in both
-  in StupidModel 1).
-- **The root group.** Kept as an object, `acts: { id, label, members }`, since its ID and label
-  vary in the examples (`rootActGroup`, `actions`, `executeBuy`, `definition`). Groups are not
-  flow nodes: a group in `targets` is an error.
+- **References are paths** (owner's decision). The last ID of an attribute reference is the
+  attribute; what comes before it is the path of its owner (agent, scape or space) from the root
+  scape, empty for the root scape itself (`bugCount`, `bug.energy`, `grid2D.width`,
+  `region.farmer.wealth`). An option is its attribute's reference, then its ID. Acts are referred
+  to by their path within their agent or style (`moves.step` for an act in a group), so a style's
+  acts resolve within the style. IDs are unique among siblings only (R1), and the siblings of an
+  element are all its children, across its records (an attribute and an agent of one scape may
+  not share an ID). The root scape cannot be named by a reference to an agent; no example does.
+- **The root group** (owner's decision). An agent's or style's `acts` holds the members of its
+  root group directly. Nothing refers to the group, so its ID and labels are dropped; the
+  translation notes a label other than the editor's "Root Act Group" (`Actions`, `Execute Buy`,
+  `Definition` in the examples). Groups are not flow nodes: a group in `targets` is an error.
 - **Root acts carry no `agent` and no `selected`.** In every example a root's agent is the agent
   that owns it (for a style, the styled agent), and its selection is itself. The translation
   drops both, with a warning if one ever differs.
@@ -338,18 +344,21 @@ Structure and references:
   treatment as die and leave (R19). Connect and replace keep theirs.
 - **Cause.** `result` names a root act of the same agent, as acts do. The one example (Markets)
   causes the firm's own initialize.
-- **Core library constants.** `core_library.metaabm` also defines the attributes `true`,
-  `false`, `zero` and `unit`, which the examples use 92 times as values. The translation writes
-  them as literals (`true`, `false`, `0`, `1`). `path` and `self` are unused and dropped.
+- **Core library constants** (owner's decision). `core_library.metaabm` also defines the
+  attributes `true`, `false`, `zero` and `unit`, which the AMP examples use as values. They are
+  constants of the core library, referred to as `{ constant: 'unit' }`. `zero` and `unit` are
+  numeric, so they take the type of where they are used: `unit` is 1 in a grid and 1.0 in a
+  continuous space. `path` and `self` are unused and left out.
 - **Literals** are `{ literal, type? }`. The generators type a literal from its text (`1.0` is
   real, `1` integer); JSON numbers lose that, so the translation writes `type: 'real'` for a
   literal with a decimal point (`1.0` and `10.0` occur in the examples).
 - **Grid neighbourhood** is required. In XMI an omitted `neighborhood` means the ecore default,
-  Euclidean (three Escape grids omit it), so the translation must write `euclidean` then.
+  Euclidean, since EMF does not write default values (three Escape grids omit it), so the
+  translation writes `euclidean` then.
 - **Left out of the structure:** a style's attributes (`SStyle` is attributed in the ecore; no
   example uses it) and `SContext.library` (user libraries, R9). `ABuildProjection.attributes` is
   kept as a list of attribute references, though nothing sets it and its meaning is unknown.
-- **Typed IDs** are type aliases (`ActId`, `AgentId`, `AttributeRef` and so on), not branded
+- **Typed references** are type aliases (`ActRef`, `AgentRef`, `AttributeRef` and so on), not branded
   types, so a model written in TypeScript stays a plain object literal. The checker resolves them.
 - **Execution settings** (R14's proposal) are not in the format yet.
 

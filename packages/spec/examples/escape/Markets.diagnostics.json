@@ -30,6 +30,12 @@
     "message": "No type is given, so it is the default, integer."
   },
   {
+    "path": "//@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='trader']/@implementation",
     "severity": "note",
     "kind": "dropped",
@@ -46,6 +52,18 @@
     "severity": "note",
     "kind": "dropped",
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='trader']/@styles[ID='traderStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='trader']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Execute Buy\") is not translated: the format holds an agent's acts directly."
   },
   {
     "path": "//@agents[ID='trader']/@rootActivity/@members[ID='sharePriceAdjustment']/@inputs.2/@selected",
@@ -84,6 +102,18 @@
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
   },
   {
+    "path": "//@agents[ID='firm']/@styles[ID='firmStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='firm']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='instrument']/@implementation",
     "severity": "note",
     "kind": "dropped",
@@ -100,5 +130,17 @@
     "severity": "note",
     "kind": "dropped",
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='instrument']/@styles[ID='instrumentStyle2D']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
+  },
+  {
+    "path": "//@agents[ID='instrument']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Actions\") is not translated: the format holds an agent's acts directly."
   }
 ]

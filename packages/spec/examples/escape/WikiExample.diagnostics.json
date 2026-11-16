@@ -18,6 +18,12 @@
     "message": "The implementation (Java class and paths) is for code generation and is not translated."
   },
   {
+    "path": "//@agents[ID='individual']/@styles[ID='simpleDraw']/@rootActivity",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The root group's label (\"Definition\") is not translated: the format holds an agent's acts directly."
+  },
+  {
     "path": "//@agents[ID='block']/@implementation",
     "severity": "note",
     "kind": "dropped",

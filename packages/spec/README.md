@@ -21,6 +21,12 @@ attributes, acts and styles. Acts form a graph: each act lists the acts its flow
 (`targets`) and names the selection it works within (`selected`). Every flow starts at a root
 act, such as a rule or an initialize.
 
+References are paths of IDs that follow the nesting, so an ID only has to be unique among its
+siblings. Agents, spaces and attributes are written as their path from the root scape (`bug`,
+`grid2D`, `bug.energy`, `region.farmer.wealth`, or `bugCount` for an attribute of the root scape);
+acts as their path within their agent's acts (`bugRule`, or `moves.step` in a group). Functions
+and constants (`unit`, `true`) are referred to by their ID in the function library.
+
 ```ts
 import { checkModel, parseModel, type Model } from '@metascape/spec/metamodel';
 

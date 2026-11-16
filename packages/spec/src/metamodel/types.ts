@@ -23,34 +23,49 @@
  * - Behaviour is a graph of acts. Each act lists the acts its flow goes on to
  *   (`targets`) and names the selection it works within (`selected`). Root acts
  *   (rule, initialize, build and so on) are the sources of every flow.
- * - Cross-references are IDs: acts refer to acts of the same agent (or style)
- *   by bare ID; attributes are referred to as `agent.attribute`, where the
- *   first part is the ID of an agent, scape or space; functions are referred
- *   to by their ID in the function library.
+ * - Cross-references are paths of IDs, following the nesting, so IDs only need
+ *   to be unique among siblings. Agents, spaces and attributes are referred to
+ *   by their path from the root scape (`bug`, `region.farmer`, `bug.energy`,
+ *   `bugCount`); acts by their path within their agent's or style's acts
+ *   (`bugRule`, or `moves.step` for an act in a group). Functions and constants
+ *   are referred to by their ID in the function library.
  */
 
 // ─────────────────────────────── IDs ───────────────────────────────
 
 /** An ID: a letter or underscore, then letters, digits and underscores. */
 export type Id = string;
-/** The ID of an act, unique within its agent or style (across nested groups). */
+/** The ID of an act. */
 export type ActId = Id;
-/** The ID of an agent or scape. Unique across the model, since attribute references start with it. */
+/** The ID of an agent or scape. */
 export type AgentId = Id;
-/** The ID of a space. Unique across the model, since attribute references start with it. */
+/** The ID of a space. */
 export type SpaceId = Id;
-/** The ID of an attribute, unique within its owner. */
+/** The ID of an attribute. */
 export type AttributeId = Id;
 /** The ID of an option of a state attribute. */
 export type OptionId = Id;
 /** The ID of a function, unique across the function library. */
 export type FunctionId = Id;
+/** The ID of a constant, unique across the function library. */
+export type ConstantId = Id;
+
 /**
- * An attribute, written `owner.attribute`, where the owner is the ID of an
- * agent, scape or space: `bug.energy`, `stupidModel1.bugCount`, `grid2D.width`.
+ * An act, by its path within the acts of its agent (or style): `bugRule`, or
+ * `moves.step` for the act `step` in the group `moves`.
+ */
+export type ActRef = string;
+/** An agent or scape, by its path from the root scape: `bug`, `region.farmer`. */
+export type AgentRef = string;
+/** A space, by its path from the root scape: `grid2D`, `region.roads`. */
+export type SpaceRef = string;
+/**
+ * An attribute, by the path of its owner (an agent, scape or space) from the
+ * root scape, then its ID: `bug.energy`, `grid2D.width`, `region.farmer.wealth`.
+ * An attribute of the root scape is its ID alone: `bugCount`.
  */
 export type AttributeRef = string;
-/** An option of a state attribute, written `owner.attribute.option`: `person.status.infected`. */
+/** An option of a state attribute: the attribute, then the option's ID: `person.status.infected`. */
 export type OptionRef = string;
 
 /** Labels for display. MetaABM's `IID.label` and `SNamed`. */
@@ -186,7 +201,8 @@ export type ValueLayer = Named;
 
 /** What every style has: acts that declare how the agent looks. MetaABM's `SStyle`. */
 interface StyleBase extends Named {
-  acts?: RootGroup | undefined;
+  /** The style's acts, by ID. MetaABM's root group of the style. */
+  acts?: Record<ActId, Act> | undefined;
 }
 
 /** A two-dimensional style. MetaABM's `SStyle2D`. */
@@ -215,8 +231,11 @@ export type Style = Style2D | Style3D | ShapeStyle;
 /** What every agent has. MetaABM's `SAgent`. */
 interface AgentBase extends Named {
   attributes?: Record<AttributeId, Attribute> | undefined;
-  /** The agent's acts. */
-  acts?: RootGroup | undefined;
+  /**
+   * The agent's acts, by ID: the members of MetaABM's root group (`rootActivity`),
+   * whose own ID and label nothing refers to.
+   */
+  acts?: Record<ActId, Act> | undefined;
   styles?: Record<Id, Style> | undefined;
   extensions?: Extension[] | undefined;
 }
@@ -251,7 +270,7 @@ export const MODEL_SCHEMA_VERSION = 2;
 /** A model: its root scape. */
 export interface Model extends ScapeBase {
   schemaVersion: typeof MODEL_SCHEMA_VERSION;
-  /** The ID of the root scape, which starts references to its attributes. */
+  /** The ID of the root scape. References start below it, so they do not include it. */
   id: AgentId;
   /** The language method bodies are written in. */
   language: ImplementationLanguage;
@@ -314,7 +333,18 @@ export type LibraryFunction =
   OperatorFunction | LogicalOperatorFunction | GenericFunction | GenericLogicalFunction;
 
 /** A library of functions, which may hold further libraries. MetaABM's `FLibrary`. */
+/**
+ * A named value of the library, such as `true` or `unit`. MetaABM's core
+ * library holds these as attributes of its context.
+ */
+export interface Constant extends Named {
+  /** `numeric` for a number that takes the type of where it is used. */
+  type: PrototypeType;
+  value: LiteralValue;
+}
+
 export interface Library extends Named {
+  constants?: Record<ConstantId, Constant> | undefined;
   functions?: Record<FunctionId, LibraryFunction> | undefined;
   subs?: Record<Id, Library> | undefined;
 }
@@ -328,13 +358,17 @@ export interface Library extends Named {
  *   through a flow.
  * - `{ option }`: an option of a state attribute.
  * - `{ evaluate }`: the value of an evaluate act upstream in the same flow.
+ * - `{ constant }`: a constant of the function library, such as `unit`. A
+ *   numeric constant takes the type of where it is used: `unit` is 1 in a grid
+ *   and 1.0 in a continuous space.
  * - `{ literal }`: a literal. Its type is `type` if given; otherwise boolean,
  *   symbol (for a string), integer (for a whole number) or real.
  */
 export type Value =
-  | { attribute: AttributeRef; selected?: ActId | undefined }
+  | { attribute: AttributeRef; selected?: ActRef | undefined }
   | { option: OptionRef }
-  | { evaluate: ActId }
+  | { evaluate: ActRef }
+  | { constant: ConstantId }
   | { literal: LiteralValue; type?: AttributeType | undefined };
 
 /**
@@ -346,25 +380,16 @@ export type Input = Value | { multiValue: AttributeRef[] };
 
 // ────────────────────────────── Acts ──────────────────────────────
 
-/**
- * The container of an agent's (or style's) acts. MetaABM's `AGroup` as an
- * agent's `rootActivity`.
- */
-export interface RootGroup extends Named {
-  id: ActId;
-  members: Record<ActId, Act>;
-}
-
 /** What every act in a flow has. MetaABM's `AAct`. */
 interface FlowAct extends Named {
   /** The acts this act's flow goes on to, in order. */
-  targets?: ActId[] | undefined;
+  targets?: ActRef[] | undefined;
 }
 
 /** An act that works within a selection made upstream. */
 interface SelectedAct extends FlowAct {
   /** The select (or create, or root act) whose selection this act works within. */
-  selected: ActId;
+  selected: ActRef;
 }
 
 /** A group of acts within a group. MetaABM's `AGroup`. */
@@ -380,7 +405,7 @@ export interface GroupAct extends Named {
  */
 interface RootActBase extends FlowAct {
   /** The space the root's selection is in. */
-  space?: SpaceId | undefined;
+  space?: SpaceRef | undefined;
 }
 
 /** Runs once per agent per period. MetaABM's `ARule`. */
@@ -447,8 +472,8 @@ export type RootAct =
 export interface SelectAct extends SelectedAct {
   kind: 'select';
   /** The agent type to select. Without one, a select in a grid selects cells or locations. */
-  agent?: AgentId | undefined;
-  space?: SpaceId | undefined;
+  agent?: AgentRef | undefined;
+  space?: SpaceRef | undefined;
 }
 
 /**
@@ -457,8 +482,8 @@ export interface SelectAct extends SelectedAct {
  */
 export interface CreateAct extends SelectedAct {
   kind: 'create';
-  agent: AgentId;
-  space?: SpaceId | undefined;
+  agent: AgentRef;
+  space?: SpaceRef | undefined;
   /** How many agents to create. */
   agentCount?: Value | undefined;
   shape?: ShapeType | undefined;
@@ -470,8 +495,8 @@ export interface CreateAct extends SelectedAct {
  */
 export interface LoadAct extends SelectedAct {
   kind: 'load';
-  agent: AgentId;
-  space?: SpaceId | undefined;
+  agent: AgentRef;
+  space?: SpaceRef | undefined;
   agentCount?: Value | undefined;
   sourceURL: string;
   shape?: ShapeType | undefined;
@@ -515,7 +540,7 @@ export interface SetAct extends SelectedAct {
 export interface MoveAct extends SelectedAct {
   kind: 'move';
   /** A select upstream. */
-  destination: ActId;
+  destination: ActRef;
 }
 
 /** Removes the agent bound by `selected` from its space. MetaABM's `ALeave`. */
@@ -531,9 +556,9 @@ export interface DieAct extends SelectedAct {
 /** Links the agent bound by `selected` to the one bound by `destination`. MetaABM's `AConnect`. */
 export interface ConnectAct extends SelectedAct {
   kind: 'connect';
-  destination: ActId;
+  destination: ActRef;
   /** A network space. */
-  within: SpaceId;
+  within: SpaceRef;
   /** Default true. */
   directed?: boolean | undefined;
 }
@@ -541,7 +566,7 @@ export interface ConnectAct extends SelectedAct {
 /** Removes every link of the agent bound by `selected`. MetaABM's `ADisconnect`. */
 export interface DisconnectAct extends SelectedAct {
   kind: 'disconnect';
-  within: SpaceId;
+  within: SpaceRef;
 }
 
 /**
@@ -550,8 +575,8 @@ export interface DisconnectAct extends SelectedAct {
  */
 export interface ReplaceAct extends SelectedAct {
   kind: 'replace';
-  destination: ActId;
-  within: SpaceId;
+  destination: ActRef;
+  within: SpaceRef;
   /** Default true. */
   directed?: boolean | undefined;
 }
@@ -559,14 +584,14 @@ export interface ReplaceAct extends SelectedAct {
 /** Runs a root act on the current selection. MetaABM's `ACause`. */
 export interface CauseAct extends SelectedAct {
   kind: 'cause';
-  /** A root act of the same agent. */
-  result: ActId;
+  /** A root act of the same agent or style. */
+  result: ActRef;
 }
 
 /** Runs code written in the model's language. MetaABM's `AMethod`. */
 export interface MethodAct extends FlowAct {
   kind: 'method';
-  selected?: ActId | undefined;
+  selected?: ActRef | undefined;
   body?: string | undefined;
 }
 
@@ -576,15 +601,15 @@ export interface MethodAct extends FlowAct {
  */
 interface BuildSpaceBase extends SelectedAct {
   /** The agents the space holds. */
-  agents?: AgentId[] | undefined;
-  space: SpaceId;
+  agents?: AgentRef[] | undefined;
+  space: SpaceRef;
   attributes?: AttributeRef[] | undefined;
 }
 
 /** Builds a grid, filling its cells with `fillAgent`. MetaABM's `ABuildGrid`. */
 export interface BuildGridAct extends BuildSpaceBase {
   kind: 'buildGrid';
-  fillAgent?: AgentId | undefined;
+  fillAgent?: AgentRef | undefined;
 }
 
 /** Builds a continuous space. MetaABM's `ABuildSpace`. */
@@ -643,7 +668,7 @@ export const ROOT_ACT_KINDS = [
 
 /** A problem found in a model, with the path of the offending part. */
 export interface Diagnostic {
-  /** For example `agents.bug.acts.members.nearbySpace.targets[0]`. */
+  /** For example `agents.bug.acts.nearbySpace.targets[0]`. */
   path: string;
   /**
    * `error`: the model is wrong. `warning`: the model is valid but probably not
