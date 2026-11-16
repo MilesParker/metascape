@@ -179,9 +179,9 @@ compute them however it likes, as long as the result is the same.
 
 ## Review items
 
-**R1. ID scope.** MetaABM says IDs are unique across the model, but act IDs repeat from agent to
-agent (`rootActGroup` in every agent, `bugRule` in an agent and in its style). _Proposed:_ IDs are
-unique among siblings. Acts are referred to within their agent; attributes and agents by
+**R1. ID scope.** _Decided:_ IDs are unique among siblings. MetaABM says IDs are unique across
+the model, but act IDs repeat from agent to agent (`rootActGroup` in every agent, `bugRule` in an
+agent and in its style). Acts are referred to within their agent; attributes and agents by
 `agent.attribute` paths.
 
 **R2. Names.** _Decided:_ drop the ecore prefixes; context → scape, projection → space (as the guide
@@ -265,12 +265,10 @@ boundary is where a flow passes the select's cardinality term: constraints befor
 chosen from; constraints after it filter what was chosen. The checker points out a query after a
 logic act on a selection that picks one agent, the case the guide warns about.
 
-**R19. Die and leave.** In the ecore, die, leave and move are all transforms, and a transform
-requires a `destination` select. For move it says where to go. For die and leave it means nothing:
-the agent dies or leaves the space its own selection is in, and in every example the editor simply
-filled `destination` with the act's own selection (`dieAtAge` → `dieAtAge`). _Proposed:_
-`destination` is required on move and absent on die and leave; the translation drops it, with a
-warning if it ever differs from the act's own selection.
+**R19. Die and leave.** _Decided:_ only move has a `destination`. In the ecore every transform
+requires one, but for die and leave it means nothing (the agent dies, or leaves the space its own
+selection is in), and in every example the editor filled it with the act's own selection
+(`dieAtAge` → `dieAtAge`). The translation drops it, with a warning if it ever differs.
 
 **R20. Deprecated builder types.** _Decided:_ `networkType` and `spaceType` are left out.
 Networks are built with connect acts.
@@ -291,11 +289,20 @@ per option. An empty list means the parameters don't vary. The format keeps mult
 `examples.escape`, `examples.repast`), and the copies differ: StupidModel1 by a few lines,
 Epidemic by about 250. _Decided:_ the Escape copies are the source of truth.
 
-**R24. Charts and stopping.** _Decided:_ view concerns are not part of the core model. What
-to look at (charts, views, the most interesting measures) is curation, described by a separate,
-typed, declarative model alongside the model itself. The current format's `charts` move there.
-Still open: where stop conditions and parameter sets belong. They are run concerns rather than
-view concerns, so perhaps a third model, or the curation model under another name.
+**R24. Charts, parameters and stopping.** _Decided:_ two separate, typed, declarative models
+beside the core model.
+
+- **Curation:** what to look at (views, charts, the most interesting measures). The current
+  format's `charts` move here.
+- **Run specs:** how a model is run, ported from AMP's own run metamodels. APar
+  (`amf.parameters/APar.xtext`) set attribute values for a run, swept them (`attr [start, end,
+increment]`), linked sweeps together, and incorporated other run files. ATest (`amf.testing`)
+  stated constraints on results: a measure of an agent's attribute within a minimum and maximum.
+  The stop period is part of a run spec: in AMP it was Ascape's `Runner.stopPeriod`, set from an
+  `.apar` file (`"Stop Period"=100`).
+
+Stopping on a condition (rather than at a period) has no counterpart in AMP. Where it belongs, in
+a run spec or in the model, is still open.
 
 **R25. Licence and provenance.** _Decided:_ the format credits its origin plainly, in the
 spec package's README and source headers, and in `NOTICE`. The metamodel began as "score", a
@@ -312,7 +319,8 @@ the work finds them. Each one is resolved by a decision recorded here, not by th
 
 ## Work, in order
 
-1. Settle the review items (open: R1, R19, R24's stop conditions, and R21's method API).
+1. Settle the review items. Still open: R21's method API, and where condition-based stopping
+   belongs (R24).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
    types of inputs against function prototypes, acyclic flows, boundaries).
 3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations of
@@ -323,5 +331,8 @@ the work finds them. Each one is resolved by a decision recorded here, not by th
 6. **Examples:** import the Escape AMP examples as generated data, kept with their `.metaabm`
    originals. Delete the code ports in `packages/models/src/amp`, rewrite the five hand-written spec
    examples in the new format, and point Studio at the result.
+
+7. **Run specs and curation** (R24), after the examples run: port APar and ATest, and move charts
+   into the curation model.
 
 The Brookings and Ascape ports are unaffected: their originals are Java, not MetaABM.
