@@ -75,6 +75,10 @@ mapping and the open review items (R1 to R25) are in `docs/metamodel-review.md`.
 lands, the AMP models run as the code ports in `packages/models/src/amp`, which will then be
 deleted.
 
+- **System dynamics.** The SIR example uses AMP's separate system dynamics metamodel (`sd.ecore`:
+  stocks, flows, auxiliary variables). Port it after the main metamodel (review item R10); until
+  then SIR stays as code.
+
 ## Not ported, on purpose
 
 - `edu.brooksantafe` Heatbugs from Ascape: its directory carries a GNU GPL notice. The AMP

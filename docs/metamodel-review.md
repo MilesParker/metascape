@@ -52,20 +52,20 @@ for each, under [Review items](#review-items).
 | `SAttributed.attributes`                                       | `attributes` record                                                                                    |                                                                                                                                                                                               |
 | `SAttribute`                                                   | attribute: `type`, `default`, `gatherData`, `units`, `immutable`, `derived`                            | `defaultValue` is a string in the ecore; the format stores a typed literal. The current format's `initial` expression goes, since initial values are set by Initialize acts.                  |
 | `SAttributeType`                                               | `boolean`, `integer`, `real`, `symbol`                                                                 | `UNDEFINED` and `NUMERIC` are only for function prototypes (polymorphic arguments); models may not use them. `symbol` is new compared with the current format (8 uses in the examples).       |
-| `SAttributeArray` (`size`)                                     | attribute with `size`                                                                                  | All 22 uses in the examples are the automatic "Dimensions" array of a grid (**R3**).                                                                                                          |
+| `SAttributeArray` (`size`)                                     | —                                                                                                      | No array type (**R3**).                                                                                                                                                                       |
 | `SState`, `SStateValue`, `defaultOption`                       | state attribute with `options` (each labelled and described) and `defaultOption`                       |                                                                                                                                                                                               |
 | Context attributes                                             | the model's parameters                                                                                 | In MetaABM a context's attributes are its parameters. The current format's separate `parameters` block goes. Its `min`/`max` (used by Studio's sliders) have no MetaABM counterpart (**R4**). |
-| `SAgent` (`attributes`, `rootActivity`, `styles`, `children`)  | agent: `attributes`, `acts`, `styles`, `extensions`                                                    | `rootActivity` is always an `AGroup` whose `members` are the acts; the format flattens it to `acts` (**R5**).                                                                                 |
+| `SAgent` (`attributes`, `rootActivity`, `styles`, `children`)  | agent: `attributes`, `acts` (a group), `styles`, `extensions`                                          | (**R5**)                                                                                                                                                                                      |
 | `SContext` (`agents`, `projections`, `valueLayers`, `library`) | context: everything an agent has, plus `agents` (which may include contexts), `projections`, `library` | The root of a model is a context, as in Ascape where the model is the root scape. Nesting fixes the "agents that own their own scapes" gap (EpidemicRegional).                                |
 | `SProjection`                                                  | projection, with `attributes`                                                                          | Projections have attributes, which hold their sizes (`width`, `height`).                                                                                                                      |
-| `SNDimensional` (`dimensionality`, `borderRule`)               | `dimensionality`, `borderRule`                                                                         |                                                                                                                                                                                               |
-| `SBorderRule`                                                  | `sticky`, `periodic` (plus `strict` and `bouncy`?)                                                     | The guide calls Strict and Bouncy obsolete, yet 4 example grids use `STRICT`. It also describes an "APeriodic" rule that isn't in the enum, which is presumably `STICKY` (**R6**).            |
+| `SNDimensional` (`dimensionality`, `borderRule`)               | `dimensions` (ordered size attributes), `borderRule`                                                   | Dimensionality is the number of size attributes (**R3**).                                                                                                                                     |
+| `SBorderRule`                                                  | `periodic`, `sticky`                                                                                   | Strict and bouncy are Repast-only and dropped (**R6**).                                                                                                                                       |
 | `SContinuousSpace`                                             | continuous space                                                                                       |                                                                                                                                                                                               |
 | `SGrid` (`multiOccupant`, `neighborhood`)                      | grid                                                                                                   | `neighborhood`: `euclidean`, `moore`, `vonNeumann`. Euclidean is new compared with the current format.                                                                                        |
 | `SNetwork` (`directed`)                                        | network                                                                                                |                                                                                                                                                                                               |
 | `SGeography`                                                   | geography                                                                                              | Not used by any example. Kept in the format; the interpreter rejects it for now (**R7**).                                                                                                     |
 | `SValueLayer`                                                  | —                                                                                                      | Only a name, unused (**R7**).                                                                                                                                                                 |
-| `SStyle`, `SStyle2D`, `SStyleShape` (`shape`), `SStyle3D`      | style, with its own `acts`                                                                             | A style is actable: a rule whose acts evaluate colour, shape and fill (**R8**).                                                                                                               |
+| `SStyle`, `SStyle2D`, `SStyleShape` (`shape`), `SStyle3D`      | style, with its own acts                                                                               | The acts declare how an agent looks (**R8**).                                                                                                                                                 |
 | `SImplemented`, `SImplementation`, `SImplementationMode`       | —                                                                                                      | Java package, class and paths for code generation. Dropped (**R9**).                                                                                                                          |
 | `IModelExtension`, `IAgentChild`, `IAttributeChild`            | `extensions`                                                                                           | Extension points. The only user is the system dynamics extension (`sd.ecore`), in the SIR example (**R10**).                                                                                  |
 
@@ -103,8 +103,8 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 
 | MetaABM                                                                          | New format                                              | Notes                                                                                                                             |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `AAct` (`targets`, `selected`, `group`)                                          | act: `targets`, `selected`                              | `group` is the containing `AGroup`; flattened (**R5**).                                                                           |
-| `AGroup` (`members`)                                                             | the `acts` record                                       | Only ever used as the root container in the examples.                                                                             |
+| `AAct` (`targets`, `selected`, `group`)                                          | act: `targets`, `selected`                              | `group` is the containing group.                                                                                                  |
+| `AGroup` (`members`)                                                             | group                                                   | The container of an agent's acts; groups can nest (**R5**).                                                                       |
 | `ASelect` (`agent`, `space`, `for`)                                              | select                                                  | `for` (`ONE`/`ALL`) is obsolete: cardinality is set by query terms instead (**R13**).                                             |
 | `ARule`                                                                          | rule                                                    | Once per agent per period. The guide calls the order of rules "technically undefined" (**R14**).                                  |
 | `ASchedule` (`start`, `interval`, `priority`, `pick`)                            | schedule                                                | Not used in the examples; `pick` is marked as likely to be replaced.                                                              |
@@ -112,14 +112,14 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 | `AInitialize`                                                                    | initialize                                              | Once per agent at the start (**R15**).                                                                                            |
 | `AWatch` (`attribute`)                                                           | watch                                                   | Fires whenever the attribute is set, even to the value it already has. 6 uses, in the Epidemic family (**R16**).                  |
 | `ADerive` (`attribute`)                                                          | derive                                                  | Computes a derived attribute; its value is the last evaluate on the path. 4 uses (**R16**).                                       |
-| `ADiffuse` (`diffused`, `diffusionRate`, `evaporationRate`)                      | diffuse                                                 | A root act with no targets. Fixes the two-phase diffusion gap (Heatbugs) (**R17**).                                               |
+| `ADiffuse` (`diffused`, `diffusionRate`, `evaporationRate`)                      | diffuse                                                 | Neighbourhood and update scheme come from the space (**R17**).                                                                    |
 | `APerform`                                                                       | perform                                                 | Runs only when a cause names it.                                                                                                  |
 | `ACause` (`result`)                                                              | cause                                                   | Runs a root act on the current selection. Recursion is allowed. 1 use.                                                            |
 | `AQuery`                                                                         | query: `function`, `inputs`                             | A sink and a control.                                                                                                             |
 | `AAll`, `AAny`, `ANone`                                                          | all, any, none                                          | Intersection, union and difference (**R18**).                                                                                     |
 | `AEvaluate`                                                                      | evaluate: `function`, `inputs`                          | A sink whose value flows to its targets.                                                                                          |
 | `ASet` (`attribute`, `parameter`)                                                | set                                                     | `parameter` is a value: an attribute, a literal, or an evaluate.                                                                  |
-| `AMove`, `ALeave`, `ADie` (`destination`)                                        | move, leave, die                                        | `destination` is a select. For leave and die the guide says it is irrelevant (**R19**).                                           |
+| `AMove`, `ALeave`, `ADie` (`destination`)                                        | move, leave, die                                        | Only move has a `destination` (**R19**).                                                                                          |
 | `AConnect` (`within`, `directed`), `ADisconnect`, `AReplace`                     | connect, disconnect, replace                            | `replace` covers "clear all links of an agent, then connect".                                                                     |
 | `ACreateAgents` (`agentCount`)                                                   | create                                                  | A kind of select, so later acts can work on the new agents.                                                                       |
 | `ACreateShapedAgents`, `ALoadAgents`, `ALoadShapedAgents` (`shape`, `sourceURL`) | kept in the format, rejected by the interpreter for now | Not used by the examples (**R7**).                                                                                                |
@@ -127,7 +127,7 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 | `ABuildSpace` (`spaceType`)                                                      | build space                                             | `spaceType` is deprecated (**R20**).                                                                                              |
 | `ABuildNetwork` (`networkType`)                                                  | build network                                           | `networkType` is deprecated, and never set in the examples: every file takes the default, `Barabasi`, without using it (**R20**). |
 | `ABuildGeography`                                                                | build geography                                         | Unused (**R7**).                                                                                                                  |
-| `AMethod` (`body`, `generate`)                                                   | method                                                  | A Java method body. Used twice: `ConsumeFood` in both copies of StupidModel5 (**R21**).                                           |
+| `AMethod` (`body`, `generate`)                                                   | method                                                  | Body in the model's implementation language, TypeScript (**R21**).                                                                |
 | `AInput` (`selected`, `value`, `literal`)                                        | input: a value read from a selection                    | `selected` says whose attribute is read, which is how selections are "woven" through a flow.                                      |
 | `ALiteral` (`valueLiteral`), `AMultiValue` (`values`)                            | literal, multi-value                                    | A multi-value lists the state attributes a distribution varies by (**R22**).                                                      |
 | `AShaped`                                                                        | `shape` on create                                       |                                                                                                                                   |
@@ -188,49 +188,51 @@ unique among siblings. Acts are referred to within their agent; attributes and a
 anticipated: "in future releases, we will probably refer to Contexts as 'Scapes'"). Other names
 follow the ecore without its prefix.
 
-**R3. Arrays.** All 22 attribute arrays in the examples are the grid's automatic "Dimensions"
-array, which repeats `width` and `height`. _Proposed:_ keep arrays as a type, but have the
-translation drop the generated Dimensions array.
+**R3. Arrays.** _Decided:_ no array type. The only case for arrays is a fixed-size vector on an
+agent, and the guide itself says that usually means a new agent is wanted. Nothing in the examples
+uses one except the grid's automatic "Dimensions" array, and the array functions (`item`, `length`,
+`randomMember`, `randomWeighted`) go with it. A space's dimensions are an explicit part of its
+definition: an ordered list of size attributes (`width`, `height`), which are ordinary attributes, so
+they can be set like any parameter. Dimensionality is the length of that list.
 
-**R4. Parameter ranges.** Context attributes are the parameters, and MetaABM has no min or max for
-them. Studio uses ranges for sliders. _Proposed:_ add optional `min` and `max` to attributes, as the
-only addition to the structure.
+**R4. Parameter ranges.** _Decided:_ optional `min` and `max` on attributes, the only addition
+to the structure.
 
-**R5. Act groups.** `AGroup` is a full act with `members`, but in every example it only serves as
-the root container. _Proposed:_ flatten to an `acts` record, and keep group as an act type only if
-you meant it to be used for nested grouping.
+**R5. Act groups.** _Decided:_ keep `AGroup` as it is: the container of an agent's acts, and
+itself an act, so groups can nest. Flattening it bought nothing but shorter files. The intent may
+have been composability (a group of behaviour reused elsewhere); neither the guide nor the
+generators define that, so it is left for later and the structure keeps the door open.
 
-**R6. Border rules.** Settled by the generators: the Ascape and Escape generators only ask whether
-a space is periodic; `STRICT`, `STICKY` and `BOUNCY` all mean "not periodic" there. Only the Repast
-generator tells them apart (Repast's strict, sticky and bouncy borders). _Proposed:_ the format has
-`periodic` and `sticky`, and the translation maps `STRICT` and `BOUNCY` to `sticky` with a note.
+**R6. Border rules.** _Decided:_ strict and bouncy are Repast distinctions and are dropped. A
+border rule is `periodic` or `sticky`; the translation maps `STRICT` and `BOUNCY` to `sticky` with a
+note.
 
-**R7. Unused metaclasses.** Geography, value layers, shaped and loaded agents, and build geography
-are not used by any example. _Proposed:_ keep them in the format so the translation is complete,
-and have the checker say "not supported yet".
+**R7. Unused metaclasses.** _Decided:_ geography, value layers, shaped and loaded agents, and
+build geography stay in the format so the translation is complete; the checker says "not supported
+yet".
 
-**R8. Styles as acts.** A style is a rule whose evaluates run `colorRed` → `shapeOval` →
-`graphicFill`: drawing commands executed in order, which is imperative, unlike the rest of the act
-model. _Proposed:_ keep it exactly as is so the translation is direct. The interpreter runs the
-chain against a drawing context.
+**R8. Styles.** _Decided:_ a style's acts declare how an agent looks (filled, red, oval); they
+say nothing about when anything happens. The interpreter gathers the colour, shape, fill and outline
+the flow reaches and draws the agent with them. The first draft called this imperative, which was
+wrong.
 
-**R9. Code generation features.** `SImplementation`, implemented libraries and `AMethod.generate`
-only make sense for Java code generation. _Proposed:_ drop the first two. The translation reports
-a non-default implementation mode.
+**R9. Code generation features.** _Decided:_ `SImplementation`, `SImplementationMode`,
+implemented libraries and `AMethod.generate` are dropped. Raw code stays possible through method
+acts (R21).
 
-**R10. System dynamics.** SIR uses a separate metamodel (`sd.ecore`: stocks, flows, auxiliary
-variables) hooked in through `IAgentChild`. _Proposed:_ keep the extension point, and treat the SD
-metamodel as a second, later port. Until then SIR stays as code.
+**R10. System dynamics.** _Decided:_ keep the extension point; port the SD metamodel
+(`sd.ecore`) as a later piece of work. Until then SIR stays as code. Listed in `docs/roadmap.md` so
+it isn't lost.
 
 **R11. Functions with several outputs.** Settled by the generators: a function's result type is
 taken from its output prototypes (`types.ext`, `resultType`), and only one function in the core
 library, `boundary2D` (X and Y), declares more than one output. No example uses it. _Proposed:_ a
 function has one result; `boundary2D` is left out until something needs it.
 
-**R12. Function semantics.** The meaning of each function is defined only by the generator
-templates, and those differ between Ascape, Escape and Repast. _Proposed:_ treat the Escape
-templates and runtime as authoritative, since Escape was AMP's own runtime, and write each
-function's meaning into the core library's description as it is ported.
+**R12. Function semantics.** _Decided:_ the meaning of each function follows the Escape
+generator (which uses the Ascape generator's selection code), and is written into the core library
+as each function is ported. Every ambiguity found along the way is listed under
+[Ambiguities](#ambiguities) rather than resolved silently.
 
 **R13. Selecting one versus all.** Settled by the generators: cardinality is a query term (`all`,
 `nearest`, `minimize`, `maximize`, else one at random), which is what replaced `for`. The format
@@ -247,33 +249,37 @@ Metascape's run-time editing of them keeps working.
 initial rules (`addInitialRule`), which run once over the agents present when the scape starts.
 Agents created during the run don't get them, as the guide says.
 
-**R16. Watch and derive.** A watch fires inside the set that triggers it, so a chain of watches is
-recursive and can loop (the guide warns about it). A derive is computed lazily. _Proposed:_ watches
-run immediately and in order, with a depth limit that stops the run with a clear message; derives
-are cached until one of their inputs changes.
+**R16. Watch and derive.** _Decided:_ a watch keeps MetaABM's behaviour, firing whenever its
+attribute is set. One global limit on how deep watches and causes may trigger each other stops a
+runaway chain with a clear message. A derive is computed on read: it recomputes only when a value
+upstream of it has changed since the last read, and otherwise returns the value it has.
 
-**R17. Diffusion.** `ADiffuse` names the attribute and rates but not the neighbourhood or the
-update scheme. _Proposed:_ take both from the Escape implementation (both phases computed from the
-start-of-period values, over the grid's neighbourhood).
+**R17. Diffusion.** _Decided:_ diffusion takes both its neighbourhood and its update scheme
+from the space. That is the point of the design, and the generator does exactly this: each cell
+averages over its own `findNeighbors()` (the grid's neighbourhood and border rule) in an Ascape
+`ExecuteThenUpdate` rule. `ADiffuse` carries only the attribute and the two rates. The first draft
+proposed specifying these on the act, which was wrong.
 
-**R18. Logic and boundaries.** In dataflow terms (see above), the boundary is just where a flow
-passes the select's cardinality term: constraints before it shape the set that is chosen from, and
-constraints after it filter what was chosen. _Proposed:_ implement exactly that, with the checker
-pointing out a query placed after a logic act on a selection that picks one agent, since that is
-the case the guide warns about.
+**R18. Logic and boundaries.** _Decided:_ as described under the execution semantics. The
+boundary is where a flow passes the select's cardinality term: constraints before it shape the set
+chosen from; constraints after it filter what was chosen. The checker points out a query after a
+logic act on a selection that picks one agent, the case the guide warns about.
 
-**R19. Die and leave.** Both carry a `destination` that the guide calls irrelevant. _Proposed:_
-make it optional, and have the translation drop it.
+**R19. Die and leave.** In the ecore, die, leave and move are all transforms, and a transform
+requires a `destination` select. For move it says where to go. For die and leave it means nothing:
+the agent dies or leaves the space its own selection is in, and in every example the editor simply
+filled `destination` with the act's own selection (`dieAtAge` → `dieAtAge`). _Proposed:_
+`destination` is required on move and absent on die and leave; the translation drops it, with a
+warning if it ever differs from the act's own selection.
 
-**R20. Deprecated builder types.** `networkType` and `spaceType` are deprecated, and `networkType`
-silently defaults to Barabasi in every file. _Proposed:_ leave both out of the format. Networks are
-built with connect acts, as the guide says.
+**R20. Deprecated builder types.** _Decided:_ `networkType` and `spaceType` are left out.
+Networks are built with connect acts.
 
-**R21. Methods.** `AMethod` holds Java. StupidModel5's `ConsumeFood` takes `min(food, maximum
-consumption)` from the cell and adds it to the bug's size, which acts can express. _Proposed:_ keep
-method in the format with a `language` field, and have the interpreter refuse Java. The imported
-StupidModel5 then gets that one method replaced by equivalent acts, recorded as a deviation from
-the original.
+**R21. Methods.** _Decided:_ a model states its implementation language once, at the root;
+the only option for now is TypeScript, and method bodies are TypeScript. StupidModel5's
+`ConsumeFood` is Java, so the translation flags it, and it is ported by hand to TypeScript as a
+recorded deviation. Still to design: what a method body can see (the acting agent and its
+attributes, the scape, the model's random stream) and how it is sandboxed.
 
 **R22. Multi-values.** Settled by the generator (`Java.xpt`, `MultiBlock`): a multi-value is the
 first input of a distribution function (`uniformAdditiveDistribution`, `crossDistribution` and so
@@ -285,19 +291,28 @@ per option. An empty list means the parameters don't vary. The format keeps mult
 `examples.escape`, `examples.repast`), and the copies differ: StupidModel1 by a few lines,
 Epidemic by about 250. _Decided:_ the Escape copies are the source of truth.
 
-**R24. Charts and stopping.** MetaABM has neither. Statistics come from `gatherData`; charts and
-parameter sets were separate AMP files (`.apar`, AData). The current format has `charts` and a
-`stop` action. _Proposed:_ move charts, and stop conditions if any model needs one, into a separate
-view and experiment document beside the model, and keep the model as pure MetaABM.
+**R24. Charts and stopping.** _Decided:_ view concerns are not part of the core model. What
+to look at (charts, views, the most interesting measures) is curation, described by a separate,
+typed, declarative model alongside the model itself. The current format's `charts` move there.
+Still open: where stop conditions and parameter sets belong. They are run concerns rather than
+view concerns, so perhaps a third model, or the curation model under another name.
 
-**R25. Licence and provenance.** The earlier note said the format was designed fresh so that it
-carried nothing over from the ecore. Taking the ecore's structure directly reverses that. Both are
-EPL, so this is a provenance note, not a licensing problem. _Proposed:_ the spec sources say they
-are derived from the MetaABM metamodel (Eclipse AMP, EPL).
+**R25. Licence and provenance.** _Decided:_ the format credits its origin plainly, in the
+spec package's README and source headers, and in `NOTICE`. The metamodel began as "score", a
+component of Repast Simphony contributed under the EPL by Argonne National Laboratory; it was
+developed by Metascape from 2007 as MetaABM, and contributed to Eclipse as part of the Agent
+Modeling Platform (AMP) in 2009. The name MetaABM is still not used for the format itself.
+
+## Ambiguities
+
+Places where the guide, the generators and the examples leave the meaning unclear, collected as
+the work finds them. Each one is resolved by a decision recorded here, not by the implementation.
+
+- None recorded yet.
 
 ## Work, in order
 
-1. Settle the review items.
+1. Settle the review items (open: R1, R19, R24's stop conditions, and R21's method API).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
    types of inputs against function prototypes, acyclic flows, boundaries).
 3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations of
