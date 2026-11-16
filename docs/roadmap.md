@@ -7,6 +7,8 @@ current: remove items when they are done.
 
 - **Name of the model format.** The declarative format lives in `@metascape/spec`; the name is
   provisional ("MetaABM" was rejected).
+- **Model format review.** `docs/metamodel-review.md` maps the MetaABM metamodel onto the new
+  format and lists review items R1 to R25.
 - **`NOTICE` copyright line.** It reads "Miles Parker and contributors"; Metascape LLC may be
   preferred.
 - **"IMPORTANT README" in the Ascape models.** `org.ascape.models.brook/res/edu/IMPORTANT
@@ -65,16 +67,13 @@ second user appears.
   a scrolling history by `@metascape/react`.
 - **Java-style random helpers** (`nextGaussian` with a spare value): `brookings/anasazi/java-random.ts`.
 
-## Gaps in the model format (`@metascape/spec`)
+## The model format (`@metascape/spec`)
 
-Found by assessing the AMP models against `packages/spec/src/schema.ts`:
-
-- two-phase (execute then update) rules, needed for diffusion such as Heatbugs;
-- an agent in more than one space at once (a grid and a network);
-- moving toward a target on a grid, and rounded-Euclidean grid ranges;
-- agents that own their own spaces and scapes, and moving agents between scapes;
-- clearing all links of an agent;
-- an explicit "cell is free" test; whether `create` can read the parent's attributes.
+The format is being redone from the MetaABM metamodel so that the AMP `.metaabm` models can be
+translated into it directly and become the source of truth (owner direction, 2026-11-16). The
+mapping and the open review items (R1 to R25) are in `docs/metamodel-review.md`. Until that work
+lands, the AMP models run as the code ports in `packages/models/src/amp`, which will then be
+deleted.
 
 ## Not ported, on purpose
 
