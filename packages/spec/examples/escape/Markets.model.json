@@ -1,0 +1,1490 @@
+{
+  "schemaVersion": 2,
+  "id": "markets",
+  "label": "Markets",
+  "pluralLabel": "Marketss",
+  "description": "",
+  "language": "typescript",
+  "attributes": {
+    "traderCount": {
+      "type": "integer",
+      "label": "Trader Count",
+      "pluralLabel": "Trader Counts",
+      "description": "The number of traders to create.",
+      "default": 10
+    },
+    "firmCount": {
+      "type": "integer",
+      "label": "Firm Count",
+      "pluralLabel": "Firm Counts",
+      "description": "The number of firms to create.",
+      "default": 5
+    },
+    "initialFirmValueMinimum": {
+      "type": "real",
+      "label": "Initial Firm Value Minimum",
+      "pluralLabel": "Initial Firm Value Minimums",
+      "default": 100000
+    },
+    "initialFirmValueMaximum": {
+      "type": "real",
+      "label": "Initial Firm Value Maximum",
+      "pluralLabel": "Initial Firm Value Maximums",
+      "default": 1000000
+    },
+    "earningMovementFactorMinimum": {
+      "type": "real",
+      "label": "Earning Movement Factor Minimum",
+      "pluralLabel": "Earning Movement Factor Minimums",
+      "default": 0.99
+    },
+    "earningMovementFactorMaximum": {
+      "type": "real",
+      "label": "Earning Movement Factor Maximum",
+      "pluralLabel": "Earning Movement Factor Maximums",
+      "default": 1.01
+    },
+    "firmSharesperInstrument": {
+      "type": "integer",
+      "label": "Firm Shares per Instrument",
+      "pluralLabel": "Firm Shares per Instruments",
+      "default": 1000
+    },
+    "sharePriceAdjustmentMinimum": {
+      "type": "real",
+      "label": "Share Price Adjustment Minimum",
+      "pluralLabel": "Share Price Adjustment Minimums",
+      "default": 0.98
+    },
+    "sharePriceAdjustmentMaximum": {
+      "type": "real",
+      "label": "Share Price Adjustment Maximum",
+      "pluralLabel": "Share Price Adjustment Maximums",
+      "default": 1.02
+    },
+    "initialFirmPriceMinimum": {
+      "type": "real",
+      "label": "Initial Firm Price Minimum",
+      "pluralLabel": "Initial Firm Price Minimums",
+      "default": 10
+    },
+    "initialFirmPriceMaximum": {
+      "type": "real",
+      "label": "Initial Firm Price Maximum",
+      "pluralLabel": "Initial Firm Price Maximums",
+      "default": 30
+    },
+    "initialTraderFundsMinimum": {
+      "type": "real",
+      "label": "Initial Trader Funds Minimum",
+      "pluralLabel": "Initial Trader Funds Minimums",
+      "default": 50000
+    },
+    "initialTraderFundsMaximum": {
+      "type": "real",
+      "label": "Initial Trader Funds Maximum",
+      "pluralLabel": "Initial Trader Funds Maximums",
+      "default": 50000
+    },
+    "firmSharesCount": {
+      "type": "integer",
+      "label": "Firm Shares Count",
+      "pluralLabel": "Firm Shares Counts",
+      "default": 10000
+    }
+  },
+  "acts": {
+    "id": "actions",
+    "label": "Actions",
+    "pluralLabel": "Actionss",
+    "members": {
+      "buildTrading": {
+        "kind": "build",
+        "label": "Build Trading",
+        "pluralLabel": "Build Tradings",
+        "targets": [
+          "createTraders",
+          "createFirms",
+          "buildInstrumentHolder",
+          "buildFirmInstruments",
+          "buildBidFirmss"
+        ]
+      },
+      "createTraders": {
+        "kind": "create",
+        "label": "Create Traders",
+        "selected": "buildTrading",
+        "agent": "trader",
+        "agentCount": {
+          "attribute": "markets.traderCount"
+        }
+      },
+      "createFirms": {
+        "kind": "create",
+        "label": "Create Firms",
+        "selected": "buildTrading",
+        "agent": "firm",
+        "agentCount": {
+          "attribute": "markets.firmCount"
+        }
+      },
+      "buildInstrumentHolder": {
+        "kind": "buildNetwork",
+        "label": "Build Instrument Holder",
+        "pluralLabel": "Build Instrument Holders",
+        "selected": "buildTrading",
+        "agents": [
+          "instrument",
+          "trader"
+        ],
+        "space": "instrumentHolders"
+      },
+      "buildFirmInstruments": {
+        "kind": "buildNetwork",
+        "label": "Build Firm Instruments",
+        "pluralLabel": "Build Firm Instrumentss",
+        "selected": "buildTrading",
+        "agents": [
+          "firm",
+          "instrument"
+        ],
+        "space": "firmInstruments"
+      },
+      "buildBidFirmss": {
+        "kind": "buildNetwork",
+        "label": "Build Bid Firmss",
+        "pluralLabel": "Build Bid Firmsss",
+        "selected": "buildTrading",
+        "agents": [
+          "trader",
+          "firm"
+        ],
+        "space": "targetBuyFirms"
+      }
+    }
+  },
+  "agents": {
+    "trader": {
+      "kind": "agent",
+      "label": "Trader",
+      "pluralLabel": "Traders",
+      "attributes": {
+        "strategy": {
+          "type": "state",
+          "label": "Strategy",
+          "pluralLabel": "Strategys",
+          "options": {
+            "value": {
+              "label": "Value",
+              "pluralLabel": "Values"
+            },
+            "momentum": {
+              "label": "Momentum",
+              "pluralLabel": "Momentums"
+            },
+            "random": {
+              "label": "Random",
+              "pluralLabel": "Randoms"
+            }
+          },
+          "defaultOption": "random"
+        },
+        "funds": {
+          "type": "real",
+          "label": "Funds",
+          "pluralLabel": "Fundss",
+          "gatherData": true,
+          "default": 100000
+        },
+        "instrumentCount": {
+          "type": "integer",
+          "label": "Instrument Count",
+          "pluralLabel": "Instrument Counts",
+          "gatherData": true
+        }
+      },
+      "acts": {
+        "id": "executeBuy",
+        "label": "Execute Buy",
+        "pluralLabel": "Execute Buys",
+        "members": {
+          "initialize": {
+            "kind": "initialize",
+            "label": "Initialize",
+            "pluralLabel": "Initializes",
+            "targets": [
+              "randomState_Strategy_",
+              "initialTraderFunds"
+            ]
+          },
+          "randomState_Strategy_": {
+            "kind": "evaluate",
+            "label": "Random State(Strategy)",
+            "selected": "initialize",
+            "function": "randomState",
+            "inputs": [
+              {
+                "attribute": "trader.strategy"
+              }
+            ],
+            "targets": [
+              "setStrategyToRandomState_Strategy_"
+            ]
+          },
+          "setStrategyToRandomState_Strategy_": {
+            "kind": "set",
+            "label": "Set Strategy To Random State(Strategy)",
+            "selected": "initialize",
+            "attribute": "trader.strategy",
+            "parameter": {
+              "evaluate": "randomState_Strategy_"
+            }
+          },
+          "ask": {
+            "kind": "rule",
+            "label": "Ask",
+            "pluralLabel": "Asks",
+            "description": "",
+            "targets": [
+              "selling"
+            ]
+          },
+          "selling": {
+            "kind": "select",
+            "label": "Selling",
+            "selected": "ask",
+            "agent": "instrument",
+            "space": "instrumentHolders",
+            "targets": [
+              "neighborQuery",
+              "statusIdenticalHeldQuery"
+            ]
+          },
+          "buy": {
+            "kind": "rule",
+            "label": "Buy",
+            "pluralLabel": "Buys",
+            "targets": [
+              "disconnectCopy"
+            ]
+          },
+          "boughtInstrument": {
+            "kind": "select",
+            "label": "Bought Instrument",
+            "selected": "firm",
+            "agent": "instrument",
+            "space": "firmInstruments",
+            "targets": [
+              "statusIdenticalOfferredQuery",
+              "totalPriceLesserorEqualFundsQuery",
+              "neighborQueryCopyCopyCopy"
+            ]
+          },
+          "statusIdenticalOfferredQuery": {
+            "kind": "query",
+            "label": "Status Identical Offerred Query",
+            "selected": "boughtInstrument",
+            "function": "identical",
+            "inputs": [
+              {
+                "attribute": "instrument.status"
+              },
+              {
+                "option": "instrument.status.ask"
+              }
+            ],
+            "targets": [
+              "_Minimize_FirmPriceEarningsRatio_QueryAndStrategyIdenticalValueQueryAndTotalPriceLesserorEqualFundsQueryAndStatusIdenticalOfferredQuery_"
+            ]
+          },
+          "neighborQuery": {
+            "kind": "query",
+            "label": "Neighbor() Query",
+            "selected": "selling",
+            "function": "neighbor",
+            "targets": [
+              "_NeighborQueryAndStatusIdenticalHeldQueryAndQuery_"
+            ]
+          },
+          "setStatusToOfferred": {
+            "kind": "set",
+            "label": "Set Status To Offerred",
+            "selected": "selling",
+            "attribute": "instrument.status",
+            "parameter": {
+              "option": "instrument.status.ask"
+            }
+          },
+          "setStatusToHeld": {
+            "kind": "set",
+            "label": "Set Status To Held",
+            "selected": "boughtInstrument",
+            "attribute": "instrument.status",
+            "parameter": {
+              "option": "instrument.status.held"
+            },
+            "targets": [
+              "fundsSubtractTotalPrice"
+            ]
+          },
+          "instrumentFirm": {
+            "kind": "select",
+            "label": "Instrument Firm",
+            "selected": "selling",
+            "agent": "firm",
+            "space": "firmInstruments",
+            "targets": [
+              "neighborFirm"
+            ]
+          },
+          "neighborFirm": {
+            "kind": "query",
+            "label": "Neighbor Firm",
+            "selected": "instrumentFirm",
+            "function": "neighbor",
+            "targets": [
+              "sharePriceAdjustment"
+            ]
+          },
+          "sharePriceAdjustment": {
+            "kind": "evaluate",
+            "label": "Share Price Adjustment",
+            "selected": "ask",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "markets.sharePriceAdjustmentMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "markets.sharePriceAdjustmentMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "newSharePrice"
+            ]
+          },
+          "newSharePrice": {
+            "kind": "evaluate",
+            "label": "New Share Price",
+            "selected": "ask",
+            "function": "mul",
+            "inputs": [
+              {
+                "evaluate": "sharePriceAdjustment"
+              },
+              {
+                "attribute": "firm.lastPrice",
+                "selected": "instrumentFirm"
+              }
+            ],
+            "targets": [
+              "setOfferPriceToNewSharePrice"
+            ]
+          },
+          "setOfferPriceToNewSharePrice": {
+            "kind": "set",
+            "label": "Set Offer Price To New Share Price",
+            "selected": "selling",
+            "attribute": "instrument.offerPrice",
+            "parameter": {
+              "evaluate": "newSharePrice"
+            },
+            "targets": [
+              "setStatusToOfferred"
+            ]
+          },
+          "fundsSubtractTotalPrice": {
+            "kind": "evaluate",
+            "label": "Funds Subtract Total Price",
+            "selected": "boughtInstrument",
+            "function": "sub",
+            "inputs": [
+              {
+                "attribute": "trader.funds",
+                "selected": "execute"
+              },
+              {
+                "attribute": "instrument.totalPrice"
+              }
+            ],
+            "targets": [
+              "setFundsToFundsSubtractTotalPrice"
+            ]
+          },
+          "setFundsToFundsSubtractTotalPrice": {
+            "kind": "set",
+            "label": "Set Funds To Funds Subtract Total Price",
+            "selected": "execute",
+            "attribute": "trader.funds",
+            "parameter": {
+              "evaluate": "fundsSubtractTotalPrice"
+            },
+            "targets": [
+              "offerPriceAddZero"
+            ]
+          },
+          "seller": {
+            "kind": "select",
+            "label": "Seller",
+            "selected": "boughtInstrument",
+            "agent": "trader",
+            "space": "instrumentHolders",
+            "targets": [
+              "neighborQueryCopy"
+            ]
+          },
+          "neighborQueryCopy": {
+            "kind": "query",
+            "label": "Neighbor() Query Copy",
+            "selected": "seller",
+            "function": "neighbor",
+            "targets": [
+              "fundsAddTotalPrice"
+            ]
+          },
+          "fundsAddTotalPrice": {
+            "kind": "evaluate",
+            "label": "Funds Add Total Price",
+            "selected": "seller",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "trader.funds"
+              },
+              {
+                "attribute": "instrument.totalPrice",
+                "selected": "boughtInstrument"
+              }
+            ],
+            "targets": [
+              "setFundsToFundsAddTotalPrice"
+            ]
+          },
+          "setFundsToFundsAddTotalPrice": {
+            "kind": "set",
+            "label": "Set Funds To Funds Add Total Price",
+            "selected": "seller",
+            "attribute": "trader.funds",
+            "parameter": {
+              "evaluate": "fundsAddTotalPrice"
+            },
+            "targets": [
+              "disconnect"
+            ]
+          },
+          "offeredFirm": {
+            "kind": "select",
+            "label": "Offered Firm",
+            "selected": "buy",
+            "agent": "firm",
+            "targets": [
+              "connectTrader"
+            ]
+          },
+          "setLastPriceToOfferPriceAddZero": {
+            "kind": "set",
+            "label": "Set Last Price To Offer Price Add Zero",
+            "selected": "firm",
+            "attribute": "firm.lastPrice",
+            "parameter": {
+              "evaluate": "offerPriceAddZero"
+            },
+            "targets": [
+              "seller"
+            ]
+          },
+          "initialTraderFunds": {
+            "kind": "evaluate",
+            "label": "Initial Trader Funds",
+            "selected": "initialize",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "markets.initialTraderFundsMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "markets.initialTraderFundsMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "setFundsToInitialTraderFunds"
+            ]
+          },
+          "setFundsToInitialTraderFunds": {
+            "kind": "set",
+            "label": "Set Funds To Initial Trader Funds",
+            "selected": "initialize",
+            "attribute": "trader.funds",
+            "parameter": {
+              "evaluate": "initialTraderFunds"
+            }
+          },
+          "disconnect": {
+            "kind": "disconnect",
+            "label": "Disconnect",
+            "selected": "seller",
+            "within": "instrumentHolders",
+            "targets": [
+              "connectInstrument"
+            ]
+          },
+          "connectInstrument": {
+            "kind": "connect",
+            "label": "Connect Instrument",
+            "selected": "execute",
+            "destination": "boughtInstrument",
+            "within": "instrumentHolders",
+            "directed": false,
+            "targets": [
+              "incrementCount"
+            ]
+          },
+          "statusIdenticalHeldQuery": {
+            "kind": "query",
+            "label": "Status Identical Held Query",
+            "selected": "selling",
+            "function": "identical",
+            "inputs": [
+              {
+                "attribute": "instrument.status"
+              },
+              {
+                "option": "instrument.status.held"
+              }
+            ],
+            "targets": [
+              "_NeighborQueryAndStatusIdenticalHeldQueryAndQuery_"
+            ]
+          },
+          "_NeighborQueryAndStatusIdenticalHeldQueryAndQuery_": {
+            "kind": "all",
+            "label": "(Neighbor() Query & Status Identical Held Query &  Query)",
+            "selected": "selling",
+            "targets": [
+              "instrumentFirm"
+            ]
+          },
+          "decrementSellerCount": {
+            "kind": "evaluate",
+            "label": "Decrement Seller Count",
+            "selected": "seller",
+            "function": "sub",
+            "inputs": [
+              {
+                "attribute": "trader.instrumentCount"
+              },
+              {
+                "literal": 1
+              }
+            ],
+            "targets": [
+              "setSellerInstrumentCountToDecrementSellerCount"
+            ]
+          },
+          "setSellerInstrumentCountToDecrementSellerCount": {
+            "kind": "set",
+            "label": "Set Seller Instrument Count To Decrement Seller Count",
+            "selected": "seller",
+            "attribute": "trader.instrumentCount",
+            "parameter": {
+              "evaluate": "decrementSellerCount"
+            }
+          },
+          "incrementCount": {
+            "kind": "evaluate",
+            "label": "Increment Count",
+            "selected": "execute",
+            "function": "increment",
+            "inputs": [
+              {
+                "attribute": "trader.instrumentCount"
+              }
+            ],
+            "targets": [
+              "setInstrumentCountToIncrementCount"
+            ]
+          },
+          "setInstrumentCountToIncrementCount": {
+            "kind": "set",
+            "label": "Set Instrument Count To Increment Count",
+            "selected": "execute",
+            "attribute": "trader.instrumentCount",
+            "parameter": {
+              "evaluate": "incrementCount"
+            },
+            "targets": [
+              "decrementSellerCount"
+            ]
+          },
+          "totalPriceLesserorEqualFundsQuery": {
+            "kind": "query",
+            "label": "Total Price Lesser or Equal Funds Query",
+            "selected": "boughtInstrument",
+            "function": "lesserorEqual",
+            "inputs": [
+              {
+                "attribute": "instrument.totalPrice"
+              },
+              {
+                "attribute": "trader.funds",
+                "selected": "execute"
+              }
+            ],
+            "targets": [
+              "_Minimize_FirmPriceEarningsRatio_QueryAndStrategyIdenticalValueQueryAndTotalPriceLesserorEqualFundsQueryAndStatusIdenticalOfferredQuery_"
+            ]
+          },
+          "_Minimize_FirmPriceEarningsRatio_QueryAndStrategyIdenticalValueQueryAndTotalPriceLesserorEqualFundsQueryAndStatusIdenticalOfferredQuery_": {
+            "kind": "all",
+            "label": "(Minimize(Firm Price Earnings Ratio) Query & Strategy Identical Value Query & Total Price Lesser or Equal Funds Query & Status Identical Offerred Query)",
+            "selected": "boughtInstrument",
+            "targets": [
+              "setStatusToHeld"
+            ]
+          },
+          "connectTrader": {
+            "kind": "connect",
+            "label": "Connect Trader",
+            "selected": "buy",
+            "destination": "offeredFirm",
+            "within": "targetBuyFirms",
+            "directed": false
+          },
+          "execute": {
+            "kind": "rule",
+            "label": "Execute",
+            "pluralLabel": "Executes",
+            "targets": [
+              "firm"
+            ]
+          },
+          "firm": {
+            "kind": "select",
+            "label": "Firm",
+            "selected": "execute",
+            "agent": "firm",
+            "space": "targetBuyFirms",
+            "targets": [
+              "neighborQueryCopyCopy"
+            ]
+          },
+          "neighborQueryCopyCopy": {
+            "kind": "query",
+            "label": "Neighbor() Query Copy Copy",
+            "selected": "firm",
+            "function": "neighbor",
+            "targets": [
+              "boughtInstrument"
+            ]
+          },
+          "offerPriceAddZero": {
+            "kind": "evaluate",
+            "label": "Offer Price Add Zero",
+            "selected": "boughtInstrument",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "instrument.offerPrice"
+              },
+              {
+                "literal": 0
+              }
+            ],
+            "targets": [
+              "setLastPriceToOfferPriceAddZero"
+            ]
+          },
+          "neighborQueryCopyCopyCopy": {
+            "kind": "query",
+            "label": "Neighbor() Query Copy Copy Copy",
+            "selected": "boughtInstrument",
+            "function": "neighbor",
+            "targets": [
+              "_Minimize_FirmPriceEarningsRatio_QueryAndStrategyIdenticalValueQueryAndTotalPriceLesserorEqualFundsQueryAndStatusIdenticalOfferredQuery_"
+            ]
+          },
+          "disconnectCopy": {
+            "kind": "disconnect",
+            "label": "Disconnect Copy",
+            "selected": "buy",
+            "within": "targetBuyFirms",
+            "targets": [
+              "offeredFirm"
+            ]
+          }
+        }
+      },
+      "styles": {
+        "traderStyle2D": {
+          "kind": "2d",
+          "label": "Trader Style 2D",
+          "pluralLabel": "Trader Style 2Ds",
+          "acts": {
+            "id": "actions",
+            "label": "Actions",
+            "pluralLabel": "Actionss",
+            "members": {
+              "traderRule": {
+                "kind": "rule",
+                "label": "Trader Rule",
+                "pluralLabel": "Trader Rules",
+                "space": "instrumentHolders",
+                "targets": [
+                  "colorBlue"
+                ]
+              },
+              "colorBlue": {
+                "kind": "evaluate",
+                "label": "Color Blue()",
+                "selected": "traderRule",
+                "function": "colorBlue",
+                "targets": [
+                  "shapeRectangle"
+                ]
+              },
+              "shapeRectangle": {
+                "kind": "evaluate",
+                "label": "Shape Rectangle()",
+                "selected": "traderRule",
+                "function": "shapeRectangle",
+                "targets": [
+                  "graphicFill"
+                ]
+              },
+              "graphicFill": {
+                "kind": "evaluate",
+                "label": "Graphic Fill()",
+                "selected": "traderRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    },
+    "firm": {
+      "kind": "agent",
+      "label": "Firm",
+      "pluralLabel": "Firms",
+      "attributes": {
+        "sharesOutstanding": {
+          "type": "integer",
+          "label": "Shares Outstanding",
+          "pluralLabel": "Shares Outstandings",
+          "gatherData": true,
+          "default": 0
+        },
+        "lastEarnings": {
+          "type": "real",
+          "label": "Last Earnings",
+          "pluralLabel": "Last Earningss",
+          "gatherData": true
+        },
+        "lastPrice": {
+          "type": "real",
+          "label": "Last Price",
+          "pluralLabel": "Last Prices",
+          "gatherData": true,
+          "default": 1
+        },
+        "sharesInternal": {
+          "type": "integer",
+          "label": "Shares Internal",
+          "pluralLabel": "Shares Internals",
+          "gatherData": true,
+          "default": 50000
+        },
+        "priceEarningsRatio": {
+          "type": "real",
+          "label": "Price Earnings Ratio",
+          "pluralLabel": "Price Earnings Ratios",
+          "derived": true
+        }
+      },
+      "acts": {
+        "id": "actions",
+        "label": "Actions",
+        "pluralLabel": "Actionss",
+        "members": {
+          "initialize": {
+            "kind": "initialize",
+            "label": "Initialize",
+            "pluralLabel": "Initializes",
+            "targets": [
+              "initialFirmValue",
+              "initialFirmPrice",
+              "setSharesInternalToFirmSharesCount"
+            ]
+          },
+          "initialFirmValue": {
+            "kind": "evaluate",
+            "label": "Initial Firm Value",
+            "selected": "initialize",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "markets.initialFirmValueMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "markets.initialFirmValueMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "setLastEarningsToInitialFirmValue"
+            ]
+          },
+          "setLastEarningsToInitialFirmValue": {
+            "kind": "set",
+            "label": "Set Last Earnings To Initial Firm Value",
+            "selected": "initialize",
+            "attribute": "firm.lastEarnings",
+            "parameter": {
+              "evaluate": "initialFirmValue"
+            }
+          },
+          "modifyEarnings": {
+            "kind": "rule",
+            "label": "Modify Earnings",
+            "pluralLabel": "Modify Earningss",
+            "targets": [
+              "earningMovementFactor"
+            ]
+          },
+          "earningMovementFactor": {
+            "kind": "evaluate",
+            "label": "Earning Movement Factor",
+            "selected": "modifyEarnings",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "markets.earningMovementFactorMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "markets.earningMovementFactorMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "lastEarningsMultiplyEarningMovementFactor"
+            ]
+          },
+          "lastEarningsMultiplyEarningMovementFactor": {
+            "kind": "evaluate",
+            "label": "Last Earnings Multiply Earning Movement Factor",
+            "selected": "modifyEarnings",
+            "function": "mul",
+            "inputs": [
+              {
+                "attribute": "firm.lastEarnings"
+              },
+              {
+                "evaluate": "earningMovementFactor"
+              }
+            ],
+            "targets": [
+              "setLastEarningsToLastEarningsMultiplyEarningMovementFactor"
+            ]
+          },
+          "setLastEarningsToLastEarningsMultiplyEarningMovementFactor": {
+            "kind": "set",
+            "label": "Set Last Earnings To Last Earnings Multiply Earning Movement Factor",
+            "selected": "modifyEarnings",
+            "attribute": "firm.lastEarnings",
+            "parameter": {
+              "evaluate": "lastEarningsMultiplyEarningMovementFactor"
+            }
+          },
+          "offerShares": {
+            "kind": "initialize",
+            "label": "Offer Shares",
+            "pluralLabel": "Offer Sharess",
+            "targets": [
+              "sharesInternalGreaterZeroQuery"
+            ]
+          },
+          "sharesInternalGreaterZeroQuery": {
+            "kind": "query",
+            "label": "Shares Internal Greater Zero Query",
+            "selected": "offerShares",
+            "function": "greater",
+            "inputs": [
+              {
+                "attribute": "firm.sharesInternal"
+              },
+              {
+                "literal": 0
+              }
+            ],
+            "targets": [
+              "sharesInternalSubtractFirmSharesperInstrument"
+            ]
+          },
+          "setSharesInternalToSharesInternalSubtractFirmSharesperInstrument": {
+            "kind": "set",
+            "label": "Set Shares Internal To Shares Internal Subtract Firm Shares per Instrument",
+            "selected": "offerShares",
+            "attribute": "firm.sharesInternal",
+            "parameter": {
+              "evaluate": "sharesInternalSubtractFirmSharesperInstrument"
+            },
+            "targets": [
+              "createInstrument"
+            ]
+          },
+          "sharesInternalSubtractFirmSharesperInstrument": {
+            "kind": "evaluate",
+            "label": "Shares Internal Subtract Firm Shares per Instrument",
+            "selected": "offerShares",
+            "function": "sub",
+            "inputs": [
+              {
+                "attribute": "firm.sharesInternal"
+              },
+              {
+                "attribute": "markets.firmSharesperInstrument"
+              }
+            ],
+            "targets": [
+              "setSharesInternalToSharesInternalSubtractFirmSharesperInstrument"
+            ]
+          },
+          "createInstrument": {
+            "kind": "create",
+            "label": "Create Instrument",
+            "selected": "offerShares",
+            "agent": "instrument",
+            "targets": [
+              "setStatusToHeld",
+              "connectFirmCopy"
+            ]
+          },
+          "cause": {
+            "kind": "cause",
+            "label": "Cause",
+            "selected": "offerShares",
+            "result": "offerShares"
+          },
+          "setSharesToFirmSharesperInstrument": {
+            "kind": "set",
+            "label": "Set Shares To Firm Shares per Instrument",
+            "selected": "createInstrument",
+            "attribute": "instrument.shares",
+            "parameter": {
+              "attribute": "markets.firmSharesperInstrument"
+            }
+          },
+          "setStatusToHeld": {
+            "kind": "set",
+            "label": "Set Status To Held",
+            "selected": "createInstrument",
+            "attribute": "instrument.status",
+            "parameter": {
+              "option": "instrument.status.held"
+            },
+            "targets": [
+              "setOfferPriceToLastPrice"
+            ]
+          },
+          "connectFirmCopy": {
+            "kind": "connect",
+            "label": "Connect Firm Copy",
+            "selected": "offerShares",
+            "destination": "createInstrument",
+            "within": "firmInstruments",
+            "directed": false,
+            "targets": [
+              "initialTrader"
+            ]
+          },
+          "initialFirmPrice": {
+            "kind": "evaluate",
+            "label": "Initial Firm Price",
+            "selected": "initialize",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "markets.initialFirmPriceMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "markets.initialFirmPriceMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "setLastPriceToInitialFirmPrice"
+            ]
+          },
+          "setLastPriceToInitialFirmPrice": {
+            "kind": "set",
+            "label": "Set Last Price To Initial Firm Price",
+            "selected": "initialize",
+            "attribute": "firm.lastPrice",
+            "parameter": {
+              "evaluate": "initialFirmPrice"
+            }
+          },
+          "setOfferPriceToLastPrice": {
+            "kind": "set",
+            "label": "Set Offer Price To Last Price",
+            "selected": "createInstrument",
+            "attribute": "instrument.offerPrice",
+            "parameter": {
+              "attribute": "firm.lastPrice"
+            },
+            "targets": [
+              "setSharesToFirmSharesperInstrument"
+            ]
+          },
+          "initialTrader": {
+            "kind": "select",
+            "label": "Initial Trader",
+            "selected": "createInstrument",
+            "agent": "trader",
+            "targets": [
+              "connectInstrument"
+            ]
+          },
+          "connectInstrument": {
+            "kind": "connect",
+            "label": "Connect Instrument",
+            "selected": "initialTrader",
+            "destination": "createInstrument",
+            "within": "instrumentHolders",
+            "directed": false,
+            "targets": [
+              "incrementInstrumentCount"
+            ]
+          },
+          "setInstrumentCountToIncrementInstrumentCount": {
+            "kind": "set",
+            "label": "Set Instrument Count To Increment Instrument Count",
+            "selected": "initialTrader",
+            "attribute": "trader.instrumentCount",
+            "parameter": {
+              "evaluate": "incrementInstrumentCount"
+            },
+            "targets": [
+              "cause"
+            ]
+          },
+          "incrementInstrumentCount": {
+            "kind": "evaluate",
+            "label": "Increment Instrument Count",
+            "selected": "initialTrader",
+            "function": "increment",
+            "inputs": [
+              {
+                "attribute": "trader.instrumentCount"
+              }
+            ],
+            "targets": [
+              "setInstrumentCountToIncrementInstrumentCount"
+            ]
+          },
+          "setSharesInternalToFirmSharesCount": {
+            "kind": "set",
+            "label": "Set Shares Internal To Firm Shares Count",
+            "selected": "initialize",
+            "attribute": "firm.sharesInternal",
+            "parameter": {
+              "attribute": "markets.firmSharesCount"
+            }
+          },
+          "derivePriceEarningsRatio": {
+            "kind": "derive",
+            "label": "Derive Price Earnings Ratio",
+            "attribute": "firm.priceEarningsRatio",
+            "targets": [
+              "lastPriceDivideLastEarnings"
+            ]
+          },
+          "lastPriceDivideLastEarnings": {
+            "kind": "evaluate",
+            "label": "Last Price Divide Last Earnings",
+            "selected": "derivePriceEarningsRatio",
+            "function": "div",
+            "inputs": [
+              {
+                "attribute": "firm.lastPrice"
+              },
+              {
+                "attribute": "firm.lastEarnings"
+              }
+            ]
+          },
+          "clearOffers": {
+            "kind": "rule",
+            "label": "Clear Offers",
+            "pluralLabel": "Clear Offerss",
+            "targets": [
+              "firm"
+            ]
+          },
+          "firm": {
+            "kind": "select",
+            "label": "Firm",
+            "selected": "clearOffers",
+            "agent": "instrument",
+            "targets": [
+              "allQuery",
+              "statusIdenticalAskQuery"
+            ]
+          },
+          "allQuery": {
+            "kind": "query",
+            "label": "All() Query",
+            "selected": "firm",
+            "function": "all",
+            "targets": [
+              "_FirmAndStatusIdenticalAskQuery_"
+            ]
+          },
+          "statusIdenticalAskQuery": {
+            "kind": "query",
+            "label": "Status Identical Ask Query",
+            "selected": "firm",
+            "function": "identical",
+            "inputs": [
+              {
+                "attribute": "instrument.status"
+              },
+              {
+                "option": "instrument.status.ask"
+              }
+            ],
+            "targets": [
+              "_FirmAndStatusIdenticalAskQuery_"
+            ]
+          },
+          "_FirmAndStatusIdenticalAskQuery_": {
+            "kind": "all",
+            "label": "(Firm & Status Identical Ask Query)",
+            "selected": "firm",
+            "targets": [
+              "setStatusToHeldCopy"
+            ]
+          },
+          "setStatusToHeldCopy": {
+            "kind": "set",
+            "label": "Set Status To Held Copy",
+            "selected": "firm",
+            "attribute": "instrument.status",
+            "parameter": {
+              "option": "instrument.status.held"
+            }
+          }
+        }
+      },
+      "styles": {
+        "firmStyle2D": {
+          "kind": "2d",
+          "label": "Firm Style 2D",
+          "pluralLabel": "Firm Style 2Ds",
+          "acts": {
+            "id": "actions",
+            "label": "Actions",
+            "pluralLabel": "Actionss",
+            "members": {
+              "firmRule": {
+                "kind": "rule",
+                "label": "Firm Rule",
+                "pluralLabel": "Firm Rules",
+                "space": "instrumentHolders",
+                "targets": [
+                  "colorRed"
+                ]
+              },
+              "colorRed": {
+                "kind": "evaluate",
+                "label": "Color Red()",
+                "selected": "firmRule",
+                "function": "colorRed",
+                "targets": [
+                  "shapeRectangle"
+                ]
+              },
+              "shapeRectangle": {
+                "kind": "evaluate",
+                "label": "Shape Rectangle()",
+                "selected": "firmRule",
+                "function": "shapeRectangle",
+                "targets": [
+                  "graphicFill"
+                ]
+              },
+              "graphicFill": {
+                "kind": "evaluate",
+                "label": "Graphic Fill()",
+                "selected": "firmRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    },
+    "instrument": {
+      "kind": "agent",
+      "label": "Instrument",
+      "pluralLabel": "Instruments",
+      "attributes": {
+        "shares": {
+          "type": "integer",
+          "label": "Shares",
+          "pluralLabel": "Sharess"
+        },
+        "status": {
+          "type": "state",
+          "label": "Status",
+          "pluralLabel": "Statuss",
+          "gatherData": true,
+          "options": {
+            "ask": {
+              "label": "Ask",
+              "pluralLabel": "Asks"
+            },
+            "held": {
+              "label": "Held",
+              "pluralLabel": "Helds"
+            },
+            "bid": {
+              "label": "Bid",
+              "pluralLabel": "Bids"
+            }
+          },
+          "defaultOption": "ask"
+        },
+        "offerPrice": {
+          "type": "real",
+          "label": "Offer Price",
+          "pluralLabel": "Offer Prices",
+          "gatherData": true
+        },
+        "totalPrice": {
+          "type": "real",
+          "label": "Total Price",
+          "pluralLabel": "Total Prices",
+          "gatherData": true,
+          "derived": true
+        },
+        "firmPriceEarningsRatio": {
+          "type": "real",
+          "label": "Firm Price Earnings Ratio",
+          "pluralLabel": "Offered Price Earning Ratio",
+          "derived": true
+        }
+      },
+      "acts": {
+        "id": "actions",
+        "label": "Actions",
+        "pluralLabel": "Actionss",
+        "members": {
+          "deriveTotalPrice": {
+            "kind": "derive",
+            "label": "Derive Total Price",
+            "attribute": "instrument.totalPrice",
+            "targets": [
+              "offerPriceMultiplyShares"
+            ]
+          },
+          "offerPriceMultiplyShares": {
+            "kind": "evaluate",
+            "label": "Offer Price Multiply Shares",
+            "selected": "deriveTotalPrice",
+            "function": "mul",
+            "inputs": [
+              {
+                "attribute": "instrument.offerPrice"
+              },
+              {
+                "attribute": "instrument.shares"
+              }
+            ]
+          },
+          "deriveFirmPriceEarningsRatio": {
+            "kind": "derive",
+            "label": "Derive Firm Price Earnings Ratio",
+            "attribute": "instrument.firmPriceEarningsRatio",
+            "targets": [
+              "offerredFirm"
+            ]
+          },
+          "offerredFirm": {
+            "kind": "select",
+            "label": "Offerred Firm",
+            "selected": "deriveFirmPriceEarningsRatio",
+            "agent": "firm",
+            "space": "firmInstruments",
+            "targets": [
+              "neighborQuery"
+            ]
+          },
+          "neighborQuery": {
+            "kind": "query",
+            "label": "Neighbor() Query",
+            "selected": "offerredFirm",
+            "function": "neighbor",
+            "targets": [
+              "_Unspecified_"
+            ]
+          },
+          "_Unspecified_": {
+            "kind": "evaluate",
+            "label": "Price Earnings Ratio Add Zero",
+            "selected": "offerredFirm",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "firm.priceEarningsRatio"
+              },
+              {
+                "literal": 0
+              }
+            ]
+          }
+        }
+      },
+      "styles": {
+        "instrumentStyle2D": {
+          "kind": "2d",
+          "label": "Instrument Style 2D",
+          "pluralLabel": "Instrument Style 2Ds",
+          "acts": {
+            "id": "actions",
+            "label": "Actions",
+            "pluralLabel": "Actionss",
+            "members": {
+              "instrumentRule": {
+                "kind": "rule",
+                "label": "Instrument Rule",
+                "pluralLabel": "Instrument Rules",
+                "space": "instrumentHolders",
+                "targets": [
+                  "statusIdenticalHeldQuery",
+                  "statusIdenticalOfferredQuery"
+                ]
+              },
+              "colorGray": {
+                "kind": "evaluate",
+                "label": "Color Gray()",
+                "selected": "instrumentRule",
+                "function": "colorGray",
+                "targets": [
+                  "shapeOval"
+                ]
+              },
+              "shapeOval": {
+                "kind": "evaluate",
+                "label": "Shape Oval()",
+                "selected": "instrumentRule",
+                "function": "shapeOval",
+                "targets": [
+                  "graphicFill"
+                ]
+              },
+              "graphicFill": {
+                "kind": "evaluate",
+                "label": "Graphic Fill()",
+                "selected": "instrumentRule",
+                "function": "graphicFill"
+              },
+              "statusIdenticalHeldQuery": {
+                "kind": "query",
+                "label": "Status Identical Held Query",
+                "selected": "instrumentRule",
+                "function": "identical",
+                "inputs": [
+                  {
+                    "attribute": "instrument.status"
+                  },
+                  {
+                    "option": "instrument.status.held"
+                  }
+                ],
+                "targets": [
+                  "colorGray"
+                ]
+              },
+              "statusIdenticalOfferredQuery": {
+                "kind": "query",
+                "label": "Status Identical Offerred Query",
+                "selected": "instrumentRule",
+                "function": "identical",
+                "inputs": [
+                  {
+                    "attribute": "instrument.status"
+                  },
+                  {
+                    "option": "instrument.status.ask"
+                  }
+                ],
+                "targets": [
+                  "colorBlack"
+                ]
+              },
+              "colorBlack": {
+                "kind": "evaluate",
+                "label": "Color Black()",
+                "selected": "instrumentRule",
+                "function": "colorBlack",
+                "targets": [
+                  "shapeOval"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "instrumentHolders": {
+      "kind": "network",
+      "label": "InstrumentHolders",
+      "pluralLabel": "InstrumentHolderss"
+    },
+    "firmInstruments": {
+      "kind": "network",
+      "label": "FirmInstruments",
+      "pluralLabel": "FirmInstrumentss"
+    },
+    "targetBuyFirms": {
+      "kind": "network",
+      "label": "Target Buy Firms",
+      "pluralLabel": "Target Buy Firmss"
+    }
+  }
+}

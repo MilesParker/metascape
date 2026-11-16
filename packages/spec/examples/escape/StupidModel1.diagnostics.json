@@ -1,0 +1,38 @@
+[
+  {
+    "path": "//@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='bug']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='bug']/@styles[ID='bugStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='habitat']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='habitat']/@styles[ID='habitatStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@projections[ID='grid2D']/@attributes[ID='dimensions']",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The automatic Dimensions array of a space is not translated: the space lists its size attributes as dimensions."
+  }
+]

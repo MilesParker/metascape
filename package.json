@@ -21,7 +21,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
+    "translate-examples": "tsx packages/spec/scripts/translate-examples.ts",
+    "translate-examples:check": "tsx packages/spec/scripts/translate-examples.ts --check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -29,6 +31,7 @@
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.10.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.2",
     "vitest": "^5.1.0"

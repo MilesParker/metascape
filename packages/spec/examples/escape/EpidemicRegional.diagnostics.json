@@ -1,0 +1,170 @@
+[
+  {
+    "path": "//@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@attributes[ID='cityCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodExposure']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodExposure']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodAsymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodAsymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodSymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodSymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='regionalLocationCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='city']/@attributes[ID='individualCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@attributes[ID='periodsperDay']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@attributes[ID='locationCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@styles[ID='cityStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='individual']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='individual']/@attributes[ID='exposureEndPeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='individual']/@attributes[ID='asymptomaticEndPeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='individual']/@attributes[ID='outcomePeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='individual']/@styles[ID='individualStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='city']/@agents[ID='place']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='city']/@projections[ID='map']/@attributes[ID='dimensions']",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The automatic Dimensions array of a space is not translated: the space lists its size attributes as dimensions."
+  },
+  {
+    "path": "//@agents[ID='city']/@projections[ID='map']/@attributes[ID='width']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@projections[ID='map']/@attributes[ID='height']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='city']/@projections[ID='map']/@borderRule",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The border rule STRICT is only in Repast. The space is sticky."
+  },
+  {
+    "path": "//@agents[ID='regionalLocation']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@projections[ID='regionalMap']/@attributes[ID='dimensions']",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The automatic Dimensions array of a space is not translated: the space lists its size attributes as dimensions."
+  },
+  {
+    "path": "//@projections[ID='regionalMap']/@attributes[ID='width']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@projections[ID='regionalMap']/@attributes[ID='height']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  }
+]

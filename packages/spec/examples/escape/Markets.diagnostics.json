@@ -1,0 +1,104 @@
+[
+  {
+    "path": "//@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@attributes[ID='traderCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='firmCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='firmSharesperInstrument']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='firmSharesCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='trader']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='trader']/@attributes[ID='instrumentCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='trader']/@styles[ID='traderStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='trader']/@rootActivity/@members[ID='sharePriceAdjustment']/@inputs.2/@selected",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The input reads from another selection, which means nothing for a literal."
+  },
+  {
+    "path": "//@agents[ID='trader']/@rootActivity/@members[ID='disconnect']/@destination",
+    "severity": "warning",
+    "kind": "dropped",
+    "message": "The destination of disconnect differs from the selection of the act. Only move has a destination."
+  },
+  {
+    "path": "//@agents[ID='firm']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='firm']/@attributes[ID='sharesOutstanding']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='firm']/@attributes[ID='sharesInternal']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='firm']/@styles[ID='firmStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='instrument']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='instrument']/@attributes[ID='shares']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='instrument']/@styles[ID='instrumentStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  }
+]

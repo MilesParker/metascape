@@ -7,10 +7,12 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./metamodel": "./src/metamodel/index.ts"
+    "./metamodel": "./src/metamodel/index.ts",
+    "./metaabm": "./src/metaabm/index.ts"
   },
   "dependencies": {
     "@metascape/engine": "*",
+    "@xmldom/xmldom": "^0.9.12",
     "zod": "^4.6.7"
   }
 }

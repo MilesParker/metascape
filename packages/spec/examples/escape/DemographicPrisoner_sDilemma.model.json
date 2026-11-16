@@ -1,0 +1,1097 @@
+{
+  "schemaVersion": 2,
+  "id": "demographicPrisoner_sDilemma",
+  "label": "Demographic Prisoner_s Dilemma",
+  "pluralLabel": "Demographic Prisoner_s Dilemmas",
+  "language": "typescript",
+  "attributes": {
+    "playerCount": {
+      "type": "integer",
+      "label": "Player Count",
+      "pluralLabel": "Player Counts",
+      "description": "The number of players to create.",
+      "default": 100
+    },
+    "minimumWealth": {
+      "type": "integer",
+      "label": "Minimum Wealth",
+      "pluralLabel": "Minimum Wealths",
+      "default": 20
+    },
+    "maximumWealth": {
+      "type": "integer",
+      "label": "Maximum Wealth",
+      "pluralLabel": "Maximum Wealths",
+      "default": 100
+    },
+    "maximumAge": {
+      "type": "integer",
+      "label": "Maximum Age",
+      "pluralLabel": "Maximum Ages",
+      "default": 100
+    },
+    "payoffCC": {
+      "type": "integer",
+      "label": "Payoff Cooperate Cooperate",
+      "pluralLabel": "Payoff Cooperate Cooperates",
+      "description": "The change in wealth for a player when playing cooperate against cooperate.",
+      "default": 2
+    },
+    "payoffCD": {
+      "type": "integer",
+      "label": "Payoff Cooperate Defect",
+      "pluralLabel": "Payoff Cooperate Defects",
+      "description": "The change in wealth for a player when playing cooperate against defect.",
+      "default": -6
+    },
+    "payoffDC": {
+      "type": "integer",
+      "label": "Payoff Defect Cooperate",
+      "pluralLabel": "Payoff Defect Cooperates",
+      "description": "The change in wealth for a player when playing defect against cooperate.",
+      "default": 6
+    },
+    "payoffDD": {
+      "type": "integer",
+      "label": "Payoff Defect Defect",
+      "pluralLabel": "Payoff Defect Defects",
+      "description": "The change in wealth for a player when both players defect.",
+      "default": -5
+    },
+    "fissionWealth": {
+      "type": "integer",
+      "label": "Fission Wealth",
+      "pluralLabel": "Fission Wealths",
+      "description": "The wealth level at which an agent can fission.",
+      "default": 11
+    },
+    "inheiritedWealth": {
+      "type": "integer",
+      "label": "Inheirited Wealth",
+      "pluralLabel": "Inheirited Wealths",
+      "description": "The wealth that is passed from parent to child.",
+      "default": 6
+    },
+    "initialWealth": {
+      "type": "integer",
+      "label": "Initial Wealth",
+      "pluralLabel": "Initial Wealths",
+      "description": "The wealth initially assigned to an agent at the beginning of model run.",
+      "default": 6
+    },
+    "mutationRate": {
+      "type": "real",
+      "label": "Mutation Rate",
+      "pluralLabel": "Mutation Rates",
+      "description": "The probabaility that a given agent will change strategies in a given period, expressed as a value from 0.0 to 1.0.",
+      "default": 0.1
+    },
+    "deathAge": {
+      "type": "integer",
+      "label": "Death Age",
+      "pluralLabel": "Death Ages",
+      "description": "The number of periods before an agent will be removed from game when Die At Age rule is active.",
+      "default": 100
+    },
+    "birthAge": {
+      "type": "integer",
+      "label": "Birth Age",
+      "pluralLabel": "Birth Ages",
+      "description": "The actual age in years as determined by data set.",
+      "units": "Years"
+    }
+  },
+  "acts": {
+    "id": "rootActGroup",
+    "label": "Root Act Group",
+    "pluralLabel": "Root Acts",
+    "members": {
+      "buildDemographicPrisonnersDillema": {
+        "kind": "build",
+        "label": "Build Demographic Prisonner's Dillema",
+        "pluralLabel": "Build Demographic Prisonner's Dillemas",
+        "targets": [
+          "createPlayers",
+          "buildGrid"
+        ]
+      },
+      "createPlayers": {
+        "kind": "create",
+        "label": "Create Players",
+        "selected": "buildDemographicPrisonnersDillema",
+        "agent": "player",
+        "agentCount": {
+          "attribute": "demographicPrisoner_sDilemma.playerCount"
+        }
+      },
+      "buildGrid": {
+        "kind": "buildGrid",
+        "label": "Build Grid",
+        "pluralLabel": "Build Grids",
+        "selected": "buildDemographicPrisonnersDillema",
+        "agents": [
+          "player"
+        ],
+        "space": "gameSpace",
+        "fillAgent": "playCell"
+      }
+    }
+  },
+  "agents": {
+    "player": {
+      "kind": "agent",
+      "label": "Player",
+      "pluralLabel": "Players",
+      "attributes": {
+        "cooperate": {
+          "type": "boolean",
+          "label": "Cooperate",
+          "pluralLabel": "Cooperates",
+          "gatherData": true
+        },
+        "age": {
+          "type": "integer",
+          "label": "Age",
+          "pluralLabel": "Ages",
+          "gatherData": true
+        },
+        "wealth": {
+          "type": "integer",
+          "label": "Wealth",
+          "pluralLabel": "Wealths",
+          "gatherData": true
+        }
+      },
+      "acts": {
+        "id": "rootActGroup",
+        "label": "Root Act Group",
+        "pluralLabel": "Root Acts",
+        "members": {
+          "initialize": {
+            "kind": "initialize",
+            "label": "Initialize",
+            "pluralLabel": "Initializes",
+            "space": "gameSpace",
+            "targets": [
+              "randomToMaxAge",
+              "randomStrategy",
+              "setWealthToInitialWealth"
+            ]
+          },
+          "moveToRandomLocation": {
+            "kind": "initialize",
+            "label": "Move To Random Location",
+            "pluralLabel": "Move To Random Locations",
+            "space": "gameSpace",
+            "targets": [
+              "randomCell2"
+            ]
+          },
+          "randomToMaxAge": {
+            "kind": "evaluate",
+            "label": "Random To Max Age",
+            "selected": "initialize",
+            "function": "randomToLimit",
+            "inputs": [
+              {
+                "attribute": "demographicPrisoner_sDilemma.maximumAge"
+              }
+            ],
+            "targets": [
+              "setRandomAge"
+            ]
+          },
+          "setRandomAge": {
+            "kind": "set",
+            "label": "Set Random Age",
+            "selected": "initialize",
+            "attribute": "player.age",
+            "parameter": {
+              "evaluate": "randomToMaxAge"
+            }
+          },
+          "randomStrategy": {
+            "kind": "evaluate",
+            "label": "Random Strategy",
+            "selected": "initialize",
+            "function": "randomIs",
+            "targets": [
+              "setRandomStrategy"
+            ]
+          },
+          "randomNeighbor": {
+            "kind": "select",
+            "label": "Random Neighbor",
+            "selected": "randomWalk",
+            "agent": "playCell",
+            "space": "gameSpace",
+            "targets": [
+              "neighbor",
+              "available"
+            ]
+          },
+          "neighbor": {
+            "kind": "query",
+            "label": "Neighbor",
+            "selected": "randomNeighbor",
+            "function": "neighbor",
+            "targets": [
+              "availableNeighbor"
+            ]
+          },
+          "movetoDemographicPrisonnersDillemainGameSpace": {
+            "kind": "move",
+            "label": "Move to Demographic Prisonners Dillema in Game Space",
+            "selected": "randomWalk",
+            "destination": "randomNeighbor"
+          },
+          "randomWalk": {
+            "kind": "rule",
+            "label": "Random Walk",
+            "pluralLabel": "Random Walks",
+            "space": "gameSpace",
+            "targets": [
+              "randomNeighbor"
+            ]
+          },
+          "playNeighbor": {
+            "kind": "rule",
+            "label": "Play Neighbor",
+            "pluralLabel": "Play Neighbors",
+            "space": "gameSpace",
+            "targets": [
+              "playerDefect",
+              "playerCooperate",
+              "otherPlayer"
+            ]
+          },
+          "setRandomStrategy": {
+            "kind": "set",
+            "label": "Set Random Strategy",
+            "selected": "initialize",
+            "attribute": "player.cooperate",
+            "parameter": {
+              "evaluate": "randomStrategy"
+            }
+          },
+          "randomCell2": {
+            "kind": "select",
+            "label": "Random Cell 2",
+            "selected": "moveToRandomLocation",
+            "agent": "playCell",
+            "space": "gameSpace",
+            "targets": [
+              "spaceAvailable"
+            ]
+          },
+          "movetoPlayerinGameSpac": {
+            "kind": "move",
+            "label": "Move to Player in Game Spac",
+            "selected": "moveToRandomLocation",
+            "destination": "randomCell2"
+          },
+          "updateAge": {
+            "kind": "rule",
+            "label": "Update Age",
+            "pluralLabel": "Update Ages",
+            "description": "Increment the Age by One.",
+            "space": "gameSpace",
+            "targets": [
+              "incrementAge"
+            ]
+          },
+          "incrementAge": {
+            "kind": "evaluate",
+            "label": "Increment Age",
+            "selected": "updateAge",
+            "function": "increment",
+            "inputs": [
+              {
+                "attribute": "player.age"
+              }
+            ],
+            "targets": [
+              "setToCopyCopyCopyCopy"
+            ]
+          },
+          "setToCopyCopyCopyCopy": {
+            "kind": "set",
+            "label": "Set [?] To [?] Copy Copy Copy Copy",
+            "selected": "updateAge",
+            "attribute": "player.age",
+            "parameter": {
+              "evaluate": "incrementAge"
+            }
+          },
+          "fissionRule": {
+            "kind": "rule",
+            "label": "Fission Rule",
+            "pluralLabel": "Fission Rules",
+            "space": "gameSpace",
+            "targets": [
+              "wealthGreaterorEqualFissionWealth"
+            ]
+          },
+          "dieAtAge": {
+            "kind": "rule",
+            "label": "Die At Age",
+            "pluralLabel": "Die At Ages",
+            "space": "gameSpace",
+            "targets": [
+              "ageGreaterDeathAge"
+            ]
+          },
+          "ageGreaterDeathAge": {
+            "kind": "query",
+            "label": "Age Greater Death Age",
+            "selected": "dieAtAge",
+            "function": "greater",
+            "inputs": [
+              {
+                "attribute": "player.age"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.deathAge"
+              }
+            ],
+            "targets": [
+              "playerDieinDieAtAge"
+            ]
+          },
+          "playerDieinDieAtAge": {
+            "kind": "die",
+            "label": "Player Die in Die At Age",
+            "selected": "dieAtAge"
+          },
+          "dieAtWealth0": {
+            "kind": "rule",
+            "label": "Die At Wealth 0",
+            "pluralLabel": "Die At Wealth 0s",
+            "space": "gameSpace",
+            "targets": [
+              "wealthLesserLiteral0"
+            ]
+          },
+          "wealthLesserLiteral0": {
+            "kind": "query",
+            "label": "Wealth Lesser Literal 0",
+            "selected": "dieAtWealth0",
+            "function": "lesser",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "literal": 0
+              }
+            ],
+            "targets": [
+              "playerDieinDieAtWealth0"
+            ]
+          },
+          "playerDieinDieAtWealth0": {
+            "kind": "die",
+            "label": "Player Die in Die At Wealth 0",
+            "selected": "dieAtWealth0"
+          },
+          "otherPlayer": {
+            "kind": "select",
+            "label": "Other Player",
+            "selected": "playNeighbor",
+            "agent": "player",
+            "space": "gameSpace",
+            "targets": [
+              "spaceNeighborCopy"
+            ]
+          },
+          "spaceAvailable": {
+            "kind": "query",
+            "label": "Space Available",
+            "selected": "randomCell2",
+            "function": "available",
+            "targets": [
+              "movetoPlayerinGameSpac"
+            ]
+          },
+          "available": {
+            "kind": "query",
+            "label": "Available",
+            "selected": "randomNeighbor",
+            "function": "available",
+            "targets": [
+              "availableNeighbor"
+            ]
+          },
+          "spaceNeighborCopy": {
+            "kind": "query",
+            "label": "Space Neighbor Copy",
+            "selected": "otherPlayer",
+            "function": "neighbor",
+            "targets": [
+              "otherCooperate",
+              "otherDefect"
+            ]
+          },
+          "availableNeighbor": {
+            "kind": "all",
+            "label": "Available Neighbor",
+            "selected": "randomNeighbor",
+            "targets": [
+              "movetoDemographicPrisonnersDillemainGameSpace"
+            ]
+          },
+          "playerCooperate": {
+            "kind": "query",
+            "label": "Player Cooperate",
+            "selected": "playNeighbor",
+            "function": "identity",
+            "inputs": [
+              {
+                "attribute": "player.cooperate"
+              }
+            ],
+            "targets": [
+              "bothCooperate",
+              "cooperateDefect"
+            ]
+          },
+          "otherCooperate": {
+            "kind": "query",
+            "label": "Other Cooperate",
+            "selected": "otherPlayer",
+            "function": "identity",
+            "inputs": [
+              {
+                "attribute": "player.cooperate"
+              }
+            ],
+            "targets": [
+              "bothCooperate",
+              "defectCooperate"
+            ]
+          },
+          "otherDefect": {
+            "kind": "query",
+            "label": "Other Defect",
+            "selected": "otherPlayer",
+            "function": "not",
+            "inputs": [
+              {
+                "attribute": "player.cooperate"
+              }
+            ],
+            "targets": [
+              "cooperateDefect",
+              "bothDefect"
+            ]
+          },
+          "playerDefect": {
+            "kind": "query",
+            "label": "Player Defect",
+            "selected": "playNeighbor",
+            "function": "not",
+            "inputs": [
+              {
+                "attribute": "player.cooperate"
+              }
+            ],
+            "targets": [
+              "defectCooperate",
+              "bothDefect"
+            ]
+          },
+          "bothCooperate": {
+            "kind": "all",
+            "label": "Both Cooperate",
+            "selected": "otherPlayer",
+            "targets": [
+              "valueWealthAddPayoffCooperateCooperate",
+              "valueWealthAddPayoffCooperateCooperateCopy"
+            ]
+          },
+          "defectCooperate": {
+            "kind": "all",
+            "label": "Defect Cooperate",
+            "selected": "otherPlayer",
+            "targets": [
+              "valueWealthAddPayoffDefectCooperate",
+              "valueWealthAddPayoffCooperateDefectCopy"
+            ]
+          },
+          "cooperateDefect": {
+            "kind": "all",
+            "label": "Cooperate Defect",
+            "selected": "otherPlayer",
+            "targets": [
+              "valueWealthAddPayoffCooperateDefect",
+              "valueWealthAddPayoffDefectCooperateCopy"
+            ]
+          },
+          "bothDefect": {
+            "kind": "all",
+            "label": "Both Defect",
+            "selected": "otherPlayer",
+            "targets": [
+              "valueWealthAddPayoffDefectDefect",
+              "valueWealthAddPayoffDefectDefectCopy"
+            ]
+          },
+          "valueWealthAddPayoffDefectCooperate": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Defect Cooperate",
+            "selected": "playNeighbor",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffDC"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffDefectCooperate"
+            ]
+          },
+          "valueWealthAddPayoffCooperateCooperate": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Cooperate Cooperate",
+            "selected": "playNeighbor",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffCC"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffCooperateCooperate"
+            ]
+          },
+          "valueWealthAddPayoffDefectDefect": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Defect Defect",
+            "selected": "playNeighbor",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffDD"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffDefectDefect"
+            ]
+          },
+          "valueWealthAddPayoffCooperateDefect": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Cooperate Defect",
+            "selected": "playNeighbor",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffCD"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffCooperateDefect"
+            ]
+          },
+          "setWealthToValueWealthAddPayoffDefectCooperate": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Defect Cooperate",
+            "selected": "playNeighbor",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffDefectCooperate"
+            }
+          },
+          "setWealthToValueWealthAddPayoffDefectDefect": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Defect Defect",
+            "selected": "playNeighbor",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffDefectDefect"
+            }
+          },
+          "setWealthToValueWealthAddPayoffCooperateCooperate": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Cooperate Cooperate",
+            "selected": "playNeighbor",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffCooperateCooperate"
+            }
+          },
+          "setWealthToValueWealthAddPayoffCooperateDefect": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Cooperate Defect",
+            "selected": "playNeighbor",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffCooperateDefect"
+            }
+          },
+          "wealthGreaterorEqualFissionWealth": {
+            "kind": "query",
+            "label": "Wealth Greater or Equal Fission Wealth",
+            "selected": "fissionRule",
+            "function": "greaterorEqual",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.fissionWealth"
+              }
+            ],
+            "targets": [
+              "birthLocation"
+            ]
+          },
+          "createAgents": {
+            "kind": "create",
+            "label": "Create Agents",
+            "selected": "birthLocation",
+            "agent": "player",
+            "space": "gameSpace",
+            "targets": [
+              "movetoPlayerinGameSpaceCopy",
+              "valueRandomUnit",
+              "wealthChildWealth",
+              "setWealthToInheiritedWealth"
+            ]
+          },
+          "birthNeighbor": {
+            "kind": "query",
+            "label": "Birth Neighbor",
+            "selected": "birthLocation",
+            "function": "neighbor",
+            "targets": [
+              "neighborAvailableforBirth"
+            ]
+          },
+          "spaceAvailableCopyCopy": {
+            "kind": "query",
+            "label": "Space Available Copy Copy",
+            "selected": "birthLocation",
+            "function": "available",
+            "targets": [
+              "neighborAvailableforBirth"
+            ]
+          },
+          "neighborAvailableforBirth": {
+            "kind": "all",
+            "label": "Neighbor Available for Birth",
+            "selected": "birthLocation",
+            "targets": [
+              "createAgents"
+            ]
+          },
+          "movetoPlayerinGameSpaceCopy": {
+            "kind": "move",
+            "label": "Move to Player in Game Space Copy",
+            "selected": "createAgents",
+            "destination": "birthLocation"
+          },
+          "birthLocation": {
+            "kind": "select",
+            "label": "Birth Location",
+            "selected": "fissionRule",
+            "agent": "playCell",
+            "space": "gameSpace",
+            "targets": [
+              "birthNeighbor",
+              "spaceAvailableCopyCopy"
+            ]
+          },
+          "setCooperateToCooperate": {
+            "kind": "set",
+            "label": "Set Cooperate To Cooperate",
+            "selected": "createAgents",
+            "attribute": "player.cooperate",
+            "parameter": {
+              "attribute": "player.cooperate"
+            }
+          },
+          "valueRandomUnit": {
+            "kind": "evaluate",
+            "label": "Value Random Unit",
+            "selected": "createAgents",
+            "function": "randomUnit",
+            "targets": [
+              "mutationDraw"
+            ]
+          },
+          "mutationDraw": {
+            "kind": "query",
+            "label": "Mutation Draw",
+            "selected": "createAgents",
+            "function": "lesser",
+            "inputs": [
+              {
+                "evaluate": "valueRandomUnit"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.mutationRate"
+              }
+            ],
+            "targets": [
+              "valueRandomBoolean",
+              "not_ValueRandomUnitLesserMutationRate_"
+            ]
+          },
+          "valueRandomBoolean": {
+            "kind": "evaluate",
+            "label": "Value Random Boolean",
+            "selected": "createAgents",
+            "function": "randomIs",
+            "targets": [
+              "setCooperateToValueRandomBoolean"
+            ]
+          },
+          "setCooperateToValueRandomBoolean": {
+            "kind": "set",
+            "label": "Set Cooperate To Value Random Boolean",
+            "selected": "createAgents",
+            "attribute": "player.cooperate",
+            "parameter": {
+              "evaluate": "valueRandomBoolean"
+            }
+          },
+          "not_ValueRandomUnitLesserMutationRate_": {
+            "kind": "none",
+            "label": "!(Value Random Unit Lesser Mutation Rate)",
+            "selected": "createAgents",
+            "targets": [
+              "setCooperateToCooperate"
+            ]
+          },
+          "wealthChildWealth": {
+            "kind": "evaluate",
+            "label": "Remaining Wealth",
+            "selected": "createAgents",
+            "function": "sub",
+            "inputs": [
+              {
+                "attribute": "player.wealth",
+                "selected": "fissionRule"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.inheiritedWealth"
+              }
+            ],
+            "targets": [
+              "setWealthToWealthChildWealth"
+            ]
+          },
+          "setWealthToWealthChildWealth": {
+            "kind": "set",
+            "label": "Set Wealth To Remaining Wealth",
+            "selected": "fissionRule",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "wealthChildWealth"
+            }
+          },
+          "setWealthToInheiritedWealth": {
+            "kind": "set",
+            "label": "Set Wealth To Inheirited Wealth",
+            "selected": "createAgents",
+            "attribute": "player.wealth",
+            "parameter": {
+              "attribute": "demographicPrisoner_sDilemma.inheiritedWealth"
+            }
+          },
+          "setWealthToInitialWealth": {
+            "kind": "set",
+            "label": "Set Wealth To Initial Wealth",
+            "selected": "initialize",
+            "attribute": "player.wealth",
+            "parameter": {
+              "attribute": "demographicPrisoner_sDilemma.initialWealth"
+            }
+          },
+          "valueWealthAddPayoffCooperateDefectCopy": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Cooperate Defect Copy",
+            "selected": "otherPlayer",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffCD"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffCooperateDefectCopy"
+            ]
+          },
+          "setWealthToValueWealthAddPayoffCooperateDefectCopy": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Cooperate Defect Copy",
+            "selected": "otherPlayer",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffCooperateDefectCopy"
+            }
+          },
+          "valueWealthAddPayoffDefectDefectCopy": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Defect Defect Copy",
+            "selected": "otherPlayer",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffDD"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffDefectDefectCopy"
+            ]
+          },
+          "valueWealthAddPayoffCooperateCooperateCopy": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Cooperate Cooperate Copy",
+            "selected": "otherPlayer",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffCC"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffCooperateCooperateCopy"
+            ]
+          },
+          "setWealthToValueWealthAddPayoffCooperateCooperateCopy": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Cooperate Cooperate Copy",
+            "selected": "otherPlayer",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffCooperateCooperateCopy"
+            }
+          },
+          "valueWealthAddPayoffDefectCooperateCopy": {
+            "kind": "evaluate",
+            "label": "Value Wealth Add Payoff Defect Cooperate Copy",
+            "selected": "otherPlayer",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "player.wealth"
+              },
+              {
+                "attribute": "demographicPrisoner_sDilemma.payoffDC"
+              }
+            ],
+            "targets": [
+              "setWealthToValueWealthAddPayoffDefectCooperateCopy"
+            ]
+          },
+          "setWealthToValueWealthAddPayoffDefectCooperateCopy": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Defect Cooperate Copy",
+            "selected": "otherPlayer",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffDefectCooperateCopy"
+            }
+          },
+          "setWealthToValueWealthAddPayoffDefectDefectCopy": {
+            "kind": "set",
+            "label": "Set Wealth To Value Wealth Add Payoff Defect Defect Copy",
+            "selected": "otherPlayer",
+            "attribute": "player.wealth",
+            "parameter": {
+              "evaluate": "valueWealthAddPayoffDefectDefectCopy"
+            }
+          }
+        }
+      },
+      "styles": {
+        "cooperateDefectStyle": {
+          "kind": "2d",
+          "label": "Cooperate Defect Style",
+          "pluralLabel": "Cooperate Defect Styles",
+          "acts": {
+            "id": "rootActGroup",
+            "label": "Root Act Group",
+            "pluralLabel": "Root Acts",
+            "members": {
+              "playerRule": {
+                "kind": "rule",
+                "label": "Player Rule",
+                "pluralLabel": "Player Rules",
+                "space": "gameSpace",
+                "targets": [
+                  "identityCooperate"
+                ]
+              },
+              "identityCooperate": {
+                "kind": "query",
+                "label": "Identity Cooperate",
+                "selected": "playerRule",
+                "function": "identity",
+                "inputs": [
+                  {
+                    "attribute": "player.cooperate"
+                  }
+                ],
+                "targets": [
+                  "defector",
+                  "playerRuleColorBlue"
+                ]
+              },
+              "defector": {
+                "kind": "none",
+                "label": "Defector",
+                "selected": "playerRule",
+                "targets": [
+                  "playerRuleColorRed"
+                ]
+              },
+              "playerRuleColorBlue": {
+                "kind": "evaluate",
+                "label": "Player Rule: Color Blue()",
+                "selected": "playerRule",
+                "function": "colorBlue",
+                "targets": [
+                  "playerRuleShapeOval"
+                ]
+              },
+              "playerRuleColorRed": {
+                "kind": "evaluate",
+                "label": "Player Rule: Color Red()",
+                "selected": "playerRule",
+                "function": "colorRed",
+                "targets": [
+                  "playerRuleShapeOval"
+                ]
+              },
+              "playerRuleShapeOval": {
+                "kind": "evaluate",
+                "label": "Player Rule: Shape Oval()",
+                "selected": "playerRule",
+                "function": "shapeOval",
+                "targets": [
+                  "playerRuleGraphicFill"
+                ]
+              },
+              "playerRuleGraphicFill": {
+                "kind": "evaluate",
+                "label": "Player Rule: Graphic Fill()",
+                "selected": "playerRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    },
+    "playCell": {
+      "kind": "agent",
+      "label": "Play Cell",
+      "pluralLabel": "Play Cells",
+      "acts": {
+        "id": "rootActGroup",
+        "label": "Root Act Group",
+        "pluralLabel": "Root Acts",
+        "members": {}
+      },
+      "styles": {
+        "playCellStyle2D": {
+          "kind": "2d",
+          "label": "Play Cell Style 2D",
+          "pluralLabel": "Play Cell Style 2Ds",
+          "acts": {
+            "id": "rootActGroup",
+            "label": "Root Act Group",
+            "pluralLabel": "Root Act Groups",
+            "members": {
+              "playCellRule": {
+                "kind": "rule",
+                "label": "PlayCell Rule",
+                "pluralLabel": "PlayCell Rules",
+                "space": "gameSpace",
+                "targets": [
+                  "playCellRuleColorGreen"
+                ]
+              },
+              "playCellRuleColorGreen": {
+                "kind": "evaluate",
+                "label": "PlayCell Rule: Color Green()",
+                "selected": "playCellRule",
+                "function": "colorGreen",
+                "targets": [
+                  "playCellRuleShapeRectangle"
+                ]
+              },
+              "playCellRuleShapeRectangle": {
+                "kind": "evaluate",
+                "label": "PlayCell Rule: Shape Rectangle()",
+                "selected": "playCellRule",
+                "function": "shapeRectangle",
+                "targets": [
+                  "playCellRuleGraphicFill"
+                ]
+              },
+              "playCellRuleGraphicFill": {
+                "kind": "evaluate",
+                "label": "PlayCell Rule: Graphic Fill()",
+                "selected": "playCellRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "gameSpace": {
+      "kind": "grid",
+      "label": "Game Space",
+      "pluralLabel": "Game Spaces",
+      "borderRule": "periodic",
+      "neighborhood": "vonNeumann",
+      "dimensions": [
+        "width",
+        "height"
+      ],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "pluralLabel": "Widths",
+          "description": "The horizontal extent of the space.",
+          "default": 20
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "pluralLabel": "Heights",
+          "description": "The vertical extent of the space.",
+          "default": 20
+        }
+      }
+    }
+  }
+}

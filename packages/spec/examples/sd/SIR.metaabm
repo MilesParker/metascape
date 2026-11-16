@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metaabm:SContext xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:act="http://metaabm.org/act" xmlns:function="http://metaabm.org/function" xmlns:metaabm="http://metaabm.org/structure" xmlns:sd="sd" label="SIR" ID="sIR" pluralLabel="SIRs">
+  <attributes label="SIR Agent Count" ID="sIRAgentCount" pluralLabel="SIR Agent Counts" description="The number of sir agents to create."/>
+  <rootActivity xsi:type="act:AGroup" label="Actions" ID="actions" pluralLabel="Actionss">
+    <members xsi:type="act:ABuild" label="Build SIR" ID="buildSIR" targets="//@rootActivity/@members[ID='createSIRAgents']" selected="//@rootActivity/@members[ID='buildSIR']" agent="/" pluralLabel="Build SIRs"/>
+    <members xsi:type="act:ACreateAgents" label="Create SIR Agents" ID="createSIRAgents" sources="//@rootActivity/@members[ID='buildSIR']" selected="//@rootActivity/@members[ID='buildSIR']" agent="//@agents[ID='sIRAgent']" agentCount="//@attributes[ID='sIRAgentCount']"/>
+  </rootActivity>
+  <implementation package="sdl.SIR.sd" className="SIR" basePath=""/>
+  <children xsi:type="sd:SdModel" name="SD">
+    <abstractVariables xsi:type="sd:SdStockVariable" name="InfectedPopulation" integral="return InfectionRate()-RecoveryRate();" initialValue="return 1;">
+      <toElement name="InfectedPopulation_InfectionRate" toElement="//@children.0/@abstractVariables.2"/>
+      <toElement name="InfectedPopulation_RecoveryRate" toElement="//@children.0/@abstractVariables.7"/>
+    </abstractVariables>
+    <abstractVariables xsi:type="sd:SdStockVariable" name="SucseptiblePopulation" integral="return -InfectionRate();" initialValue="return 9999;">
+      <toElement name="SucseptiblePopulation_InfectionRate" toElement="//@children.0/@abstractVariables.2"/>
+    </abstractVariables>
+    <abstractVariables xsi:type="sd:SdFlowVariable" name="InfectionRate" equation="return SucseptiblePopulation()*ContactRate()*Infectivity()*InfectedPopulation()/Population();">
+      <toElement name="InfectionRate_ContactRate" toElement="//@children.0/@abstractVariables.3"/>
+      <toElement name="InfectionRate_Infectivity" toElement="//@children.0/@abstractVariables.5"/>
+      <toElement name="InfectionRate_Population" toElement="//@children.0/@abstractVariables.4"/>
+      <toElement name="InfectionRate_InfectedPopulation" toElement="//@children.0/@abstractVariables.0"/>
+      <toElement name="InfectionRate_SucseptiblePopulation" toElement="//@children.0/@abstractVariables.1"/>
+    </abstractVariables>
+    <abstractVariables xsi:type="sd:SdAuxVariable" name="ContactRate" equation="return 0.333;"/>
+    <abstractVariables xsi:type="sd:SdAuxVariable" name="Population" equation="return 10000;"/>
+    <abstractVariables xsi:type="sd:SdAuxVariable" name="Infectivity" equation="return 0.2;"/>
+    <abstractVariables xsi:type="sd:SdStockVariable" name="RecoveredPopulation" integral="return RecoveryRate();">
+      <toElement name="RecoveredPopulation_RecoveryRate" toElement="//@children.0/@abstractVariables.7"/>
+    </abstractVariables>
+    <abstractVariables xsi:type="sd:SdFlowVariable" name="RecoveryRate" equation="return InfectedPopulation()/IllnessDuration();">
+      <toElement name="RecoveryRate_IllnessDuration" toElement="//@children.0/@abstractVariables.8"/>
+      <toElement name="RecoveryRate_InfectedPopulation" toElement="//@children.0/@abstractVariables.0"/>
+    </abstractVariables>
+    <abstractVariables xsi:type="sd:SdAuxVariable" name="IllnessDuration" equation="return 84;"/>
+  </children>
+  <agents label="SIR Agent" ID="sIRAgent" pluralLabel="SIR Agents">
+    <rootActivity xsi:type="act:AGroup" label="Actions" ID="actions" pluralLabel="Actionss"/>
+    <implementation className="SIRAgent"/>
+    <styles xsi:type="metaabm:SStyle2D" label="SIR Agent Style 2D" ID="sIRAgentStyle2D" pluralLabel="SIR Agent Style 2Ds">
+      <rootActivity xsi:type="act:AGroup" label="Actions" ID="actions" pluralLabel="Actionss">
+        <members xsi:type="act:ARule" label="Default SIR Agent Style" ID="defaultSIRAgentStyle" targets="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentColor']" selected="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentStyle']" agent="//@agents[ID='sIRAgent']" pluralLabel="Default SIR Agent Styles"/>
+        <members xsi:type="act:AEvaluate" label="Default SIR Agent Color" ID="defaultSIRAgentColor" sources="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentStyle']" targets="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentShape']" selected="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentStyle']">
+          <function xsi:type="function:FGenericFunction" href="http://metaabm.org/core_library.metaabm#//@library[ID='coreFunctions']/@subs[ID='graphic']/@functions[ID='colorBlue']"/>
+        </members>
+        <members xsi:type="act:AEvaluate" label="Default SIR Agent Shape" ID="defaultSIRAgentShape" sources="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentColor']" targets="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentPaint']" selected="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentStyle']">
+          <function xsi:type="function:FGenericFunction" href="http://metaabm.org/core_library.metaabm#//@library[ID='coreFunctions']/@subs[ID='graphic']/@functions[ID='shapeOval']"/>
+        </members>
+        <members xsi:type="act:AEvaluate" label="Default SIR Agent Paint" ID="defaultSIRAgentPaint" sources="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentShape']" selected="//@agents[ID='sIRAgent']/@styles[ID='sIRAgentStyle2D']/@rootActivity/@members[ID='defaultSIRAgentStyle']">
+          <function xsi:type="function:FGenericFunction" href="http://metaabm.org/core_library.metaabm#//@library[ID='coreFunctions']/@subs[ID='graphic']/@functions[ID='graphicFill']"/>
+        </members>
+      </rootActivity>
+      <implementation className="SIRAgentStyle2D"/>
+    </styles>
+  </agents>
+</metaabm:SContext>

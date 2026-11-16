@@ -1,0 +1,116 @@
+[
+  {
+    "path": "//@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@attributes[ID='individualCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='periodsperDay']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodExposure']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodExposure']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodAsymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodAsymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minPeriodSymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maxPeriodSymptomInfection']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='individual']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='individual']/@attributes[ID='exposureEndPeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='individual']/@attributes[ID='asymptomaticEndPeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='individual']/@attributes[ID='outcomePeriod']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='individual']/@styles[ID='individualStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@projections[ID='city']/@attributes[ID='dimensions']",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The automatic Dimensions array of a space is not translated: the space lists its size attributes as dimensions."
+  },
+  {
+    "path": "//@projections[ID='city']/@attributes[ID='width']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@projections[ID='city']/@attributes[ID='height']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@projections[ID='city']/@borderRule",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The border rule STRICT is only in Repast. The space is sticky."
+  },
+  {
+    "path": "//@projections[ID='city']/@neighborhood",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No neighborhood is given, so it is the default, Euclidean."
+  }
+]

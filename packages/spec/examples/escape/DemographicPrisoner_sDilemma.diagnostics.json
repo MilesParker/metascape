@@ -1,0 +1,140 @@
+[
+  {
+    "path": "//@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@attributes[ID='playerCount']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='minimumWealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maximumWealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='maximumAge']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='payoffCC']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='payoffCD']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='payoffDC']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='payoffDD']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='fissionWealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='inheiritedWealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='initialWealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='deathAge']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@attributes[ID='birthAge']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='player']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='player']/@attributes[ID='age']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='player']/@attributes[ID='wealth']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@agents[ID='player']/@styles[ID='cooperateDefectStyle']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='playCell']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@agents[ID='playCell']/@styles[ID='playCellStyle2D']/@implementation",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The implementation (Java class and paths) is for code generation and is not translated."
+  },
+  {
+    "path": "//@projections[ID='gameSpace']/@attributes[ID='dimensions']",
+    "severity": "note",
+    "kind": "dropped",
+    "message": "The automatic Dimensions array of a space is not translated: the space lists its size attributes as dimensions."
+  },
+  {
+    "path": "//@projections[ID='gameSpace']/@attributes[ID='width']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  },
+  {
+    "path": "//@projections[ID='gameSpace']/@attributes[ID='height']/@sType",
+    "severity": "note",
+    "kind": "defaulted",
+    "message": "No type is given, so it is the default, integer."
+  }
+]

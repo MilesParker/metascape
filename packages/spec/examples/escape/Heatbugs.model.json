@@ -1,0 +1,722 @@
+{
+  "schemaVersion": 2,
+  "id": "heatbugs",
+  "label": "Heatbugs",
+  "pluralLabel": "Heatbugss",
+  "language": "typescript",
+  "attributes": {
+    "heatBugCount": {
+      "type": "integer",
+      "label": "Heat Bug Count",
+      "pluralLabel": "Heat Bug Counts",
+      "description": "The number of heat bugs to create.",
+      "default": 100
+    },
+    "diffusionRate": {
+      "type": "real",
+      "label": "Diffusion Rate",
+      "pluralLabel": "Diffusion Rates",
+      "default": 1
+    },
+    "evaporationRate": {
+      "type": "real",
+      "label": "Evaporation Rate",
+      "pluralLabel": "Evaporation Rates",
+      "default": 0.01
+    },
+    "idealTemperatureDrawMinimum": {
+      "type": "real",
+      "label": "Ideal Temperature Draw Minimum",
+      "pluralLabel": "Ideal Temperature Draw Minimums",
+      "default": 135
+    },
+    "idealTemperatureDrawMaximum": {
+      "type": "real",
+      "label": "Ideal Temperature Draw Maximum",
+      "pluralLabel": "Ideal Temperature Draw Maximums",
+      "default": 240
+    },
+    "outputHeatDrawMinimum": {
+      "type": "real",
+      "label": "Output Heat Draw Minimum",
+      "pluralLabel": "Output Heat Draw Minimums",
+      "default": 23
+    },
+    "outputHeatDrawMaximum": {
+      "type": "real",
+      "label": "Output Heat Draw Maximum",
+      "pluralLabel": "Output Heat Draw Maximums",
+      "default": 76
+    },
+    "maximumHeat": {
+      "type": "integer",
+      "label": "Maximum Heat",
+      "pluralLabel": "Maximum Heats",
+      "default": 340
+    }
+  },
+  "acts": {
+    "id": "actions",
+    "label": "Actions",
+    "pluralLabel": "Actionss",
+    "members": {
+      "buildHeatbugs": {
+        "kind": "build",
+        "label": "Build Heatbugs",
+        "pluralLabel": "Build Heatbugss",
+        "targets": [
+          "createHeatBugs",
+          "buildGrids"
+        ]
+      },
+      "createHeatBugs": {
+        "kind": "create",
+        "label": "Create Heat Bugs",
+        "selected": "buildHeatbugs",
+        "agent": "heatBug",
+        "agentCount": {
+          "attribute": "heatbugs.heatBugCount"
+        }
+      },
+      "buildGrids": {
+        "kind": "buildGrid",
+        "label": "Build Grids",
+        "pluralLabel": "Build Gridss",
+        "selected": "buildHeatbugs",
+        "agents": [
+          "heatBug"
+        ],
+        "space": "heatGrid",
+        "fillAgent": "heatCell"
+      }
+    }
+  },
+  "agents": {
+    "heatBug": {
+      "kind": "agent",
+      "label": "Heat Bug",
+      "pluralLabel": "Heat Bugs",
+      "attributes": {
+        "idealTemperature": {
+          "type": "real",
+          "label": "Ideal Temperature",
+          "pluralLabel": "Ideal Temperatures"
+        },
+        "outputHeat": {
+          "type": "real",
+          "label": "Output Heat",
+          "pluralLabel": "Output Heats"
+        },
+        "unhappiness": {
+          "type": "real",
+          "label": "Unhappiness",
+          "pluralLabel": "Unhappinesss",
+          "gatherData": true,
+          "derived": true,
+          "default": 0
+        }
+      },
+      "acts": {
+        "id": "actions",
+        "label": "Actions",
+        "pluralLabel": "Actionss",
+        "members": {
+          "initialize": {
+            "kind": "initialize",
+            "label": "Initialize",
+            "pluralLabel": "Initializes",
+            "targets": [
+              "heatBug"
+            ]
+          },
+          "heatBug": {
+            "kind": "select",
+            "label": "Heat Bug",
+            "selected": "initialize",
+            "agent": "heatCell",
+            "space": "heatGrid",
+            "targets": [
+              "availableQuery"
+            ]
+          },
+          "availableQuery": {
+            "kind": "query",
+            "label": "Available() Query",
+            "selected": "heatBug",
+            "function": "available",
+            "targets": [
+              "moveHeatBug"
+            ]
+          },
+          "moveHeatBug": {
+            "kind": "move",
+            "label": "Move Heat Bug",
+            "selected": "initialize",
+            "destination": "heatBug"
+          },
+          "seekHeatRule": {
+            "kind": "rule",
+            "label": "Seek Heat Rule",
+            "pluralLabel": "Seek Heat Rules",
+            "targets": [
+              "currentLocation"
+            ]
+          },
+          "idealHeat": {
+            "kind": "select",
+            "label": "Ideal Heat",
+            "selected": "currentLocation",
+            "agent": "heatCell",
+            "space": "heatGrid",
+            "targets": [
+              "availableQueryCopy",
+              "neighborQuery",
+              "maximize_Heat_Query",
+              "includeSelfQuery"
+            ]
+          },
+          "availableQueryCopy": {
+            "kind": "query",
+            "label": "Available() Query Copy",
+            "selected": "idealHeat",
+            "function": "available",
+            "targets": [
+              "_And_AvailableQueryCopy"
+            ]
+          },
+          "neighborQuery": {
+            "kind": "query",
+            "label": "Neighbor() Query",
+            "selected": "idealHeat",
+            "function": "neighbor",
+            "targets": [
+              "_And_AvailableQueryCopy"
+            ]
+          },
+          "maximize_Heat_Query": {
+            "kind": "query",
+            "label": "Maximize(Heat) Query",
+            "selected": "idealHeat",
+            "function": "maximize",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat"
+              }
+            ],
+            "targets": [
+              "_And_AvailableQueryCopy"
+            ]
+          },
+          "_And_AvailableQueryCopy": {
+            "kind": "all",
+            "label": "(&) Available() Query Copy",
+            "selected": "idealHeat",
+            "targets": [
+              "moveHeatBugCopy"
+            ]
+          },
+          "moveHeatBugCopy": {
+            "kind": "move",
+            "label": "Move Heat Bug Copy",
+            "selected": "seekHeatRule",
+            "destination": "idealHeat"
+          },
+          "initializeState": {
+            "kind": "initialize",
+            "label": "Initialize State",
+            "pluralLabel": "Initialize States",
+            "space": "heatGrid",
+            "targets": [
+              "idealTemperatureDraw",
+              "outputHeatDraw"
+            ]
+          },
+          "idealTemperatureDraw": {
+            "kind": "evaluate",
+            "label": "Ideal Temperature Draw",
+            "selected": "initializeState",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "heatbugs.idealTemperatureDrawMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "heatbugs.idealTemperatureDrawMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "setIdealTemperatureToIdealTemperatureDraw"
+            ]
+          },
+          "setIdealTemperatureToIdealTemperatureDraw": {
+            "kind": "set",
+            "label": "Set Ideal Temperature To Ideal Temperature Draw",
+            "selected": "initializeState",
+            "attribute": "heatBug.idealTemperature",
+            "parameter": {
+              "evaluate": "idealTemperatureDraw"
+            }
+          },
+          "outputHeatDraw": {
+            "kind": "evaluate",
+            "label": "Output Heat Draw",
+            "selected": "initializeState",
+            "function": "uniformAdditiveDistribution",
+            "inputs": [
+              {
+                "multiValue": []
+              },
+              {
+                "multiValue": [
+                  "heatbugs.outputHeatDrawMinimum"
+                ]
+              },
+              {
+                "multiValue": [
+                  "heatbugs.outputHeatDrawMaximum"
+                ]
+              }
+            ],
+            "targets": [
+              "setOutputHeatToOutputHeatDraw"
+            ]
+          },
+          "setOutputHeatToOutputHeatDraw": {
+            "kind": "set",
+            "label": "Set Output Heat To Output Heat Draw",
+            "selected": "initializeState",
+            "attribute": "heatBug.outputHeat",
+            "parameter": {
+              "evaluate": "outputHeatDraw"
+            }
+          },
+          "heatLesserIdealTemperatureQuery": {
+            "kind": "query",
+            "label": "Heat Lesser Ideal Temperature Query",
+            "selected": "currentLocation",
+            "function": "lesser",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat"
+              },
+              {
+                "attribute": "heatBug.idealTemperature",
+                "selected": "seekHeatRule"
+              }
+            ],
+            "targets": [
+              "idealHeat",
+              "not__Or_HeatLesserIdealTemperatureQuery_"
+            ]
+          },
+          "currentLocation": {
+            "kind": "select",
+            "label": "Current Location",
+            "selected": "seekHeatRule",
+            "agent": "heatCell",
+            "space": "heatGrid",
+            "targets": [
+              "hereQuery"
+            ]
+          },
+          "hereQuery": {
+            "kind": "query",
+            "label": "Here() Query",
+            "selected": "currentLocation",
+            "function": "here",
+            "targets": [
+              "heatLesserIdealTemperatureQuery",
+              "heatAddOutputHeat"
+            ]
+          },
+          "not__Or_HeatLesserIdealTemperatureQuery_": {
+            "kind": "none",
+            "label": "!((|) Heat Lesser Ideal Temperature Query)",
+            "selected": "currentLocation",
+            "targets": [
+              "idealCool"
+            ]
+          },
+          "idealCool": {
+            "kind": "select",
+            "label": "Ideal Cool",
+            "selected": "currentLocation",
+            "agent": "heatCell",
+            "space": "heatGrid",
+            "targets": [
+              "minimizeHeat",
+              "minimizeNeighbor",
+              "minimizeAvailable",
+              "includeSelfQueryCopy"
+            ]
+          },
+          "minimizeHeat": {
+            "kind": "query",
+            "label": "Minimize Heat",
+            "selected": "idealCool",
+            "function": "minimize",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat"
+              }
+            ],
+            "targets": [
+              "_MinimizeHeatAndMinimizeAvailableAndMinimizeNeighborAndIncludeSelfQueryCopy_"
+            ]
+          },
+          "minimizeNeighbor": {
+            "kind": "query",
+            "label": "Minimize Neighbor",
+            "selected": "idealCool",
+            "function": "neighbor",
+            "targets": [
+              "_MinimizeHeatAndMinimizeAvailableAndMinimizeNeighborAndIncludeSelfQueryCopy_"
+            ]
+          },
+          "minimizeAvailable": {
+            "kind": "query",
+            "label": "Minimize Available",
+            "selected": "idealCool",
+            "function": "available",
+            "targets": [
+              "_MinimizeHeatAndMinimizeAvailableAndMinimizeNeighborAndIncludeSelfQueryCopy_"
+            ]
+          },
+          "_MinimizeHeatAndMinimizeAvailableAndMinimizeNeighborAndIncludeSelfQueryCopy_": {
+            "kind": "all",
+            "label": "(Minimize Heat & Minimize Available & Minimize Neighbor & Include Self() Query Copy)",
+            "selected": "idealCool",
+            "targets": [
+              "moveHeatCell"
+            ]
+          },
+          "moveHeatCell": {
+            "kind": "move",
+            "label": "Move Heat Cell",
+            "selected": "seekHeatRule",
+            "destination": "idealCool"
+          },
+          "heatAddOutputHeat": {
+            "kind": "evaluate",
+            "label": "Heat Add Output Heat",
+            "selected": "currentLocation",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat"
+              },
+              {
+                "attribute": "heatBug.outputHeat",
+                "selected": "seekHeatRule"
+              }
+            ],
+            "targets": [
+              "setHeatToHeatAddOutputHeat"
+            ]
+          },
+          "setHeatToHeatAddOutputHeat": {
+            "kind": "set",
+            "label": "Set Heat To Heat Add Output Heat",
+            "selected": "currentLocation",
+            "attribute": "heatCell.heat",
+            "parameter": {
+              "evaluate": "heatAddOutputHeat"
+            }
+          },
+          "includeSelfQuery": {
+            "kind": "query",
+            "label": "Include Self() Query",
+            "selected": "idealHeat",
+            "function": "includeSelf",
+            "targets": [
+              "_And_AvailableQueryCopy"
+            ]
+          },
+          "includeSelfQueryCopy": {
+            "kind": "query",
+            "label": "Include Self() Query Copy",
+            "selected": "idealCool",
+            "function": "includeSelf",
+            "targets": [
+              "_MinimizeHeatAndMinimizeAvailableAndMinimizeNeighborAndIncludeSelfQueryCopy_"
+            ]
+          },
+          "deriveUnhappiness": {
+            "kind": "derive",
+            "label": "Derive Unhappiness",
+            "attribute": "heatBug.unhappiness",
+            "targets": [
+              "currentHeatCell"
+            ]
+          },
+          "currentHeatCell": {
+            "kind": "select",
+            "label": "Current Heat Cell",
+            "selected": "deriveUnhappiness",
+            "agent": "heatCell",
+            "space": "heatGrid",
+            "targets": [
+              "currentHere"
+            ]
+          },
+          "currentHere": {
+            "kind": "query",
+            "label": "Current Here",
+            "selected": "currentHeatCell",
+            "function": "here",
+            "targets": [
+              "heatSubtractIdealTemperatureQuery"
+            ]
+          },
+          "heatSubtractIdealTemperatureQuery": {
+            "kind": "evaluate",
+            "label": "Heat Subtract Ideal Temperature Query",
+            "selected": "deriveUnhappiness",
+            "function": "sub",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat",
+                "selected": "currentHeatCell"
+              },
+              {
+                "attribute": "heatBug.idealTemperature"
+              }
+            ],
+            "targets": [
+              "absoluteValue_HeatSubtractIdealTemperatureQuery_"
+            ]
+          },
+          "absoluteValue_HeatSubtractIdealTemperatureQuery_": {
+            "kind": "evaluate",
+            "label": "Absolute Value(Heat Subtract Ideal Temperature Query)",
+            "selected": "deriveUnhappiness",
+            "function": "abs",
+            "inputs": [
+              {
+                "evaluate": "heatSubtractIdealTemperatureQuery"
+              }
+            ]
+          }
+        }
+      },
+      "styles": {
+        "heatBugStyle2D": {
+          "kind": "2d",
+          "label": "Heat Bug Style 2D",
+          "pluralLabel": "Heat Bug Style 2Ds",
+          "acts": {
+            "id": "actions",
+            "label": "Actions",
+            "pluralLabel": "Actionss",
+            "members": {
+              "heatBugRule": {
+                "kind": "rule",
+                "label": "Heat Bug Rule",
+                "pluralLabel": "Heat Bug Rules",
+                "space": "heatGrid",
+                "targets": [
+                  "colorGreen"
+                ]
+              },
+              "colorGreen": {
+                "kind": "evaluate",
+                "label": "Color Green()",
+                "selected": "heatBugRule",
+                "function": "colorGreen",
+                "targets": [
+                  "shapeOval"
+                ]
+              },
+              "shapeOval": {
+                "kind": "evaluate",
+                "label": "Shape Oval()",
+                "selected": "heatBugRule",
+                "function": "shapeOval",
+                "targets": [
+                  "graphicFill"
+                ]
+              },
+              "graphicFill": {
+                "kind": "evaluate",
+                "label": "Graphic Fill()",
+                "selected": "heatBugRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    },
+    "heatCell": {
+      "kind": "agent",
+      "label": "Heat Cell",
+      "pluralLabel": "Heat Cells",
+      "attributes": {
+        "heat": {
+          "type": "real",
+          "label": "Heat",
+          "pluralLabel": "Heats"
+        }
+      },
+      "acts": {
+        "id": "actions",
+        "label": "Actions",
+        "pluralLabel": "Actionss",
+        "members": {
+          "diffuse": {
+            "kind": "diffuse",
+            "label": "Diffuse",
+            "diffused": "heatCell.heat",
+            "diffusionRate": "heatbugs.diffusionRate",
+            "evaporationRate": "heatbugs.evaporationRate"
+          },
+          "watchHeat": {
+            "kind": "watch",
+            "label": "Watch Heat",
+            "space": "heatGrid",
+            "attribute": "heatCell.heat",
+            "targets": [
+              "heatGreaterMaximumHeatQuery"
+            ]
+          },
+          "heatGreaterMaximumHeatQuery": {
+            "kind": "query",
+            "label": "Heat Greater Maximum Heat Query",
+            "selected": "watchHeat",
+            "function": "greater",
+            "inputs": [
+              {
+                "attribute": "heatCell.heat"
+              },
+              {
+                "attribute": "heatbugs.maximumHeat"
+              }
+            ],
+            "targets": [
+              "setHeatToMaximumHeat"
+            ]
+          },
+          "setHeatToMaximumHeat": {
+            "kind": "set",
+            "label": "Set Heat To Maximum Heat",
+            "selected": "watchHeat",
+            "attribute": "heatCell.heat",
+            "parameter": {
+              "attribute": "heatbugs.maximumHeat"
+            }
+          }
+        }
+      },
+      "styles": {
+        "heatCellStyle2D": {
+          "kind": "2d",
+          "label": "Heat Cell Style 2D",
+          "pluralLabel": "Heat Cell Style 2Ds",
+          "acts": {
+            "id": "actions",
+            "label": "Actions",
+            "pluralLabel": "Actionss",
+            "members": {
+              "heatCellRule": {
+                "kind": "rule",
+                "label": "Heat Cell Rule",
+                "pluralLabel": "Heat Cell Rules",
+                "space": "heatGrid",
+                "targets": [
+                  "heatDivideHeatDivideMaximumHeat"
+                ]
+              },
+              "colorRGB_HeatDivideHeatDivideMaximumHeatZeroZero_": {
+                "kind": "evaluate",
+                "label": "Color RGB(Heat Divide Heat Divide Maximum Heat, Zero, Zero)",
+                "selected": "heatCellRule",
+                "function": "colorRGB",
+                "inputs": [
+                  {
+                    "evaluate": "heatDivideHeatDivideMaximumHeat"
+                  },
+                  {
+                    "literal": 0
+                  },
+                  {
+                    "literal": 0
+                  }
+                ],
+                "targets": [
+                  "shapeRectangle"
+                ]
+              },
+              "shapeRectangle": {
+                "kind": "evaluate",
+                "label": "Shape Rectangle()",
+                "selected": "heatCellRule",
+                "function": "shapeRectangle",
+                "targets": [
+                  "graphicFill"
+                ]
+              },
+              "graphicFill": {
+                "kind": "evaluate",
+                "label": "Graphic Fill()",
+                "selected": "heatCellRule",
+                "function": "graphicFill"
+              },
+              "heatDivideHeatDivideMaximumHeat": {
+                "kind": "evaluate",
+                "label": "Heat Divide Heat Divide Maximum Heat",
+                "selected": "heatCellRule",
+                "function": "div",
+                "inputs": [
+                  {
+                    "attribute": "heatCell.heat"
+                  },
+                  {
+                    "attribute": "heatbugs.maximumHeat"
+                  }
+                ],
+                "targets": [
+                  "colorRGB_HeatDivideHeatDivideMaximumHeatZeroZero_"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "heatGrid": {
+      "kind": "grid",
+      "label": "Heat Grid",
+      "pluralLabel": "Heat Grids",
+      "neighborhood": "moore",
+      "dimensions": [
+        "width",
+        "height"
+      ],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "pluralLabel": "Widths",
+          "description": "The horizontal extent of the space.",
+          "default": 100
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "pluralLabel": "Heights",
+          "description": "The vertical extent of the space.",
+          "default": 100
+        }
+      }
+    }
+  }
+}

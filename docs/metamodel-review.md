@@ -1,8 +1,10 @@
 # The model format, taken from the MetaABM metamodel
 
 Status: 2026-11-16. Work items 2 and 3 (the format, its checker, and the core library as data)
-are implemented in `packages/spec/src/metamodel`, exported as `@metascape/spec/metamodel`. The
-function implementations, the interpreter and the translation are not.
+are implemented in `packages/spec/src/metamodel`, exported as `@metascape/spec/metamodel`. Work
+item 5, the translation from `.metaabm` files, is implemented in `packages/spec/src/metaabm`
+(`@metascape/spec/metaabm`), with the twelve Escape examples and their translations in
+`packages/spec/examples`. The function implementations and the interpreter are not.
 
 ## Why
 
@@ -351,6 +353,67 @@ Structure and references:
   types, so a model written in TypeScript stays a plain object literal. The checker resolves them.
 - **Execution settings** (R14's proposal) are not in the format yet.
 
+Translation (`packages/spec/src/metaabm`). Each translated element that loses something, or
+gets something written out that the XMI left out, has a diagnostic with its XMI path: a `note`
+where this document decides it, a `warning` where it is worth a look, an `error` where the
+element could not be translated. The kinds are `dropped`, `defaulted`, `moved`, `unsupported` and
+`invalid`.
+
+- **Attributes with no `sType`.** The ecore default is `INTEGER`, and the Escape examples agree:
+  the generated Java has `int individualCount` for an attribute with no `sType`. The older AMF
+  test models were saved when the default was `BOOLEAN` (their generated Java has `boolean
+boolean1` for an attribute with no `sType`). The translation takes `integer`, except that an
+  attribute with no `sType` is `boolean` if its default is `true` or `false`, or if a set act sets
+  it to the constant `true` or `false` (an integer could not be, so that is what was meant). Both
+  cases have a note. Nothing in the Escape examples is affected.
+- **An act held by another agent's group.** In the AMF movement test a flow that starts in one
+  agent's rule goes on to acts held by another agent's group (`basicMovementAgent.moveTwice`
+  targets `networkAgent.goalinArea2`). The generators follow flows from roots, so where an act is
+  held does not matter to them, but the format keeps acts with their agent. The translation makes
+  an act an act of the agent whose root its flow starts at, and says so with a `moved` note. An act
+  reached from roots of different agents is an error. Moved acts come after the agent's own, and
+  a moved act that was in a nested group is in the root group. No Escape example has one.
+- **Methods.** Every method body in the models is Java. The body is kept as comment lines (`//`),
+  after a first line saying it is Java to be ported by hand, so that the method act is in place;
+  each has a warning. Leading whitespace of each line is trimmed. `generate` is dropped with a
+  note.
+- **Extensions.** A model that has an extension (`children`, an element of another metamodel, as
+  in SIR's system dynamics) is not translated at all: no model, one error at the outermost
+  extension element. Partial translation of SIR would leave something that can't run and is not
+  SIR.
+- **Arrays.** The grid's automatic `Dimensions` array is dropped with a note. Any other array
+  attribute is dropped with a warning, and a reference to one is an error that leaves the act
+  using it in a state the checker rejects (the AMF spatial test, for `withinBoundaries`).
+- **Dimensions of a space.** The ordered size attributes are the space's attributes with the IDs
+  `width`, `height` and `depth`, in that order, as the examples name them. A warning if their
+  number is not the `dimensionality`. The size attributes stay ordinary attributes of the space.
+- **Input selections.** An input's `selected` is kept only on an attribute value, and only where it
+  differs from the selection of the act the input is of (which is the default). On other values
+  (a literal, an option, an evaluate) it means nothing in the format, and a different one is
+  dropped with a note. A value that is an act must be an evaluate.
+- **Defaults and explicit values.** XMI leaves out a value that is the ecore default; the
+  translation writes a flag (`directed`, `multiOccupant`, `gatherData`, `immutable`, `derived`)
+  or a border rule only when the XMI does, since the format has the same defaults. A missing
+  neighbourhood and a missing `sType` are written out, since the format requires a neighbourhood
+  and a type. `units=""` is dropped.
+- **States.** `sType` and `defaultValue` of a state are dropped: the type is `state`, and the
+  default is `defaultOption`, which the XMI refers to by index (`@options.0`) and the translation
+  by the option's ID. A warning if `defaultValue` is not the label of the default option.
+- **Core constants.** `path` and `self`, the other attributes of the core library, are an error as
+  values. The ID of a function is the last ID in its `href`.
+- **`for` of a select.** Dropped. It never appears in the examples (`ONE` is the default and is
+  left out). If it does, a warning if it disagrees with the select's `all` term, a note otherwise.
+- **`agentCount` of a create.** Three creates in the examples have none. No template of the
+  generators reads `agentCount`; it is kept as the XMI has it, and what a missing count means is
+  the interpreter's to decide.
+- **Source and target.** `sources` is derived from `targets` and not stored; the translation checks
+  that the two agree and gives a warning where they do not. They always do in the examples.
+- **IDs.** An ID that is not a letter or underscore followed by letters, digits and underscores is
+  an error, and the element is left out. Duplicate IDs among siblings, and act IDs repeated
+  within an agent, are errors. None occurs in the examples.
+- **Implementation.** The `implementation` element of agents, styles and spaces is dropped with a
+  note (R9). A `library` in a model is dropped with a warning.
+
 Core library:
 
 - `not` takes a boolean. Its prototype has no type in `core_library.metaabm`, which makes it the
@@ -401,11 +464,16 @@ Checking:
 3. **Core library:** `core_library.metaabm` translated to data (_done_), with TypeScript
    implementations of every function the examples use (with the interpreter).
 4. **Interpreter:** acts compiled once into closures over the engine, following the semantics above.
-5. **Translation:** `.metaabm` → format, with diagnostics for anything dropped or not supported. Its
-   tests are the AMF test models (`tests/*/TestBasics.metaabm`, `TestSpatial`, `TestMovement`).
-6. **Examples:** import the Escape AMP examples as generated data, kept with their `.metaabm`
-   originals. Delete the code ports in `packages/models/src/amp`, rewrite the five hand-written spec
-   examples in the new format, and point Studio at the result.
+5. **Translation:** `.metaabm` → format, with diagnostics for anything dropped or not supported.
+   _Done_ (`packages/spec/src/metaabm`). Its tests are the twelve Escape examples, which all
+   translate and check without errors or warnings besides one Java method (StupidModel5) and one
+   disconnect destination (Markets), and the AMF test models (`TestBasics` and `TestMovement`
+   translate and check; `TestSpatial` needs arrays, which the format does not have; SIR needs the
+   system dynamics extension and is reported as unsupported).
+6. **Examples:** the Escape examples are imported, with their `.metaabm` originals and the
+   generated translation beside each (`packages/spec/examples/escape`, regenerated by `npm run
+translate-examples`). Still to do: delete the code ports in `packages/models/src/amp`, rewrite
+   the five hand-written spec examples in the new format, and point Studio at the result.
 
 7. **Run specs and curation** (R24), after the examples run: port APar and ATest, and move charts
    into the curation model.

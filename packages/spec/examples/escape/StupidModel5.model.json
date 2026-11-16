@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 2,
+  "id": "stupidModel5",
+  "label": "Stupid Model 5",
+  "pluralLabel": "Stupid Model 5s",
+  "language": "typescript",
+  "attributes": {
+    "bugCount": {
+      "type": "integer",
+      "label": "Bug Count",
+      "pluralLabel": "Bug Counts",
+      "description": "The number of bugs to create.",
+      "default": 100
+    },
+    "habitatCount": {
+      "type": "integer",
+      "label": "Habitat Count",
+      "pluralLabel": "Habitat Counts",
+      "description": "The number of habitats to create."
+    },
+    "bugVision": {
+      "type": "integer",
+      "label": "Bug Vision",
+      "pluralLabel": "Bug Visions",
+      "default": 4
+    }
+  },
+  "acts": {
+    "id": "rootActGroup",
+    "label": "Root Act Group",
+    "pluralLabel": "Root Act Groups",
+    "members": {
+      "buildstupidModel3": {
+        "kind": "build",
+        "label": "Build stupidModel3",
+        "pluralLabel": "Build stupidModel3s",
+        "targets": [
+          "createBugs",
+          "createHabitats",
+          "fillGrid"
+        ]
+      },
+      "createBugs": {
+        "kind": "create",
+        "label": "Create Bugs",
+        "selected": "buildstupidModel3",
+        "agent": "bug",
+        "agentCount": {
+          "attribute": "stupidModel5.bugCount"
+        }
+      },
+      "createHabitats": {
+        "kind": "create",
+        "label": "Create Habitats",
+        "selected": "buildstupidModel3",
+        "agent": "habitat",
+        "agentCount": {
+          "attribute": "stupidModel5.habitatCount"
+        }
+      },
+      "fillGrid": {
+        "kind": "buildGrid",
+        "label": "Fill Grid",
+        "pluralLabel": "Fill Grids",
+        "selected": "buildstupidModel3",
+        "agents": [
+          "bug"
+        ],
+        "space": "grid2D",
+        "fillAgent": "habitat"
+      }
+    }
+  },
+  "agents": {
+    "bug": {
+      "kind": "agent",
+      "label": "Bug",
+      "pluralLabel": "Bugs",
+      "attributes": {
+        "size": {
+          "type": "real",
+          "label": "Size",
+          "pluralLabel": "Sizes",
+          "default": 0
+        },
+        "consumption": {
+          "type": "real",
+          "label": "Consumption",
+          "pluralLabel": "Consumptions",
+          "default": 0
+        },
+        "maxConsumption": {
+          "type": "real",
+          "label": "Max Consumption",
+          "pluralLabel": "Max Consumptions",
+          "default": 0.2
+        }
+      },
+      "acts": {
+        "id": "rootActGroup",
+        "label": "Root Act Group",
+        "pluralLabel": "Root Act Groups",
+        "members": {
+          "initialize": {
+            "kind": "initialize",
+            "label": "Initialize",
+            "pluralLabel": "Initializes",
+            "space": "grid2D",
+            "targets": [
+              "randomHabitat"
+            ]
+          },
+          "randomHabitat": {
+            "kind": "select",
+            "label": "RandomHabitat",
+            "selected": "initialize",
+            "agent": "habitat",
+            "space": "grid2D",
+            "targets": [
+              "randomHabitatAvailableQuery"
+            ]
+          },
+          "randomHabitatAvailableQuery": {
+            "kind": "query",
+            "label": "RandomHabitat: Available() Query",
+            "selected": "randomHabitat",
+            "function": "available",
+            "targets": [
+              "movetoHabitatinGrid2D"
+            ]
+          },
+          "movetoHabitatinGrid2D": {
+            "kind": "move",
+            "label": "Move to Habitat in Grid 2D",
+            "selected": "initialize",
+            "destination": "randomHabitat"
+          },
+          "randomMovement": {
+            "kind": "rule",
+            "label": "Random Movement",
+            "pluralLabel": "Random Movements",
+            "space": "grid2D",
+            "targets": [
+              "nearbySpace"
+            ]
+          },
+          "nearbySpace": {
+            "kind": "select",
+            "label": "Nearby Space",
+            "selected": "randomMovement",
+            "agent": "habitat",
+            "space": "grid2D",
+            "targets": [
+              "nearbySpaceAvailableQuery",
+              "nearbySpaceWithin_BugVision_Query"
+            ]
+          },
+          "nearbySpaceAvailableQuery": {
+            "kind": "query",
+            "label": "Nearby Space: Available() Query",
+            "selected": "nearbySpace",
+            "function": "available",
+            "targets": [
+              "nearbySpace_AvailableQueryAndWithin_BugVision_Query_"
+            ]
+          },
+          "nearbySpaceWithin_BugVision_Query": {
+            "kind": "query",
+            "label": "Nearby Space: Within(Bug Vision) Query",
+            "selected": "nearbySpace",
+            "function": "within",
+            "inputs": [
+              {
+                "attribute": "stupidModel5.bugVision",
+                "selected": "randomMovement"
+              }
+            ],
+            "targets": [
+              "nearbySpace_AvailableQueryAndWithin_BugVision_Query_"
+            ]
+          },
+          "nearbySpace_AvailableQueryAndWithin_BugVision_Query_": {
+            "kind": "all",
+            "label": "Nearby Space (Available() Query & Within(Bug Vision) Query)",
+            "selected": "nearbySpace",
+            "targets": [
+              "movetoHabitatinGrid2DCopy"
+            ]
+          },
+          "movetoHabitatinGrid2DCopy": {
+            "kind": "move",
+            "label": "Move to Habitat in Grid 2D Copy",
+            "selected": "randomMovement",
+            "destination": "nearbySpace"
+          },
+          "grow": {
+            "kind": "rule",
+            "label": "Grow",
+            "pluralLabel": "Grows",
+            "space": "grid2D",
+            "targets": [
+              "consumeFood"
+            ]
+          },
+          "consumeFood": {
+            "kind": "method",
+            "label": "ConsumeFood",
+            "pluralLabel": "ConsumeFoods",
+            "selected": "grow",
+            "body": "// Java, from the original model. Port it to TypeScript by hand.\n// Habitat habitat = (Habitat) getHostCell();\n// double availability = habitat.getFoodAvailability();\n// double consumption = availability <  getMaxConsumption() ? availability : getMaxConsumption();\n// setSize(getSize()+consumption);\n// habitat.setFoodAvailability(availability-consumption);"
+          }
+        }
+      },
+      "styles": {
+        "bugStyle2D": {
+          "kind": "2d",
+          "label": "Bug Style 2D",
+          "pluralLabel": "Bug Style 2Ds",
+          "acts": {
+            "id": "rootActGroup",
+            "label": "Root Act Group",
+            "pluralLabel": "Root Act Groups",
+            "members": {
+              "bugRule": {
+                "kind": "rule",
+                "label": "Bug Rule",
+                "pluralLabel": "Bug Rules",
+                "space": "grid2D",
+                "targets": [
+                  "bugSizeRatio"
+                ]
+              },
+              "bugSizeRatio": {
+                "kind": "evaluate",
+                "label": "Bug Size Ratio",
+                "selected": "bugRule",
+                "function": "div",
+                "inputs": [
+                  {
+                    "attribute": "bug.size"
+                  },
+                  {
+                    "literal": 10,
+                    "type": "real"
+                  }
+                ],
+                "targets": [
+                  "bugSizeUnit"
+                ]
+              },
+              "bugSizeUnit": {
+                "kind": "evaluate",
+                "label": "Bug Size Unit",
+                "selected": "bugRule",
+                "function": "min",
+                "inputs": [
+                  {
+                    "evaluate": "bugSizeRatio"
+                  },
+                  {
+                    "literal": 1,
+                    "type": "real"
+                  }
+                ],
+                "targets": [
+                  "invertBugSize"
+                ]
+              },
+              "bugRuleColorRGB_BugRuleMinimum_BugSizeRatioLiteral1pt0_Literal1pt0Literal1pt0_": {
+                "kind": "evaluate",
+                "label": "Bug Rule: Color RGB(Bug Rule: Minimum(Bug Size Ratio, Literal 1.0), Literal 1.0, Literal 1.0)",
+                "selected": "bugRule",
+                "function": "colorRGB",
+                "inputs": [
+                  {
+                    "literal": 1,
+                    "type": "real"
+                  },
+                  {
+                    "evaluate": "invertBugSize"
+                  },
+                  {
+                    "evaluate": "invertBugSize"
+                  }
+                ],
+                "targets": [
+                  "bugRuleShapeOval"
+                ]
+              },
+              "bugRuleShapeOval": {
+                "kind": "evaluate",
+                "label": "Bug Rule: Shape Oval()",
+                "selected": "bugRule",
+                "function": "shapeOval",
+                "targets": [
+                  "bugRuleGraphicFill"
+                ]
+              },
+              "bugRuleGraphicFill": {
+                "kind": "evaluate",
+                "label": "Bug Rule: Graphic Fill()",
+                "selected": "bugRule",
+                "function": "graphicFill"
+              },
+              "invertBugSize": {
+                "kind": "evaluate",
+                "label": "Invert Bug Size",
+                "selected": "bugRule",
+                "function": "sub",
+                "inputs": [
+                  {
+                    "literal": 1
+                  },
+                  {
+                    "evaluate": "bugSizeUnit"
+                  }
+                ],
+                "targets": [
+                  "bugRuleColorRGB_BugRuleMinimum_BugSizeRatioLiteral1pt0_Literal1pt0Literal1pt0_"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "habitat": {
+      "kind": "agent",
+      "label": "Habitat",
+      "pluralLabel": "Habitats",
+      "attributes": {
+        "foodAvailability": {
+          "type": "real",
+          "label": "FoodAvailability",
+          "pluralLabel": "FoodAvailabilitys",
+          "default": 0
+        },
+        "maximumFoodProductionRate": {
+          "type": "real",
+          "label": "MaximumFoodProductionRate",
+          "pluralLabel": "MaximumFoodProductionRates",
+          "default": 0.5
+        }
+      },
+      "acts": {
+        "id": "rootActGroup",
+        "label": "Root Act Group",
+        "pluralLabel": "Root Act Groups",
+        "members": {
+          "determindFoodProduction": {
+            "kind": "rule",
+            "label": "determindFoodProduction",
+            "pluralLabel": "determindFoodProductions",
+            "space": "grid2D",
+            "targets": [
+              "calculateFoodProductionRate"
+            ]
+          },
+          "calculateFoodProductionRate": {
+            "kind": "evaluate",
+            "label": "CalculateFoodProductionRate",
+            "selected": "determindFoodProduction",
+            "function": "randomInRange",
+            "inputs": [
+              {
+                "literal": 0
+              },
+              {
+                "attribute": "habitat.maximumFoodProductionRate"
+              }
+            ],
+            "targets": [
+              "newFoodProductionValue"
+            ]
+          },
+          "newFoodProductionValue": {
+            "kind": "evaluate",
+            "label": "NewFoodProductionValue",
+            "selected": "determindFoodProduction",
+            "function": "add",
+            "inputs": [
+              {
+                "attribute": "habitat.foodAvailability"
+              },
+              {
+                "evaluate": "calculateFoodProductionRate"
+              }
+            ],
+            "targets": [
+              "setFoodAvailablity"
+            ]
+          },
+          "setFoodAvailablity": {
+            "kind": "set",
+            "label": "SetFoodAvailablity",
+            "selected": "determindFoodProduction",
+            "attribute": "habitat.foodAvailability",
+            "parameter": {
+              "evaluate": "newFoodProductionValue"
+            }
+          }
+        }
+      },
+      "styles": {
+        "habitatStyle2D": {
+          "kind": "2d",
+          "label": "Habitat Style 2D",
+          "pluralLabel": "Habitat Style 2Ds",
+          "acts": {
+            "id": "rootActGroup",
+            "label": "Root Act Group",
+            "pluralLabel": "Root Act Groups",
+            "members": {
+              "habitatRule": {
+                "kind": "rule",
+                "label": "Habitat Rule",
+                "pluralLabel": "Habitat Rules",
+                "space": "grid2D",
+                "targets": [
+                  "habitatRuleColorBlack"
+                ]
+              },
+              "habitatRuleColorBlack": {
+                "kind": "evaluate",
+                "label": "Habitat Rule: Color Black()",
+                "selected": "habitatRule",
+                "function": "colorBlack",
+                "targets": [
+                  "habitatRuleShapeRectangle"
+                ]
+              },
+              "habitatRuleShapeRectangle": {
+                "kind": "evaluate",
+                "label": "Habitat Rule: Shape Rectangle()",
+                "selected": "habitatRule",
+                "function": "shapeRectangle",
+                "targets": [
+                  "habitatRuleGraphicFill"
+                ]
+              },
+              "habitatRuleGraphicFill": {
+                "kind": "evaluate",
+                "label": "Habitat Rule: Graphic Fill()",
+                "selected": "habitatRule",
+                "function": "graphicFill"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "grid2D": {
+      "kind": "grid",
+      "label": "Grid 2D",
+      "pluralLabel": "Grid 2Ds",
+      "borderRule": "periodic",
+      "neighborhood": "moore",
+      "dimensions": [
+        "width",
+        "height"
+      ],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "pluralLabel": "Widths",
+          "description": "The horizontal extent of the space.",
+          "default": 100
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "pluralLabel": "Heights",
+          "description": "The vertical extent of the space.",
+          "default": 100
+        }
+      }
+    }
+  }
+}

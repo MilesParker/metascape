@@ -59,5 +59,10 @@ packages/spec/src/metamodel/
   AMP's core_library.metaabm. Both were made available under the Eclipse
   Public License and are distributed under EPL-2.0.
 
+packages/spec/examples/
+  The AMP example models in `.metaabm` form, copied unchanged from the Eclipse
+  Agent Modeling Platform, with their translations into the model format. Made
+  available under the Eclipse Public License and distributed under EPL-2.0.
+
 The Heatbugs model in Ascape's edu.brooksantafe package was not ported: that
 directory carries a GNU GPL notice.
