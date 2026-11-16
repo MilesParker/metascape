@@ -105,7 +105,7 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 | -------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `AAct` (`targets`, `selected`, `group`)                                          | act: `targets`, `selected`                              | `group` is the containing `AGroup`; flattened (**R5**).                                                                           |
 | `AGroup` (`members`)                                                             | the `acts` record                                       | Only ever used as the root container in the examples.                                                                             |
-| `ASelect` (`agent`, `space`, `for`)                                              | select                                                  | `for` (`ONE`/`ALL`) is marked obsolete in the guide but is still a required feature (**R13**).                                    |
+| `ASelect` (`agent`, `space`, `for`)                                              | select                                                  | `for` (`ONE`/`ALL`) is obsolete: cardinality is set by query terms instead (**R13**).                                             |
 | `ARule`                                                                          | rule                                                    | Once per agent per period. The guide calls the order of rules "technically undefined" (**R14**).                                  |
 | `ASchedule` (`start`, `interval`, `priority`, `pick`)                            | schedule                                                | Not used in the examples; `pick` is marked as likely to be replaced.                                                              |
 | `ABuild`                                                                         | build                                                   | Once per context, before any initialize.                                                                                          |
@@ -129,31 +129,50 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 | `ABuildGeography`                                                                | build geography                                         | Unused (**R7**).                                                                                                                  |
 | `AMethod` (`body`, `generate`)                                                   | method                                                  | A Java method body. Used twice: `ConsumeFood` in both copies of StupidModel5 (**R21**).                                           |
 | `AInput` (`selected`, `value`, `literal`)                                        | input: a value read from a selection                    | `selected` says whose attribute is read, which is how selections are "woven" through a flow.                                      |
-| `ALiteral` (`valueLiteral`), `AMultiValue` (`values`)                            | literal, multi-value                                    | 21 multi-value literals in the examples, all wrapping a single attribute (**R22**).                                               |
+| `ALiteral` (`valueLiteral`), `AMultiValue` (`values`)                            | literal, multi-value                                    | A multi-value lists the state attributes a distribution varies by (**R22**).                                                      |
 | `AShaped`                                                                        | `shape` on create                                       |                                                                                                                                   |
 
 ## Execution semantics the interpreter needs
 
 The ecore defines structure only. Behaviour is described in the modeller guide and, in the end, by
-the code generators (`org.eclipse.amp.amf.gen.*` templates) and the Escape runtime. Where they leave
-something unspecified, the interpreter still has to choose, deterministically:
+the code generators (`org.eclipse.amp.amf.gen.*`). The Escape generator reuses the Ascape
+generator's selection code (`gen.ascape/.../ScapeAspect.xpt`, `inferascape.ext`), so for selections
+the two agree.
 
-- **Flow.** The results of an act flow to its targets. A target reached by two paths runs once per
-  path (the guide's example: a set reached by two branches runs twice), unless the paths meet at an
-  `any`, which merges them without duplicates.
-- **What a select returns.** The guide says a select "returns one agent (in the current AMF
-  design)": it picks one agent at random from those its queries allow. Root acts are the exception;
-  they apply to every agent (**R13**).
-- **Selection boundaries.** Queries directly after a select, up to the first logic act, define
-  what the select searches for (in a single combined search). Queries after a logic act filter the
-  selection that is already made. The guide shows that the two can give different results (**R18**).
-- **Spatial functions are search terms, not per-agent tests.** `within`, `neighbor`, `here`,
-  `available` and `includeSelf` limit where a select looks; `nearest`, `minimize` and `maximize`
-  choose among the candidates; `toward` and `away` give a destination. So the interpreter has to
-  compile a select and its queries into one search of the projection (**R12**).
-- **Order.** Targets of one act, rules of one agent, and agents of one context all need a defined
-  order. Proposed: the order the elements appear in the file, with agents visited in random order
-  per rule as in Ascape (**R14**).
+Acts are a dataflow language, and the semantics are stated in those terms. The interpreter may
+compute them however it likes, as long as the result is the same.
+
+- **Edges carry data, not control.** An edge from one act to another carries a flow of agents, each
+  with the context of its path: every selection made upstream on that path, still bound and
+  readable ("weaving"). There is no statement order and no program counter. An act fires for each
+  item that reaches it.
+- **A root act is a source.** A rule emits every agent of its type, once per period. Initialize,
+  build, schedule, watch, derive and perform emit when their trigger happens.
+- **A select plus its queries describes a set declaratively.** The select names the agent type and
+  the space; the queries attached to it are constraints on that set. `within`, `neighbor`, `here`,
+  `available` and `includeSelf` say where to look, and other logical functions (`identical`,
+  `lesser`, ...) say what qualifies. Whether this is computed as one search of the space or as a
+  filter is an implementation choice; the generators compiled it into a single `find…` call on the
+  space (for example `findRandomAvailableNeighbor`).
+- **A selection's cardinality is also a query term.** With no cardinality term, a select yields one
+  agent chosen at random from the set. `nearest` yields the nearest, `minimize` and `maximize` the
+  one with the extreme value of an input, and `all` yields every member of the set, each flowing on
+  separately to the targets (in the generators: `findIsList`, a loop over `find…` results).
+- **Logic acts are set operations on flows.** `all` (intersection) passes what reaches it along
+  every incoming path, `any` (union) what reaches it along at least one, without duplicates, and
+  `none` (difference) what reaches none of them. A query or logic act that follows a logic act
+  constrains the flow coming out of it, which is downstream of the select's cardinality term: it
+  filters the agent already chosen rather than changing what was chosen from. This is the guide's
+  "selection boundary" (**R18**).
+- **A plain act with several incoming edges fires once per arriving item**, so an act reached by
+  two branches can fire twice for the same agent; joining them through `any` makes it fire once.
+- **Evaluates are pure.** They compute a value from their inputs and change nothing. Only commands
+  change state: set, move, leave, die, connect, disconnect, replace, create, cause.
+- **Flows are acyclic.** Iteration comes from selections being sets and from rules applying to every
+  agent. Recursion is possible only through cause.
+- **Order is not part of a flow's meaning**, but state changes make it observable: two sets on
+  separate branches, or two agents of the same rule, can see each other's changes. The interpreter
+  needs a defined, deterministic order for branches, rules and agents (**R14**).
 - **Initialize and created agents.** The guide says initialize acts don't run for agents created
   during the run (the sentence is cut off in the source) (**R15**).
 
@@ -164,9 +183,9 @@ agent (`rootActGroup` in every agent, `bugRule` in an agent and in its style). _
 unique among siblings. Acts are referred to within their agent; attributes and agents by
 `agent.attribute` paths.
 
-**R2. Names.** _Proposed:_ drop the ecore prefixes and use Ascape's words wherever MetaABM had
-planned to ("Note that in future releases, we will probably refer to Contexts as 'Scapes'").
-Context → scape? Projection → space? The guide uses both pairs of words. Your call.
+**R2. Names.** _Decided:_ drop the ecore prefixes; context → scape, projection → space (as the guide
+anticipated: "in future releases, we will probably refer to Contexts as 'Scapes'"). Other names
+follow the ecore without its prefix.
 
 **R3. Arrays.** All 22 attribute arrays in the examples are the grid's automatic "Dimensions"
 array, which repeats `width` and `height`. _Proposed:_ keep arrays as a type, but have the
@@ -211,10 +230,10 @@ templates, and those differ between Ascape, Escape and Repast. _Proposed:_ treat
 templates and runtime as authoritative, since Escape was AMP's own runtime, and write each
 function's meaning into the core library's description as it is ported.
 
-**R13. Selecting one versus all.** A select returns one random agent, and `for: ONE | ALL` is
-obsolete with its replacement never designed. So "do this to every neighbour" can't be written
-except through a cause. _Proposed:_ translate faithfully (one agent) and, as a separate decision,
-decide what replaces `for`.
+**R13. Selecting one versus all.** Settled by the generators: cardinality is a query term (`all`,
+`nearest`, `minimize`, `maximize`, else one at random), which is what replaced `for`. The format
+drops `for`, and the translation drops it with a warning if it disagrees with the query terms.
+(The first draft of this item, which said a select could return only one agent, was wrong.)
 
 **R14. Execution order.** MetaABM leaves rule order undefined. Metascape's run-time settings
 (Ascape's execution order, random execution, rule order, all editable while running) have no place
@@ -233,10 +252,11 @@ are cached until one of their inputs changes.
 update scheme. _Proposed:_ take both from the Escape implementation (both phases computed from the
 start-of-period values, over the grid's neighbourhood).
 
-**R18. Logic and boundaries.** The rule that a logic act ends a selection boundary, and that later
-queries refine rather than search, is subtle, and the guide shows it changing results. The
-interpreter will implement it as written. Is this still the behaviour you'd want, or was it a
-limitation of the generators?
+**R18. Logic and boundaries.** In dataflow terms (see above), the boundary is just where a flow
+passes the select's cardinality term: constraints before it shape the set that is chosen from, and
+constraints after it filter what was chosen. _Proposed:_ implement exactly that, with the checker
+pointing out a query placed after a logic act on a selection that picks one agent, since that is
+the case the guide warns about.
 
 **R19. Die and leave.** Both carry a `destination` that the guide calls irrelevant. _Proposed:_
 make it optional, and have the translation drop it.
@@ -251,14 +271,15 @@ method in the format with a `language` field, and have the interpreter refuse Ja
 StupidModel5 then gets that one method replaced by equivalent acts, recorded as a deviation from
 the original.
 
-**R22. Multi-values.** All 21 `AMultiValue` literals wrap a single attribute or nothing at all
-(`idealTemperatureStates` has no values). Do you remember what it was for? _Proposed:_ translate a
-one-value multi-value as a plain reference to that value.
+**R22. Multi-values.** Settled by the generator (`Java.xpt`, `MultiBlock`): a multi-value is the
+first input of a distribution function (`uniformAdditiveDistribution`, `crossDistribution` and so
+on) and lists the state attributes that the distribution's parameters vary by. Cross distributions
+take one parameter per combination of options; additive ones take a base value plus an increment
+per option. An empty list means the parameters don't vary. The format keeps multi-value as it is.
 
 **R23. Which copy is the original.** Several examples exist once per target (`examples.ascape`,
 `examples.escape`, `examples.repast`), and the copies differ: StupidModel1 by a few lines,
-Epidemic by about 250. _Proposed:_ the Escape copies are the source of truth. It is the most
-complete set (12 models), and Escape was AMP's own runtime.
+Epidemic by about 250. _Decided:_ the Escape copies are the source of truth.
 
 **R24. Charts and stopping.** MetaABM has neither. Statistics come from `gatherData`; charts and
 parameter sets were separate AMP files (`.apar`, AData). The current format has `charts` and a
