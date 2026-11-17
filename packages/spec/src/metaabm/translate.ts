@@ -37,7 +37,7 @@ export type TranslationKind =
   | 'defaulted'
   /** Something the format keeps in another place than the XMI does. */
   | 'moved'
-  /** Something replaced by a port written by hand beside the model (a method body). */
+  /** A method body whose implementation, ported by hand, is provided beside the model. */
   | 'ported'
   /** Something the format has but this translation cannot carry over (yet). */
   | 'unsupported'
@@ -59,15 +59,16 @@ export interface TranslationDiagnostic {
 }
 
 /**
- * Method bodies ported by hand from the Java of the original, keyed by the
- * XMI path of the method act, as diagnostics name it:
- * `//@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']`.
+ * The methods whose implementations are provided beside the model, ported by
+ * hand from the Java of the original, keyed as `compileModel`'s `methods`: by
+ * the path of the agent from the root scape (`''` for the root scape), then by
+ * the act's path within its acts. Only the keys matter to the translation.
  */
-export type MethodPorts = Readonly<Record<string, string>>;
+export type ProvidedMethods = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
 export interface TranslateOptions {
-  /** TypeScript bodies that take the place of methods' Java (R21). */
-  readonly ports?: MethodPorts;
+  /** Methods implemented beside the model, in place of their Java (R21). */
+  readonly methods?: ProvidedMethods;
 }
 
 export interface Translation {
@@ -99,7 +100,7 @@ export function translateMetaabm(text: string, options: TranslateOptions = {}): 
       ],
     };
   }
-  return new Translator(root, options.ports ?? {}).run();
+  return new Translator(root, options.methods ?? {}).run();
 }
 
 // ───────────────────────────── Helpers ─────────────────────────────
@@ -251,12 +252,12 @@ class Translator {
   /** Every translated act, for the check of `sources` against `targets`. */
   private readonly acts: { node: XNode; targets: XNode[]; sources: XNode[] }[] = [];
 
-  /** The ports that a method took, so that one that matches no method is reported. */
-  private readonly portsUsed = new Set<string>();
+  /** The provided methods found, as `agent/act`, so that one that matches no method is reported. */
+  private readonly providedFound = new Set<string>();
 
   constructor(
     private readonly root: XNode,
-    private readonly ports: MethodPorts,
+    private readonly provided: ProvidedMethods,
   ) {}
 
   report(
@@ -291,14 +292,16 @@ class Translator {
     this.findHomes();
     const model = this.model(this.root);
     this.checkLinks();
-    for (const path of Object.keys(this.ports)) {
-      if (this.portsUsed.has(path)) continue;
-      this.diagnostics.push({
-        path,
-        severity: 'error',
-        kind: 'invalid',
-        message: 'A port is given for this path, but it is not a method of the model.',
-      });
+    for (const [agent, acts] of Object.entries(this.provided)) {
+      for (const act of Object.keys(acts)) {
+        if (this.providedFound.has(`${agent}/${act}`)) continue;
+        this.diagnostics.push({
+          path: '/',
+          severity: 'error',
+          kind: 'invalid',
+          message: `An implementation is provided for \`${act}\` of ${agent === '' ? 'the root scape' : `\`${agent}\``}, which is not a method of the model.`,
+        });
+      }
     }
     return { model, diagnostics: this.diagnostics };
   }
@@ -1487,7 +1490,8 @@ class Translator {
   /**
    * A method's body is Java in every model there is. The format's methods are
    * TypeScript, so the Java is kept as a comment, to be ported by hand, unless
-   * a port is given for the method.
+   * the method's implementation is provided beside the model: then the method
+   * holds no body and says that its implementation is provided.
    */
   private method(reader: Reader, node: XNode, named: Named, targets: ActId[] | undefined): Act {
     const selectedText = reader.attr('selected');
@@ -1505,16 +1509,20 @@ class Translator {
     }
     const java = reader.attr('body');
     let body: string | undefined;
-    const path = pathOf(node);
-    const port = Object.hasOwn(this.ports, path) ? this.ports[path] : undefined;
-    if (port !== undefined) {
-      this.portsUsed.add(path);
-      body = port;
+    let provided: true | undefined;
+    const owner = this.homeOf(node);
+    const agent = owner.tag === 'styles' ? undefined : this.pathFromRoot(owner)?.join('.');
+    const act = this.actPath(node);
+    const implementations =
+      agent !== undefined && Object.hasOwn(this.provided, agent) ? this.provided[agent]! : {};
+    if (act !== undefined && Object.hasOwn(implementations, act)) {
+      this.providedFound.add(`${agent}/${act}`);
+      provided = true;
       this.report(
         node,
         'note',
         'ported',
-        'The body is Java in the original. It is replaced by the TypeScript port written by hand beside the model.',
+        'The body is Java in the original. The method holds no body: its implementation, ported by hand to TypeScript, is provided beside the model.',
         'body',
       );
     } else if (java !== undefined && java.trim() !== '') {
@@ -1531,7 +1539,7 @@ class Translator {
         'body',
       );
     }
-    return clean<Act>({ kind: 'method', ...named, selected, body, targets });
+    return clean<Act>({ kind: 'method', ...named, selected, body, provided, targets });
   }
 
   // ─────────────────────── Functions and values ───────────────────────

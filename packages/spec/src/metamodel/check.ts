@@ -819,6 +819,13 @@ class ActChecker {
         break;
       }
       case 'method':
+        if (act.provided && act.body !== undefined) {
+          checker.error(
+            [...path, 'body'],
+            'A method whose implementation is provided holds no body.',
+          );
+        }
+        break;
       case 'leave':
       case 'die':
       case 'all':

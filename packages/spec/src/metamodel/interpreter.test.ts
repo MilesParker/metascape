@@ -12,7 +12,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import { stupidModel1 } from './examples/stupid-model-1';
 import { compileModel, styleOf } from './interpreter';
-import { UnsupportedModelError } from './model-index';
+import type { MethodImplementation } from './method';
+import { MethodCodeError, UnsupportedModelError } from './model-index';
 import { InterpAgent, InterpCell, InterpScape, MAX_TRIGGER_DEPTH, type Holder } from './runtime';
 import type { Act, Attribute, Model } from './types';
 
@@ -465,17 +466,26 @@ describe('acts', () => {
     expect(value(membersOf(root, 'As')[0]!, 'n')).toBe(3);
   });
 
-  it('runs a method body with the agent, its scape and the seeded random stream (R21)', () => {
-    const make = (body: string) =>
-      compileModel(
-        counterModel({
-          step: { kind: 'rule', targets: ['code'] },
-          code: { kind: 'method', selected: 'step', body },
-        }),
-      );
+  const methodModel = (code: Act) =>
+    counterModel({
+      step: { kind: 'rule', targets: ['code'] },
+      code,
+    });
+
+  it('runs a method implementation with the agent, its scape and the seeded random stream (R21)', () => {
+    const make = (implementation: MethodImplementation) =>
+      compileModel(methodModel({ kind: 'method', selected: 'step', provided: true }), {
+        methods: { a: { code: implementation } },
+      });
     const root = new RootScape(
-      make(
-        "agent.set('n', agent.get('n') + scape.get('count') + random.int(0, 0) + scape.period);",
+      make((agent, scape, random) =>
+        agent.set(
+          'n',
+          (agent.get('n') as number) +
+            (scape.get('count') as number) +
+            random.int(0, 0) +
+            scape.period,
+        ),
       ),
       { seed: 1 },
     );
@@ -483,11 +493,53 @@ describe('acts', () => {
     // 0 + (3 + 0 + 1) + (3 + 0 + 2)
     expect(value(membersOf(root, 'As')[0]!, 'n')).toBe(9);
     const draws = (seed: number) => {
-      const run = new RootScape(make("agent.set('n', random.int(1, 1000));"), { seed });
+      const run = new RootScape(
+        make((agent, _scape, random) => agent.set('n', random.int(1, 1000))),
+        { seed },
+      );
       run.iterate();
       return membersOf(run, 'As').map((a) => value(a, 'n'));
     };
     expect(draws(3)).toEqual(draws(3));
+  });
+
+  it('does not evaluate a method body held in the model unless allowed (R21)', () => {
+    const body = "agent.set('n', agent.get('n') + 1);";
+    const model = methodModel({ kind: 'method', selected: 'step', body });
+    expect(() => compileModel(model)).toThrow(MethodCodeError);
+    expect(() => compileModel(model)).toThrow(/not run unless allowed: `a: code`/);
+    // A method with no code does nothing, and needs nothing.
+    expect(() => compileModel(methodModel({ kind: 'method', selected: 'step' }))).not.toThrow();
+    // A method marked as provided needs its implementation.
+    expect(() =>
+      compileModel(methodModel({ kind: 'method', selected: 'step', provided: true })),
+    ).toThrow(/no implementation was given: `a: code`/);
+    // An implementation of what is not a method is an error.
+    expect(() => compileModel(model, { methods: { a: { step: () => {} } } })).toThrow(
+      /not methods of the model: `a: step`/,
+    );
+    // An implementation given takes the place of the body, which is not evaluated.
+    const given = new RootScape(
+      compileModel(model, { methods: { a: { code: (agent) => agent.set('n', 7) } } }),
+      { seed: 1 },
+    );
+    given.iterate();
+    expect(value(membersOf(given, 'As')[0]!, 'n')).toBe(7);
+  });
+
+  it('evaluates a method body when allowed, with the same API (R21)', () => {
+    const make = (body: string) =>
+      compileModel(methodModel({ kind: 'method', selected: 'step', body }), {
+        allowMethodBodies: true,
+      });
+    const root = new RootScape(
+      make(
+        "agent.set('n', agent.get('n') + scape.get('count') + random.int(0, 0) + scape.period);",
+      ),
+      { seed: 1 },
+    );
+    root.run(2);
+    expect(value(membersOf(root, 'As')[0]!, 'n')).toBe(9);
     expect(() => new RootScape(make('Math.random();'), { seed: 1 }).iterate()).toThrow(
       /Method `code` failed/,
     );

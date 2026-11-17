@@ -41,7 +41,7 @@ import {
   type SpatialTerm,
   type ValueType,
 } from './functions';
-import { createMethod, type MethodRunner } from './method';
+import { createMethod, type MethodImplementation } from './method';
 import {
   actsOf,
   type AgentInfo,
@@ -401,6 +401,8 @@ export class Behaviour {
     readonly functions: ReadonlyMap<string, FunctionEntry>,
     /** The constants of the function library, by ID. */
     readonly constants: ReadonlyMap<string, Constant> = new Map(),
+    /** The implementations of the method acts, by act path. A method without one does nothing. */
+    readonly methods: ReadonlyMap<ActId, MethodImplementation> = new Map(),
   ) {
     const acts = actsOf(group);
     acts.forEach(([id, act], order) => {
@@ -1252,10 +1254,11 @@ export class Behaviour {
           this.#emit(node, frame);
         };
       case 'method': {
-        const runner: MethodRunner = createMethod(act.body ?? '', node.id);
+        const implementation = this.methods.get(node.id);
+        const runner = implementation && createMethod(implementation, node.id);
         return (frame) => {
           const agent = act.selected !== undefined ? frame.agentOf(act.selected) : frame.root.agent;
-          runner(agent, frame);
+          runner?.(agent, frame);
           this.#emit(node, frame);
         };
       }

@@ -612,11 +612,21 @@ export interface CauseAct extends SelectedAct {
   result: ActRef;
 }
 
-/** Runs code written in the model's language. MetaABM's `AMethod`. */
+/**
+ * Runs code. MetaABM's `AMethod`. The code is an implementation given to
+ * `compileModel` (`methods`), or a body held here, in the model's language,
+ * which is run only if `compileModel` is told to allow it (R21).
+ */
 export interface MethodAct extends FlowAct {
   kind: 'method';
   selected?: ActRef | undefined;
+  /** Code held in the model. Never run unless allowed. */
   body?: string | undefined;
+  /**
+   * The implementation is provided by whoever runs the model, not held in it;
+   * a model whose method is provided cannot run without it. Not with `body`.
+   */
+  provided?: boolean | undefined;
 }
 
 /**

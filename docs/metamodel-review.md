@@ -140,7 +140,7 @@ The act graph moves over as it is: each agent has a record of acts keyed by ID. 
 | `ABuildSpace` (`spaceType`)                                                      | build space                                             | `spaceType` is deprecated (**R20**).                                                                                              |
 | `ABuildNetwork` (`networkType`)                                                  | build network                                           | `networkType` is deprecated, and never set in the examples: every file takes the default, `Barabasi`, without using it (**R20**). |
 | `ABuildGeography`                                                                | build geography                                         | Unused (**R7**).                                                                                                                  |
-| `AMethod` (`body`, `generate`)                                                   | method                                                  | Body in the model's implementation language, TypeScript (**R21**).                                                                |
+| `AMethod` (`body`, `generate`)                                                   | method                                                  | An implementation given to the interpreter, or a body run only if allowed (**R21**).                                              |
 | `AInput` (`selected`, `value`, `literal`)                                        | input: a value read from a selection                    | `selected` says whose attribute is read, which is how selections are "woven" through a flow.                                      |
 | `ALiteral` (`valueLiteral`), `AMultiValue` (`values`)                            | literal, multi-value                                    | A multi-value lists the state attributes a distribution varies by (**R22**).                                                      |
 | `AShaped`                                                                        | `shape` on create                                       |                                                                                                                                   |
@@ -294,8 +294,25 @@ the only option for now is TypeScript, and method bodies are TypeScript. StupidM
 `ConsumeFood` is Java, so the translation flags it, and it is ported by hand to TypeScript as a
 recorded deviation.
 
-_Proposed (implemented in `method.ts`):_ a body is the statements of a function of three
-arguments, written in TypeScript without type annotations, so that it runs without a compiler:
+_Decided (owner, 2026-11-17):_ code held as text in a model is never evaluated by default. The
+owner: "We should avoid the possibility of code injection. I don't imagine there is any reliable
+way to truly sandbox this. So probably don't allow at all without switch of some kind." So:
+
+- A method's code is an **implementation** given to `compileModel` (`methods`), an ordinary
+  TypeScript function keyed by the agent's path and the act's path (`{ bug: { consumeFood } }`).
+  A method act whose implementation is given this way says so (`provided: true`) and holds no
+  body; without its implementation the model does not compile.
+- A **body** held in the model is evaluated only if `compileModel` is told to
+  (`allowMethodBodies`, off by default). Without it, a model with a body fails to compile with
+  one error (`MethodCodeError`) naming every such method. An implementation given for a method
+  takes the place of its body, which is then not evaluated. A method with neither does nothing.
+  Studio has no switch: a model with method bodies shows the error.
+- StupidModel5's `ConsumeFood` is a function in the bundle (`StupidModel5.methods.ts`), given to
+  `compileModel` by the catalogue; its translation keeps the method act, marked as provided.
+
+_Decided (owner, 2026-11-17):_ both see the same API. An implementation is a function of three
+arguments, and a body is the statements of one, written in TypeScript without type annotations, so
+that it runs without a compiler:
 
 - `agent`: the agent bound by the method's `selected` (default: the agent whose flow it is), as
   `get(attribute)`, `set(attribute, value)`, `id`, and `cell`, the grid cell it stands on, seen
@@ -305,24 +322,21 @@ arguments, written in TypeScript without type annotations, so that it runs witho
 - `random`: the model's seeded stream, as the acting agent draws from it: `unit()`, `int(min, max)`
   (both inclusive), `chance(p)` and `pick(items)`.
 
-`this` is undefined and a return value is ignored. The body is compiled once, when the model is,
-so a body that does not compile is reported then. `Math` is there without `Math.random`, and
-`Date`, `globalThis`, `window`, `document`, `fetch`, `XMLHttpRequest`, `setTimeout`,
-`setInterval`, `crypto` and `performance` are hidden, so that a run stays determined by its seed.
-That keeps honest code honest; it is not a security boundary, which would be needed if models
-came from people the user does not trust (left open). StupidModel5's `ConsumeFood`, ported by
-hand, reads:
+A method sees no agents bound by other selections of its flow; one that needs another agent
+reaches it only through its cell. For a body, `this` is undefined and a return value is ignored;
+it is compiled once, when the model is, so a body that does not compile is reported then. `Math`
+is there without `Math.random`, and `Date`, `globalThis` and the like are hidden, so that a run
+stays determined by its seed. StupidModel5's `ConsumeFood`, ported by hand, reads:
 
 ```ts
-const habitat = agent.cell;
-const availability = habitat.get('foodAvailability');
-const consumption = Math.min(availability, agent.get('maxConsumption'));
-agent.set('size', agent.get('size') + consumption);
-habitat.set('foodAvailability', availability - consumption);
+consumeFood(agent) {
+  const habitat = agent.cell;
+  const availability = habitat.get('foodAvailability');
+  const consumption = Math.min(availability, agent.get('maxConsumption'));
+  agent.set('size', agent.get('size') + consumption);
+  habitat.set('foodAvailability', availability - consumption);
+}
 ```
-
-Left open: whether a body should see agents bound by other selections of its flow; for now a
-method that needs another agent reaches it only through its cell.
 
 **R22. Multi-values.** Settled by the generator (`Java.xpt`, `MultiBlock`): a multi-value is the
 first input of a distribution function (`uniformAdditiveDistribution`, `crossDistribution` and so
@@ -438,11 +452,12 @@ boolean1` for an attribute with no `sType`). The translation takes `integer`, ex
   after a first line saying it is Java to be ported by hand, so that the method act is in place;
   each has a warning. Leading whitespace of each line is trimmed. `generate` is dropped with a
   note.
-- **Ported methods.** A body ported by hand to TypeScript is kept beside its example
-  (`StupidModel5.ports.ts`), keyed by the XMI path of its method act, since the `.metaabm` file
-  stays as it is and the `.model.json` is generated. The translation takes the port in place of
-  the Java, with a `note` of the kind `ported`; a port whose path is not a method of the model is
-  an error. `npm run translate-examples` applies the ports (`examples/escape/ports.ts` lists them).
+- **Ported methods.** A method ported by hand to TypeScript is a function beside its example
+  (`StupidModel5.methods.ts`), keyed by agent and act as `compileModel`'s `methods`, since the
+  `.metaabm` file stays as it is and the `.model.json` is generated. The translation writes such a
+  method as `provided: true`, with no body, and a `note` of the kind `ported`; an implementation
+  for something that is not a method of the model is an error. `npm run translate-examples` marks
+  them (`examples/escape/methods.ts` lists them), and the catalogue gives them to `compileModel`.
 - **Extensions.** A model that has an extension (`children`, an element of another metamodel, as
   in SIR's system dynamics) is not translated at all: no model, one error at the outermost
   extension element. Partial translation of SIR would leave something that can't run and is not

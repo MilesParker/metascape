@@ -32,8 +32,9 @@ format's interpreter. Nothing in this folder describes behaviour.
 | StupidModel 5 | `StupidModel5.metaabm` | Habitats produce more food; each bug eats up to its maximum consumption and grows by that much. |
 
 StupidModel 5's consumption is a method act whose body is Java in the original. It is ported by hand to
-TypeScript in `packages/spec/examples/escape/StupidModel5.ports.ts`, which the translation puts in place
-of the Java (R21 in `docs/metamodel-review.md`).
+a TypeScript function in `packages/spec/examples/escape/StupidModel5.methods.ts`, which the catalogue
+gives to `compileModel` as the method's implementation. The translated model holds the method act,
+marked as provided, and no code (R21 in `docs/metamodel-review.md`).
 
 ## What the catalogue adds
 

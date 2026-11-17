@@ -249,6 +249,7 @@ const act: z.ZodType<Act> = z.discriminatedUnion('kind', [
     kind: z.literal('method'),
     selected: path.optional(),
     body: z.string().optional(),
+    provided: z.boolean().optional(),
   }),
   z.strictObject({ ...buildSpace, kind: z.literal('buildGrid'), fillAgent: path.optional() }),
   z.strictObject({ ...buildSpace, kind: z.literal('buildSpace') }),

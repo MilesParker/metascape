@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./metaabm": "./src/metaabm/index.ts",
+    "./examples/escape/methods": "./examples/escape/methods.ts",
     "./examples/escape/*": "./examples/escape/*"
   },
   "dependencies": {

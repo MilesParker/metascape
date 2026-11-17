@@ -3,6 +3,7 @@ import stupidModel1Source from '@metascape/spec/examples/escape/StupidModel1.mod
 import stupidModel2Source from '@metascape/spec/examples/escape/StupidModel2.model.json';
 import stupidModel3Source from '@metascape/spec/examples/escape/StupidModel3.model.json';
 import stupidModel5Source from '@metascape/spec/examples/escape/StupidModel5.model.json';
+import { exampleMethods } from '@metascape/spec/examples/escape/methods';
 import type { Provenance } from '@metascape/engine';
 import type { Chart, Curation } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
@@ -64,8 +65,9 @@ export const stupidModel5 = fromMetaabm(stupidModel5Source, {
     'Habitats accumulate food by a draw in [0, 0.5) per period and each bug, after moving, eats up to 0.2 of the food on its cell and grows by that amount.',
   provenance: {
     ...provenance('StupidModel5'),
-    note: 'The food consumption is a method written in Java in the original; it is ported by hand to TypeScript (StupidModel5.ports.ts).',
+    note: 'The food consumption is a method written in Java in the original; it is ported by hand to TypeScript (StupidModel5.methods.ts).',
   },
+  methods: exampleMethods['StupidModel5']!,
   curation: curation('stupidModel5', [sizeChart, foodChart]),
 });
 

@@ -4,7 +4,7 @@
 // model format.
 export { translateMetaabm } from './translate';
 export type {
-  MethodPorts,
+  ProvidedMethods,
   TranslateOptions,
   Translation,
   TranslationDiagnostic,

@@ -46,6 +46,7 @@ import { coreFunctions, type Datum, type FunctionImplementation, type Mark } fro
 import {
   actsOf,
   indexModel,
+  MethodCodeError,
   UnsupportedModelError,
   type AgentInfo,
   type AttributeInfo,
@@ -53,6 +54,7 @@ import {
   type ScapeInfo,
   type SpaceInfo,
 } from './model-index';
+import { compileMethodBody, type MethodImplementation, type MethodImplementations } from './method';
 import {
   ContinuousInstance,
   enclosing,
@@ -93,6 +95,18 @@ export interface CompileOptions {
   readonly runSpec?: RunSpec;
   /** Finds run specs the given ones incorporate. Default: among `runSpecs` and `runSpec`. */
   readonly runSpecLookup?: RunSpecLookup;
+  /**
+   * Implementations of the model's method acts (R21), by agent path and act
+   * path. One given for an act that is not a method of the model is an error.
+   */
+  readonly methods?: MethodImplementations;
+  /**
+   * Evaluates method bodies held as text in the model. Off by default: a body
+   * is code from the model file, which could do anything the page can, so a
+   * model with a body (and no implementation given for it) does not compile
+   * unless this is set. Set it only for models from a source you trust.
+   */
+  readonly allowMethodBodies?: boolean;
 }
 
 /** Default colours of agents without a style, by agent type. */
@@ -202,7 +216,12 @@ function compileChecked(model: Model, options: CompileOptions): EngineModel {
   const library = options.library ?? coreLibrary;
   const index = indexModel(model);
   const functions = indexFunctions(library, { ...coreFunctions, ...options.functions });
-  compileBehaviours(index, functions, indexConstants(library));
+  compileBehaviours(
+    index,
+    functions,
+    indexConstants(library),
+    methodsOf(index, options.methods ?? {}, options.allowMethodBodies ?? false),
+  );
   const keepsOriginals = actsUse(index, 'original');
   const parameters = engineParameters(index);
   return {
@@ -224,16 +243,95 @@ function indexConstants(library: Library): Map<string, Constant> {
   return found;
 }
 
+/**
+ * The implementation of each method act of each agent (R21): the one given,
+ * else its body if bodies are allowed. Throws a {@link MethodCodeError} naming
+ * every method with a body that may not run, and every provided method with
+ * no implementation; and an error for an implementation of no method.
+ */
+function methodsOf(
+  index: ModelIndex,
+  given: MethodImplementations,
+  allowBodies: boolean,
+): Map<AgentInfo, Map<string, MethodImplementation>> {
+  const found = new Map<AgentInfo, Map<string, MethodImplementation>>();
+  const bodies: string[] = [];
+  const missing: string[] = [];
+  const unknown: string[] = [];
+  const name = (agent: AgentInfo, act: string) => (agent.path ? `${agent.path}: ${act}` : act);
+  for (const agent of index.agents) {
+    const own = new Map<string, MethodImplementation>();
+    const implementations = Object.hasOwn(given, agent.path) ? given[agent.path]! : {};
+    const methods = new Set<string>();
+    for (const [actId, act] of actsOf(agent.decl.acts)) {
+      if (act.kind !== 'method') continue;
+      methods.add(actId);
+      const implementation = Object.hasOwn(implementations, actId)
+        ? implementations[actId]
+        : undefined;
+      if (implementation) own.set(actId, implementation);
+      else if (act.body !== undefined && act.body.trim() !== '') {
+        if (allowBodies) own.set(actId, compileMethodBody(act.body, actId));
+        else bodies.push(name(agent, actId));
+      } else if (act.provided) missing.push(name(agent, actId));
+    }
+    for (const style of Object.values(agent.decl.styles ?? {})) {
+      for (const [actId, act] of actsOf(style.acts)) {
+        if (
+          act.kind === 'method' &&
+          act.body !== undefined &&
+          act.body.trim() !== '' &&
+          !allowBodies
+        )
+          bodies.push(name(agent, actId));
+        if (act.kind === 'method' && act.provided) missing.push(name(agent, actId));
+      }
+    }
+    for (const actId of Object.keys(implementations)) {
+      if (!methods.has(actId)) unknown.push(name(agent, actId));
+    }
+    found.set(agent, own);
+  }
+  for (const path of Object.keys(given)) {
+    if (!index.agents.some((agent) => agent.path === path))
+      unknown.push(...Object.keys(given[path]!).map((act) => (path ? `${path}: ${act}` : act)));
+  }
+  if (unknown.length > 0) {
+    throw new Error(
+      `Implementations are given for acts that are not methods of the model: ${unknown.map((m) => `\`${m}\``).join(', ')}`,
+    );
+  }
+  if (bodies.length > 0 || missing.length > 0) throw new MethodCodeError(bodies, missing);
+  return found;
+}
+
 function compileBehaviours(
   index: ModelIndex,
   functions: ReadonlyMap<string, FunctionEntry>,
   constants: ReadonlyMap<string, Constant>,
+  methods: ReadonlyMap<AgentInfo, ReadonlyMap<string, MethodImplementation>>,
 ): void {
   const unsupported: string[] = [];
   for (const agent of index.agents) {
-    agent.behaviour = new Behaviour(index, agent, agent.decl.acts, functions, constants);
+    agent.behaviour = new Behaviour(
+      index,
+      agent,
+      agent.decl.acts,
+      functions,
+      constants,
+      methods.get(agent),
+    );
     for (const style of Object.values(agent.decl.styles ?? {})) {
-      agent.styles.push(new Behaviour(index, agent, style.acts, functions, constants));
+      // A style's methods have no implementation: they do nothing, or, if
+      // bodies are allowed, run their bodies.
+      const styleMethods = new Map<string, MethodImplementation>();
+      for (const [actId, act] of actsOf(style.acts)) {
+        if (act.kind === 'method' && act.body !== undefined && act.body.trim() !== '')
+          styleMethods.set(actId, compileMethodBody(act.body, actId));
+      }
+      agent.styles.push(
+        new Behaviour(index, agent, style.acts, functions, constants, styleMethods),
+      );
     }
     for (const [actId, act] of actsOf(agent.decl.acts)) {
       if (

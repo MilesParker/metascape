@@ -3,7 +3,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
+import { exampleMethods } from '../../examples/escape/methods';
 import { compileModel } from './interpreter';
+import { MethodCodeError } from './model-index';
 import { InterpAgent } from './runtime';
 import { parseModel } from './schema';
 
@@ -20,7 +22,7 @@ const load = (name: string) =>
 describe('the Escape examples, interpreted', () => {
   describe.each(examples)('%s', (name) => {
     it('runs, the same from the same seed', () => {
-      const model = compileModel(load(name));
+      const model = compileModel(load(name), { methods: exampleMethods[name] ?? {} });
       const run = (seed: number) => {
         const root = new RootScape(model, { seed });
         root.run(20);
@@ -97,14 +99,22 @@ describe('what the Escape examples do', () => {
   });
 });
 
-describe('a method body (R21)', () => {
-  it("runs StupidModel5's ConsumeFood, ported from Java beside the example", () => {
-    const root = new RootScape(compileModel(load('StupidModel5')), { seed: 3 });
+describe('a method implemented beside the model (R21)', () => {
+  it("runs StupidModel5's ConsumeFood, ported from Java as a function, with method bodies off", () => {
+    const root = new RootScape(
+      compileModel(load('StupidModel5'), { methods: exampleMethods['StupidModel5']! }),
+      { seed: 3 },
+    );
     root.run(5);
     const sizes = tally(root, 'bug', 'size') as number[];
     expect(sizes).toHaveLength(100);
     expect(sizes.every((size) => size > 0 && size <= 5 * 0.2 + 1e-9)).toBe(true);
     // Each eats what its cell has, up to 0.2, so the bugs differ.
     expect(new Set(sizes).size).toBeGreaterThan(1);
+  });
+
+  it('is required: without it the model does not compile, and says which method', () => {
+    expect(() => compileModel(load('StupidModel5'))).toThrow(MethodCodeError);
+    expect(() => compileModel(load('StupidModel5'))).toThrow(/`bug: consumeFood`/);
   });
 });

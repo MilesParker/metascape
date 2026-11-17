@@ -94,6 +94,32 @@ export class UnsupportedModelError extends Error {
   }
 }
 
+/**
+ * A model whose method acts cannot be run as compiled: methods holding code
+ * as text, which is not run unless `compileModel` is told to allow it (R21),
+ * and methods whose implementation is to be provided but was not.
+ */
+export class MethodCodeError extends Error {
+  constructor(
+    /** Methods with a body, as `agent: act` (the root scape's as `act`). */
+    readonly bodies: readonly string[],
+    /** Methods marked as provided with no implementation given. */
+    readonly missing: readonly string[] = [],
+  ) {
+    const lines: string[] = [];
+    if (bodies.length > 0)
+      lines.push(
+        `This model holds code in its method acts, which is not run unless allowed: ${bodies.map((m) => `\`${m}\``).join(', ')}.`,
+      );
+    if (missing.length > 0)
+      lines.push(
+        `These methods are implemented outside the model, and no implementation was given: ${missing.map((m) => `\`${m}\``).join(', ')}.`,
+      );
+    super(lines.join('\n'));
+    this.name = 'MethodCodeError';
+  }
+}
+
 /** Every act of an agent or style, by its path (`step`, `moves.step`), depth first, in the order written. */
 export function actsOf(
   acts: Record<ActId, Act> | undefined,

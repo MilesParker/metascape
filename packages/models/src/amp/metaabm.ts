@@ -6,7 +6,13 @@
 // name it knows it by, its description and provenance, what to look at (a
 // curation) and the run specs AMP gave it.
 import type { Model, Provenance } from '@metascape/engine';
-import { compileModel, parseModel, type Curation, type RunSpec } from '@metascape/spec';
+import {
+  compileModel,
+  parseModel,
+  type Curation,
+  type MethodImplementations,
+  type RunSpec,
+} from '@metascape/spec';
 
 /** The fallback copyright of AMP example files that state none. */
 export const AMP_COPYRIGHT =
@@ -21,6 +27,8 @@ export interface CatalogEntry {
   readonly curation?: Curation;
   /** Offered as the model's runs. */
   readonly runSpecs?: readonly RunSpec[];
+  /** The implementations of the model's method acts, ported by hand (R21). */
+  readonly methods?: MethodImplementations;
 }
 
 /** Compiles a translated `.metaabm` model, under the name the catalogue has always given it. */
@@ -28,6 +36,7 @@ export function fromMetaabm(source: unknown, entry: CatalogEntry): Model {
   const compiled = compileModel(parseModel(source), {
     ...(entry.curation && { curation: entry.curation }),
     ...(entry.runSpecs && { runSpecs: entry.runSpecs }),
+    ...(entry.methods && { methods: entry.methods }),
   });
   return {
     ...compiled,

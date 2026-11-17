@@ -12,9 +12,10 @@ they were made available under the Eclipse Public License. They are distributed 
   Beside each is its translation into the Metascape model format, `Name.model.json`, and the
   diagnostics of the translation, `Name.diagnostics.json` (each with the XMI path of the element
   concerned). Both are generated; do not edit them. A method whose body is Java in the original
-  is ported by hand to TypeScript in `Name.ports.ts`, keyed by the XMI path of its method act, and
-  the translation takes the port in place of the Java (`ports.ts` lists the ports). StupidModel 5's
-  `ConsumeFood` is the one there is.
+  is ported by hand to a TypeScript function in `Name.methods.ts`, keyed by its agent and act, and
+  given to `compileModel` as the method's implementation (`methods.ts` lists them). The translation
+  marks such a method as provided and holds no code for it. StupidModel 5's `ConsumeFood` is the
+  one there is.
 - `escape/params/` and `escape/tests/`: the Escape examples' run files, `.apar` (run specs) and
   `.atest` (run tests), from the same project, each with its translation (`Name.run.json`,
   `Name.test.json`) and the diagnostics of the translation. Generated, like the models.

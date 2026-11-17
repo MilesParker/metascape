@@ -198,7 +198,7 @@
           "label": "ConsumeFood",
           "pluralLabel": "ConsumeFoods",
           "selected": "grow",
-          "body": "const habitat = agent.cell;\nconst availability = habitat.get('foodAvailability');\nconst consumption = Math.min(availability, agent.get('maxConsumption'));\nagent.set('size', agent.get('size') + consumption);\nhabitat.set('foodAvailability', availability - consumption);"
+          "provided": true
         }
       },
       "styles": {

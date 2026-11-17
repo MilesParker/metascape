@@ -5,9 +5,9 @@
 // translation (`Name.diagnostics.json`) beside each; then their run files, the
 // `.apar` files in params/ to run specs (`Name.run.json`) and the `.atest`
 // files in tests/ to run tests (`Name.test.json`), each with its diagnostics.
-// The AMP files are the source of truth; the JSON is generated. Method bodies
-// ported by hand from Java are in `Name.ports.ts` beside the model, and take
-// the place of the Java in the translation.
+// The AMP files are the source of truth; the JSON is generated. Methods
+// ported by hand from Java are implemented in `Name.methods.ts` beside the
+// model; the translation marks them as provided and holds no code for them.
 //
 //   npm run translate-examples          write the files
 //   npm run translate-examples -- --check   fail if the files are out of date
@@ -15,7 +15,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { examplePorts } from '../examples/escape/ports';
+import { exampleMethods } from '../examples/escape/methods';
 import { runFileId, translateApar, translateAtest } from '../src/metaabm/apar';
 import { renderTranslation } from '../src/metaabm/render';
 import type { Model } from '../src/metamodel/types';
@@ -50,7 +50,7 @@ const models = new Map<string, Model>();
 for (const file of filesIn(directory, '.metaabm')) {
   const name = file.slice(0, -'.metaabm'.length);
   const rendered = renderTranslation(readFileSync(join(directory, file), 'utf8'), {
-    ports: examplePorts[name] ?? {},
+    methods: exampleMethods[name] ?? {},
   });
   if (rendered.model === undefined) {
     console.error(`${file} could not be translated: see ${name}.diagnostics.json`);

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: EPL-2.0
 //
-// Method acts (MetaABM's AMethod): code written in the model's language,
-// TypeScript, run where a flow reaches the act. This is the API a method body
-// sees, proposed under R21 in docs/metamodel-review.md.
+// Method acts (MetaABM's AMethod): code run where a flow reaches the act. The
+// code is a TypeScript function given to `compileModel` by whoever runs the
+// model (the method's implementation), or a body held as text in the model,
+// which is evaluated only when `compileModel` is told to allow it (R21 in
+// docs/metamodel-review.md). Both see the same API.
 import { CellOccupant, type Agent } from '@metascape/engine';
 import type { Frame } from './flows';
 import type { Datum } from './functions';
 import { InterpScape, isHolder, type Holder, type RunState } from './runtime';
 
-/** An agent or scape as a method body sees it: its attributes, by ID. */
+/** An agent or scape as a method sees it: its attributes, by ID. */
 export interface MethodAgent {
   /** The agent's number in the run. */
   readonly id: number;
@@ -20,13 +22,13 @@ export interface MethodAgent {
   readonly cell: MethodAgent | undefined;
 }
 
-/** The scape an agent is in, as a method body sees it. */
+/** The scape an agent is in, as a method sees it. */
 export interface MethodScape extends MethodAgent {
   /** The current period. */
   readonly period: number;
 }
 
-/** The model's random stream, seeded, as a method body sees it. Use it for every random choice. */
+/** The model's random stream, seeded, as a method sees it. Use it for every random choice. */
 export interface MethodRandom {
   /** A number from 0 (inclusive) to 1 (exclusive). */
   unit(): number;
@@ -38,10 +40,31 @@ export interface MethodRandom {
   pick<T>(items: readonly T[]): T;
 }
 
-/** Runs a method body for the agent bound by the act's selection. */
+/**
+ * A method act's implementation: what it does for the agent its flow binds
+ * (the agent of the act's `selected`, else the agent whose flow it is).
+ * `agent` is that agent, `scape` the scape it is in (the root scape's own for
+ * the root), and `random` the model's seeded stream, as the agent draws from it.
+ */
+export type MethodImplementation = (
+  agent: MethodAgent,
+  scape: MethodScape,
+  random: MethodRandom,
+) => void;
+
+/**
+ * Implementations of method acts, by the path of the agent whose acts they are
+ * from the root scape (`bug`, `region.farmer`; `''` for the root scape's own),
+ * then by the act's path within that agent's acts (`consumeFood`, `moves.step`).
+ */
+export type MethodImplementations = Readonly<
+  Record<string, Readonly<Record<string, MethodImplementation>>>
+>;
+
+/** Runs a method for the agent bound by the act's selection. */
 export type MethodRunner = (agent: Agent, frame: Frame) => void;
 
-/** Names a body cannot reach, so that it uses `random` and leaves the page alone. Not a security boundary. */
+/** Names a body cannot reach, so that it uses `random` and leaves the page alone. */
 const HIDDEN = [
   'globalThis',
   'window',
@@ -82,15 +105,18 @@ function view(holder: Holder & Agent, state: RunState): MethodAgent {
 }
 
 /**
- * Compiles a method body once. The body is the statements of a function of
+ * Compiles a method body held as text in a model, once. Only `compileModel`
+ * with `allowMethodBodies` calls this (R21): the body is code from the model
+ * file, and there is no reliable way to keep such code from doing harm, so it
+ * is never evaluated by default. The body is the statements of a function of
  * `(agent, scape, random)`, written in TypeScript without type annotations
- * (that is, the JavaScript subset of TypeScript), so that it can run without
- * a compiler. `this` is undefined and a return value is ignored.
+ * (that is, the JavaScript subset of TypeScript), so that it can run without a
+ * compiler. `this` is undefined and a return value is ignored. Hiding
+ * `Math.random`, `Date` and the like keeps a run determined by its seed.
  */
-export function createMethod(body: string, actId: string): MethodRunner {
+export function compileMethodBody(body: string, actId: string): MethodImplementation {
   let compiled: (...args: unknown[]) => unknown;
   try {
-    // Method bodies are model code, compiled once (R21).
     compiled = new Function(
       'agent',
       'scape',
@@ -105,6 +131,13 @@ export function createMethod(body: string, actId: string): MethodRunner {
       { cause: error },
     );
   }
+  return (agent, scape, random) => {
+    compiled.call(undefined, agent, scape, random, SEEDED_MATH, ...HIDDEN.map(() => undefined));
+  };
+}
+
+/** Runs a method's implementation for the agent its flow binds. */
+export function createMethod(implementation: MethodImplementation, actId: string): MethodRunner {
   return (agent, frame) => {
     const state = frame.state;
     if (!isHolder(agent))
@@ -126,16 +159,11 @@ export function createMethod(body: string, actId: string): MethodRunner {
       },
     };
     try {
-      compiled.call(
-        undefined,
-        view(agent as Holder & Agent, state),
-        scapeView,
-        api,
-        SEEDED_MATH,
-        ...HIDDEN.map(() => undefined),
-      );
+      implementation(view(agent as Holder & Agent, state), scapeView, api);
     } catch (error) {
-      throw new Error(`Method \`${actId}\` failed: ${(error as Error).message}`, { cause: error });
+      throw new Error(`Method \`${actId}\` failed: ${(error as Error).message}`, {
+        cause: error,
+      });
     }
   };
 }

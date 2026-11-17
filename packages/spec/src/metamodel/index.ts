@@ -20,8 +20,14 @@ export {
   type ValueType,
 } from './functions';
 export { compileModel, styleOf, type CompileOptions } from './interpreter';
-export type { MethodAgent, MethodRandom, MethodScape } from './method';
-export { UnsupportedModelError } from './model-index';
+export type {
+  MethodAgent,
+  MethodImplementation,
+  MethodImplementations,
+  MethodRandom,
+  MethodScape,
+} from './method';
+export { MethodCodeError, UnsupportedModelError } from './model-index';
 export { MAX_TRIGGER_DEPTH } from './runtime';
 export {
   formatPath,

@@ -21,7 +21,7 @@
     "path": "//@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']/@body",
     "severity": "note",
     "kind": "ported",
-    "message": "The body is Java in the original. It is replaced by the TypeScript port written by hand beside the model."
+    "message": "The body is Java in the original. The method holds no body: its implementation, ported by hand to TypeScript, is provided beside the model."
   },
   {
     "path": "//@agents[ID='habitat']/@implementation",
