@@ -84,7 +84,9 @@ their own" (p. 28): `randomExecution` (whether the rule needs its agents in a fr
 order) and `causesRemoval` (whether it may remove agents). The scape uses both: it draws a
 random tour only when a selected rule needs one, and checks membership between rules only when
 a rule may remove agents. A rule with `update` is executed then updated, as Ascape's
-`ExecuteThenUpdate`.
+`ExecuteThenUpdate`: its update runs after every rule's execute, as Ascape's execution strategies
+did (`StrategyFactory` chains the update strategy after the main one), owner's decision,
+2026-11-17.
 
 Ascape has two ways of ordering agents when executing by rule. Its execution strategies, used
 for each iteration, draw one random order for all the rules when any needs one; the engine does

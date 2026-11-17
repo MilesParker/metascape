@@ -7,8 +7,6 @@ current: remove items when they are done.
 
 - **Name of the model format.** The declarative format lives in `@metascape/spec`; the name is
   provisional ("MetaABM" was rejected).
-- **Model format review.** `docs/metamodel-review.md` maps the MetaABM metamodel onto the new
-  format and lists review items R1 to R25.
 - **`NOTICE` copyright line.** It reads "Miles Parker and contributors"; Metascape LLC may be
   preferred.
 - **"IMPORTANT README" in the Ascape models.** `org.ascape.models.brook/res/edu/IMPORTANT
@@ -69,7 +67,8 @@ second user appears.
 
 The format is being redone from the MetaABM metamodel so that the AMP `.metaabm` models can be
 translated into it directly and become the source of truth (owner direction, 2026-11-16). The
-mapping and the open review items (R1 to R25) are in `docs/metamodel-review.md`. The AMP models
+mapping and the review items (R1 to R25) are in `docs/metamodel-review.md`; the owner decided the
+last open ones (D1 to D12) on 2026-11-17. The AMP models
 in `packages/models/src/amp` are now their `.metaabm` files, translated and interpreted; the code
 ports are gone, except SIR's.
 
@@ -82,11 +81,16 @@ ports are gone, except SIR's.
   `EpidemicPeriods.java` (100 cities, rare migration, stop period 3000), which has no `.apar`;
   and statistics of nested scapes, without which constraints on Regional's individuals are not
   recorded.
-- **Stopping on a condition** (R24, _proposed_): a run spec's `stopWhen`, shaped like an ATest
-  constraint. Schelling and Foragers stop again. Waiting for the owner's review.
-- **Examples left out of the format.** The small-world Epidemic needs a network made by a
-  generator and a way to drop one link; Pursuit needs movement by a heading and a speed in a
-  continuous space. Neither is in the format (`docs/metamodel-review.md`, Ambiguities).
+- **Gaps of the format, to fill when a model needs them** (D4). Add each only for a model that
+  needs it, as a core library function where possible:
+  - networks made by a generator (small-world and the like), and
+  - removing one link of an agent (a disconnect removes every link), both for the small-world
+    Epidemic;
+  - moving by a heading and a speed in a continuous space, for Pursuit;
+  - hiding an agent by its style, for Foragers' "Show foragers" parameter.
+
+  The small-world Epidemic and Pursuit are left out of the format until then
+  (`docs/metamodel-review.md`, Ambiguities).
 
 - **System dynamics.** The SIR example uses AMP's separate system dynamics metamodel (`sd.ecore`:
   stocks, flows, auxiliary variables). Port it after the main metamodel (review item R10); until

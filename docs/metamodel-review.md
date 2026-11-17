@@ -6,7 +6,8 @@ and are `@metascape/spec` (`compileModel`); the earlier format is gone. Work ite
 `.metaabm` files, is implemented in `packages/spec/src/metaabm` (`@metascape/spec/metaabm`), with
 the twelve Escape examples and their translations in `packages/spec/examples`. All twelve run in
 the interpreter, and they are the AMP models of the catalogue (`packages/models/src/amp`) in
-place of the code ports; StupidModel5's Java method is ported by hand beside it (R21). Of the
+place of the code ports; StupidModel5's Java method is ported by hand beside it, as a function
+given to the interpreter (R21). The owner decided the open items on 2026-11-17. Of the
 earlier format's five examples, Life, Schelling and Foragers are rewritten in the format; the
 small-world Epidemic and Pursuit are left out, since they need what the format does not have
 (see [Ambiguities](#ambiguities)). Work item 7: run specs and run tests, ported from AMP's APar
@@ -33,8 +34,9 @@ statement-style language (`set`, `let`, `if`, `forEach`, expression trees). Meta
 acts that selections flow through. The two don't sit well together, and the second is what the
 models are written in.
 
-Items marked **R1**, **R2** and so on need your review. They are collected, with a recommendation
-for each, under [Review items](#review-items).
+Items marked **R1**, **R2** and so on were open for review. They are collected, with what was
+decided for each, under [Review items](#review-items); the owner decided the last of them on
+2026-11-17.
 
 ## Representation
 
@@ -240,7 +242,7 @@ it isn't lost.
 
 **R11. Functions with several outputs.** Settled by the generators: a function's result type is
 taken from its output prototypes (`types.ext`, `resultType`), and only one function in the core
-library, `boundary2D` (X and Y), declares more than one output. No example uses it. _Proposed:_ a
+library, `boundary2D` (X and Y), declares more than one output. No example uses it. _Decided (owner, 2026-11-17):_ a
 function has one result; `boundary2D` is left out until something needs it.
 
 **R12. Function semantics.** _Decided:_ the meaning of each function follows the Escape
@@ -255,7 +257,7 @@ drops `for`, and the translation drops it with a warning if it disagrees with th
 
 **R14. Execution order.** Settled by the generators: every scape, including grids, gets
 `setExecutionOrder(Scape.RULE_ORDER)`, rules are added in the order the acts appear, and agents are
-visited in Ascape's default random order. _Proposed, and implemented:_ those are the defaults,
+visited in Ascape's default random order. _Decided (owner, 2026-11-17):_ those are the defaults, as implemented,
 held as optional `execution` settings on each agent and scape (`order: 'rule' | 'agent'`,
 `randomOrder`, and `rules`, the rule acts in the order they run). They become the settings of the
 engine scape the agents are in, so Metascape's run-time editing of them keeps working. The
@@ -368,8 +370,8 @@ attribute with an optional qualifier, between a minimum and a maximum. A curatio
 measures worth watching and the charts, whose series are measures of the same shape as ATest's.
 Every such measure is recorded whether or not the model gathers its attribute.
 
-Stopping on a condition (rather than at a period) has no counterpart in AMP. _Proposed, and
-implemented:_ it belongs in the run spec, beside the stop period, as `stopWhen`: constraints shaped
+Stopping on a condition (rather than at a period) has no counterpart in AMP. _Decided (owner, 2026-11-17):_ as
+implemented, it belongs in the run spec, beside the stop period, as `stopWhen`: constraints shaped
 like ATest's, and a run stops at the end of the first period in which one of them holds. How a
 model is run stays out of the model, as AMP kept it, and the same measures serve tests, stopping
 and charts. A model can be compiled with a run spec of its own, which is how it runs unless
@@ -381,6 +383,30 @@ spec package's README and source headers, and in `NOTICE`. The metamodel began a
 component of Repast Simphony contributed under the EPL by Argonne National Laboratory; it was
 developed by Metascape from 2007 as MetaABM, and contributed to Eclipse as part of the Agent
 Modeling Platform (AMP) in 2009. The name MetaABM is still not used for the format itself.
+
+**Decisions of 2026-11-17.** The owner's review named the items then open D1 to D12. Each is
+marked _Decided (owner, 2026-11-17)_ where it is described:
+
+- **D1.** The method API (R21): a method sees its `agent` (with its `cell`), `scape` and
+  `random`, not agents bound by other selections.
+- **D2.** No code from model files without a switch (R21): methods are implementations given to
+  `compileModel`; bodies held in a model run only with `allowMethodBodies`.
+- **D3.** Stopping on a condition, `stopWhen` in run specs (R24).
+- **D4.** Add to the format only when a model needs it, as core library functions where possible
+  (Examples: adding to the format; `docs/roadmap.md`).
+- **D5.** Attributes with no type are integers, or booleans where shown to be (Translation).
+- **D6.** Acts held in another agent's group move to the agent whose root their flow starts from
+  (Translation).
+- **D7.** An attribute that names no selection is read from the act's own selection, with no
+  fallback; the translation names the selection where needed, and the checker reports a read from
+  a selection whose agent lacks the attribute (Interpreter, Translation, Checking).
+- **D8.** Two-phase rules update as Ascape did, after every rule's execute; the engine already
+  did, so nothing changed (Interpreter: diffusion).
+- **D9.** A move onto a taken cell of a single-occupant grid does nothing (Interpreter: moves).
+- **D10.** Counting `false` of a boolean in run specs (Run specs: qualifiers of booleans).
+- **D11.** `boundary2D` is left out (R11).
+- **D12.** Optional `execution` settings (R14).
+- And every interpreter reading listed under Ambiguities.
 
 ## Ambiguities
 
@@ -434,14 +460,14 @@ where this document decides it, a `warning` where it is worth a look, an `error`
 element could not be translated. The kinds are `dropped`, `defaulted`, `moved`, `unsupported` and
 `invalid`.
 
-- **Attributes with no `sType`.** The ecore default is `INTEGER`, and the Escape examples agree:
+- **Attributes with no `sType`.** _Decided (owner, 2026-11-17):_ The ecore default is `INTEGER`, and the Escape examples agree:
   the generated Java has `int individualCount` for an attribute with no `sType`. The older AMF
   test models were saved when the default was `BOOLEAN` (their generated Java has `boolean
 boolean1` for an attribute with no `sType`). The translation takes `integer`, except that an
   attribute with no `sType` is `boolean` if its default is `true` or `false`, or if a set act sets
   it to the constant `true` or `false` (an integer could not be, so that is what was meant). Both
   cases have a note. Nothing in the Escape examples is affected.
-- **An act held by another agent's group.** In the AMF movement test a flow that starts in one
+- **An act held by another agent's group.** _Decided (owner, 2026-11-17):_ In the AMF movement test a flow that starts in one
   agent's rule goes on to acts held by another agent's group (`basicMovementAgent.moveTwice`
   targets `networkAgent.goalinArea2`). The generators follow flows from roots, so where an act is
   held does not matter to them, but the format keeps acts with their agent. The translation makes
@@ -505,7 +531,8 @@ boolean1` for an attribute with no `sType`). The translation takes `integer`, ex
 
 Interpreter (`packages/spec/src/metamodel`: `interpreter.ts`, `flows.ts`, `runtime.ts`,
 `functions.ts`, `method.ts`). Decided while implementing, where the guide, the generators and the
-runtimes left the meaning open:
+runtimes left the meaning open. _Decided (owner, 2026-11-17):_ every reading below is accepted,
+with one change made then: an attribute read with no selection named has no fallback (D7).
 
 - **How a flow runs.** Depth first, as the generated code nests: an act fires for each frame (an
   agent with every selection bound on its path) that reaches it, then the flow goes on to its
@@ -582,7 +609,7 @@ runtimes left the meaning open:
   marks, in order (`styleOf`). The views draw an agent in the colour of its first filled mark,
   else its first mark, else a default colour for its type; occupants of a grid take the first
   shape of their type's style (oval as a circle, rectangle as a square).
-- **Moves.** A move onto a taken cell of a single-occupant grid does nothing (Ascape threw). A
+- **Moves.** _Decided (owner, 2026-11-17):_ a move onto a taken cell of a single-occupant grid does nothing (Ascape threw). A
   move into a grid of another scape instance makes the agent a member of that scape, as the
   generator's code did. An agent placed in no grid by a builder act stands on one once moved there
   (EpidemicPlague's fleas).
@@ -602,9 +629,12 @@ runtimes left the meaning open:
   looked at where agents are, or in a new period; otherwise it is kept.
 - **Diffusion** (R17) is the generator's formula: new = own + rate × (mean of the neighbours −
   own), then × (1 − evaporation). With no rate a cell takes the mean; with no evaporation rate
-  nothing evaporates. Setting the new value runs watches (Heatbugs clamps its heat so). The engine
-  applies every two-phase rule's update after every rule's execute, where Ascape updated after each
-  rule; the Escape examples have one rule on their cells.
+  nothing evaporates. Setting the new value runs watches (Heatbugs clamps its heat so). _Decided
+  (owner, 2026-11-17):_ two-phase rules update to match Ascape, which updates every two-phase rule
+  after all the rules' executes (`StrategyFactory`, chaining the update strategy after the main
+  one). The engine already did this, so nothing changed. The first draft of this item was wrong
+  about Ascape: it said Ascape updated after each rule, which only its `Scape.execute(rules,
+agents)` did. The Escape examples have one rule on their cells.
 - **Order of scapes.** Each period the root scape's own rules run first (on a scape whose one
   member is the root scape, as the generator's manager scape), then the scapes of grid cells and
   networks in the order the spaces are declared, then the populations in the order the agents are
@@ -670,9 +700,15 @@ needed it, the example was left out or does without, as listed:
   parameter hid the foragers in the view; a style cannot hide an agent, and the parameter is gone.
   The test that a grid too small for the foragers gave an error is gone: the interpreter places
   the foragers it can, as Ascape did.
+- **Adding to the format.** _Decided (owner, 2026-11-17):_ what MetaABM did not have is added
+  only when a model needs it, and as functions of the core library where it can be, rather than
+  as new kinds of act or structure. The cases found so far, none added yet, are listed in
+  `docs/roadmap.md` as gaps of the format: networks made by a generator (small-world and the
+  like), moving by a heading and a speed in a continuous space, removing one link of an agent,
+  and hiding an agent by its style.
 - **Charts** of the examples are curation (R24), held by Studio's "Written as data" family
   (`apps/studio/src/catalog/data-family.ts`), not by the model.
-- **Stopping** (R24, proposed). Schelling and Foragers stop again, by their run specs.
+- **Stopping** (R24, decided). Schelling and Foragers stop again, by their run specs.
 - **Numbers.** The rewrites give numbers close to the earlier versions' (Foragers about 390 at
   period 180 in both; Schelling settles at a share of about 0.75 of similar neighbours), not the
   same ones: random draws are made in other places and orders. Their numbers are pinned again.
@@ -759,7 +795,7 @@ the translator `packages/spec/src/metaabm/apar.ts`), decided while porting:
   `Issue`). A measure without an attribute is a `count` of the agents (the ecore makes the
   attribute optional; the grammar did not). A `count` of a numeric attribute is the number of
   agents measured.
-- **Qualifiers of booleans** (not in ATest): a count of a boolean attribute counts `true` unless
+- **Qualifiers of booleans** (not in ATest). _Decided (owner, 2026-11-17):_ a count of a boolean attribute counts `true` unless
   the qualifier is `false`, which the stop condition of Schelling needs. A chart cannot show a
   count of `false`, since the interpreter records only the count of `true`.
 - **What is recorded.** Statistics are collected for agents of the root scape only, and the
@@ -778,8 +814,12 @@ the translator `packages/spec/src/metaabm/apar.ts`), decided while porting:
 
 ## Work, in order
 
-1. Settle the review items. Still open: R21's method API (proposed), and condition-based stopping
-   in run specs (R24, proposed).
+1. Settle the review items. _Done:_ the owner reviewed the open items on 2026-11-17 and accepted
+   every recommendation (R11, R14, R21's method API, stopping in run specs under R24, adding to
+   the format only when a model needs it, the translation's and the interpreter's readings), except
+   that code held in a model is not run without a switch (R21). Attributes read with no selection
+   are read from the act's own (Ambiguities: Interpreter), and two-phase rules update after every
+   rule's execute, as Ascape did and the engine already does (Diffusion).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
    types of inputs against function prototypes, acyclic flows, boundaries). _Done._
 3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations
@@ -809,6 +849,6 @@ translate-examples`). The AMP models of the catalogue are these translations, ru
    its runs (one per run of a sweep), and Studio's Parameters panel offers them (Epidemic: Base,
    Low, High and Zero transmission; Regional: Regional). The AMP families' and the data examples'
    charts are curation; `@metascape/models/curation` is gone. The model format had no charts
-   left to move. Condition-based stopping is proposed (R24).
+   left to move. Condition-based stopping is decided (R24).
 
 The Brookings and Ascape ports are unaffected: their originals are Java, not MetaABM.
