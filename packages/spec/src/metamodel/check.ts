@@ -252,6 +252,8 @@ interface Owner {
 interface Actable {
   /** For messages: "agent `bug`" or "style `bugStyle2D`". */
   name: string;
+  /** The agent whose acts these are (for a style, the styled agent), as its path; '' for the root scape. */
+  agent: string;
   acts: Record<ActId, Act>;
   path: Path;
 }
@@ -289,6 +291,25 @@ class Checker {
     this.collectScape(this.model, '', `scape \`${this.model.id}\``, []);
     for (const actable of this.actables) new ActChecker(this, actable).run();
     return this.diagnostics;
+  }
+
+  #cellAgents: Map<string, string> | undefined;
+
+  /** The agent a grid's cells are, by the grid's path, from the build grid acts that fill it. */
+  cellAgentOf(space: SpaceRef): string | undefined {
+    if (!this.#cellAgents) {
+      const found = new Map<string, string>();
+      const visit = (members: Record<ActId, Act>) => {
+        for (const act of Object.values(members)) {
+          if (act.kind === 'group') visit(act.members);
+          else if (act.kind === 'buildGrid' && act.fillAgent !== undefined)
+            found.set(act.space, act.fillAgent);
+        }
+      };
+      for (const actable of this.actables) visit(actable.acts);
+      this.#cellAgents = found;
+    }
+    return this.#cellAgents.get(space);
   }
 
   error(path: Path, message: string): void {
@@ -354,7 +375,7 @@ class Checker {
     this.checkExtensions(agent.extensions, path);
     this.checkExecution(agent, path);
     if (agent.acts) {
-      this.actables.push({ name, acts: agent.acts, path: [...path, 'acts'] });
+      this.actables.push({ name, agent: ref, acts: agent.acts, path: [...path, 'acts'] });
     }
     for (const [styleId, style] of Object.entries(agent.styles ?? {})) {
       const stylePath = [...path, 'styles', styleId];
@@ -362,6 +383,7 @@ class Checker {
       if (style.acts) {
         this.actables.push({
           name: `style \`${styleId}\` of ${name}`,
+          agent: ref,
           acts: style.acts,
           path: [...stylePath, 'acts'],
         });
@@ -648,6 +670,7 @@ class ActChecker {
     this.checkAcyclic();
     this.checkReachable();
     for (const info of this.acts.values()) this.checkFlow(info);
+    for (const info of this.acts.values()) this.checkReads(info);
     this.checkSelections();
   }
 
@@ -1160,6 +1183,60 @@ class ActChecker {
           );
         }
       });
+    }
+  }
+
+  // ──────────────────────────── Reads ────────────────────────────
+
+  /**
+   * The agent type a selection holds, as its path: a root act's is the agent
+   * whose acts these are; a select's is its agent, or the cells of its grid;
+   * a create's is the agent it creates. Undefined where it cannot be told.
+   */
+  selectionAgent(id: ActId): string | undefined {
+    const act = this.acts.get(id)?.act;
+    if (!act) return undefined;
+    if (isRoot(act)) return this.actable.agent;
+    if (act.kind === 'select') {
+      if (act.agent !== undefined) return act.agent;
+      return act.space !== undefined ? this.checker.cellAgentOf(act.space) : undefined;
+    }
+    if (act.kind === 'create' || act.kind === 'load') return act.agent;
+    return undefined;
+  }
+
+  /**
+   * An attribute of an agent is read from a selection whose agent has it: the
+   * selection the value names, else the act's own (D7). A set's parameter
+   * that names none is read from the root act's selection if its agent has
+   * the attribute, as the generators read it, else from the act's own.
+   * Attributes of scapes and spaces are read from the one around the agent.
+   */
+  private checkReads({ act, path }: ActInfo): void {
+    const own = 'selected' in act ? act.selected : undefined;
+    const reads: [Value, Path, boolean][] = [];
+    if (act.kind === 'set') reads.push([act.parameter, [...path, 'parameter'], true]);
+    if ((act.kind === 'create' || act.kind === 'load') && act.agentCount)
+      reads.push([act.agentCount, [...path, 'agentCount'], false]);
+    if (act.kind === 'query' || act.kind === 'evaluate') {
+      act.inputs?.forEach((input, index) => {
+        if (!('multiValue' in input)) reads.push([input, [...path, 'inputs', index], false]);
+      });
+    }
+    for (const [value, at, isParameter] of reads) {
+      if (!('attribute' in value)) continue;
+      const found = this.checker.findAttribute(value.attribute);
+      if (!found || found.owner.kind !== 'agent') continue;
+      const from = value.selected ?? own;
+      if (from === undefined) continue;
+      if (value.selected === undefined && isParameter && found.owner.ref === this.actable.agent)
+        continue;
+      const agent = this.selectionAgent(from);
+      if (agent === undefined || agent === found.owner.ref) continue;
+      this.checker.error(
+        value.selected === undefined ? [...at, 'attribute'] : [...at, 'selected'],
+        `\`${value.attribute}\` is read from \`${from}\`, a selection of ${agent === '' ? 'the root scape' : `\`${agent}\``}, which has no such attribute. Name the selection of a \`${found.owner.ref}\` to read it from.`,
+      );
     }
   }
 

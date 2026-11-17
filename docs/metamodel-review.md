@@ -469,7 +469,15 @@ boolean1` for an attribute with no `sType`). The translation takes `integer`, ex
   `width`, `height` and `depth`, in that order, as the examples name them. A warning if their
   number is not the `dimensionality`. The size attributes stay ordinary attributes of the space.
 - **Input selections.** An input's `selected` is kept only on an attribute value, and only where it
-  differs from the selection of the act the input is of (which is the default). On other values
+  differs from the selection of the act the input is of (which is the default).
+- **Selections written out** (D7). Where an attribute that names no selection belongs to an agent
+  other than the agents of the act's own selection, the translation names the selection to read
+  it from, with a `defaulted` note: for a set's parameter, the root act's selection if its agent
+  has the attribute (as the generators read a set's parameter); otherwise the nearest selection
+  upstream whose agents have it. Markets sets an instrument's offer price to `firm.lastPrice`
+  within the selection of the instrument just created; the translation names the firm's
+  `offerShares`. A read with no such selection upstream is left for the checker to report: the
+  AMF movement test reads a network agent's attribute from a selection of moving agents. On other values
   (a literal, an option, an evaluate) it means nothing in the format, and a different one is
   dropped with a note. A value that is an act must be an evaluate.
 - **Defaults and explicit values.** XMI leaves out a value that is the ecore default; the
@@ -538,10 +546,12 @@ runtimes left the meaning open:
   that everything it combines is bound; if that act never fires (its select found nothing), the
   logic act does not either. Each arrival decides afresh, but the queries and `none`s of one
   arrival see the same results, so a random query is drawn once.
-- **Attributes read with no selection named.** From the act's own selection if that agent has the
-  attribute, else from the nearest selection on the path that does. Markets sets an instrument's
-  offer price to `firm.lastPrice` within the selection of the instrument just created; the firm is
-  the agent the flow runs for. Attributes of a scape or space are read from the one around the
+- **Attributes read with no selection named.** _Decided (owner, 2026-11-17):_ from the act's own
+  selection, as the generators read an input from its own selection (`accessPathInput` in
+  `infer.ext`), where the editor filled it with the act's. There is no fallback to another
+  selection on the path: the checker reports a read from a selection whose agent lacks the
+  attribute, and the translation names the selection where the act's own selection's agent
+  lacks it (see Translation). Attributes of a scape or space are read from the one around the
   agent.
 - **A set's parameter** with no selection named is the exception: an attribute of an agent is read
   from the agent the flow runs for (the root act's), if it has the attribute. In MetaABM a set's
@@ -694,6 +704,12 @@ Checking:
   value, so it cannot be an input. An integer fits where a real is expected (Java widening); a
   `numeric` result fits an integer, since it cannot be told apart. A state's options fit only
   generic inputs.
+- **Reads** (D7). An attribute of an agent is read from a selection whose agent has it: the
+  selection the value names, else the act's own; a set's parameter that names none may also be
+  read from the root act's selection. A read that breaks this is an error. The agent of a
+  selection is a root act's own agent, a select's agent (or the cells of its grid), or the agent
+  a create makes; a selection whose agent cannot be told is not checked. Attributes of scapes
+  and spaces are not checked: they are read from the one around the agent.
 - **Upstream.** An act's selection, a move's or connect's destination, an input's `selected`
   and an evaluate used as a value must be upstream of the act, since they are bound only on
   the flows that pass through them. All twelve Escape examples satisfy this.

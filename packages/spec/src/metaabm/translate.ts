@@ -26,6 +26,7 @@ import type {
   Value,
 } from '../metamodel/types';
 import { MODEL_SCHEMA_VERSION } from '../metamodel/types';
+import { writeOutSelections } from './selections';
 import { pathOf, resolveReference, splitReferences, type Resolved } from './xmi';
 import { parseXml, XmlError, type XNode } from './xml';
 
@@ -292,6 +293,7 @@ class Translator {
     this.findHomes();
     const model = this.model(this.root);
     this.checkLinks();
+    if (model) this.writeOutSelections(model);
     for (const [agent, acts] of Object.entries(this.provided)) {
       for (const act of Object.keys(acts)) {
         if (this.providedFound.has(`${agent}/${act}`)) continue;
@@ -304,6 +306,28 @@ class Translator {
       }
     }
     return { model, diagnostics: this.diagnostics };
+  }
+
+  /**
+   * Names the selection of each attribute read whose act's own selection is of
+   * an agent without the attribute (D7), with a note at the value.
+   */
+  private writeOutSelections(model: Model): void {
+    const written = writeOutSelections(model);
+    if (written.length === 0) return;
+    const nodes = new Map<string, XNode>();
+    for (const { node } of this.acts) {
+      const home = this.homeOf(node);
+      const owner =
+        home.tag === 'styles'
+          ? `${this.pathFromRoot(home.parent!)?.join('.')}#${this.id(home)}`
+          : this.pathFromRoot(home)?.join('.');
+      nodes.set(`${owner}|${this.actPath(node)}`, node);
+    }
+    for (const { owner, act, where, message } of written) {
+      const node = nodes.get(`${owner}|${act}`);
+      if (node) this.report(node, 'note', 'defaulted', message, where);
+    }
   }
 
   /**

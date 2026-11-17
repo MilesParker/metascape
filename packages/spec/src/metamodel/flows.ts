@@ -608,28 +608,14 @@ export class Behaviour {
     if ('attribute' in value) {
       const attribute = this.index.attribute(value.attribute);
       const owner = attribute.owner;
-      if (value.selected !== undefined || owner.kind !== 'agent') {
-        const from = value.selected ?? selected;
-        return {
-          type,
-          info,
-          get: (frame) =>
-            frame.state.read(holderFor(frame.agentOf(from), owner, frame.state), attribute),
-        };
-      }
-      // With no selection named, the act's own if it holds the attribute, else the nearest on the path that does.
+      // From the selection the value names, else the act's own (D7); an
+      // attribute of a scape or space from the one around that agent.
+      const from = value.selected ?? selected;
       return {
         type,
         info,
-        get: (frame) => {
-          const bound = frame.agentOf(selected);
-          if (isHolder(bound) && bound.info === owner) return frame.state.read(bound, attribute);
-          for (let at: Frame | undefined = frame; at; at = at.parent) {
-            if (isHolder(at.agent) && at.agent.info === owner)
-              return frame.state.read(at.agent, attribute);
-          }
-          return frame.state.read(holderFor(bound, owner, frame.state), attribute);
-        },
+        get: (frame) =>
+          frame.state.read(holderFor(frame.agentOf(from), owner, frame.state), attribute),
       };
     }
     if ('option' in value) {

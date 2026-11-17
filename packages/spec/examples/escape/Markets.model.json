@@ -1043,7 +1043,8 @@
           "selected": "createInstrument",
           "attribute": "instrument.offerPrice",
           "parameter": {
-            "attribute": "firm.lastPrice"
+            "attribute": "firm.lastPrice",
+            "selected": "offerShares"
           },
           "targets": [
             "setSharesToFirmSharesperInstrument"

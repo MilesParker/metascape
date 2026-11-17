@@ -113,6 +113,24 @@ describe('StupidModel1', () => {
   });
 });
 
+describe('Markets', () => {
+  it("names the selection of a set's parameter that its own selection's agent lacks (D7)", () => {
+    const { model, diagnostics } = translateMetaabm(read('escape/Markets.metaabm'));
+    expect(model?.agents?.['firm']?.acts?.['setOfferPriceToLastPrice']).toMatchObject({
+      selected: 'createInstrument',
+      parameter: { attribute: 'firm.lastPrice', selected: 'offerShares' },
+    });
+    expect(
+      diagnostics.filter((d) => d.kind === 'defaulted' && d.path.endsWith('@parameter')),
+    ).toEqual([
+      expect.objectContaining({
+        path: "//@agents[ID='firm']/@rootActivity/@members[ID='setOfferPriceToLastPrice']/@parameter",
+        severity: 'note',
+      }),
+    ]);
+  });
+});
+
 describe('StupidModel5', () => {
   it('keeps the Java of ConsumeFood as a comment when no implementation is provided', () => {
     const { model, diagnostics } = translateMetaabm(read('escape/StupidModel5.metaabm'));
@@ -185,10 +203,14 @@ describe('the AMF test models', () => {
     expect(java).toHaveLength(16);
   });
 
-  it('TestMovement translates and checks without errors, moving the acts of one flow to its agent', () => {
+  it('TestMovement translates, moving the acts of one flow to its agent, and has one bad read', () => {
     const { model, diagnostics } = translate('TestMovement');
     expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expect(errors('TestMovement')).toEqual([]);
+    // It reads a network agent's attribute from a selection of moving agents,
+    // with no network agent selected upstream (D7).
+    expect(errors('TestMovement')).toEqual([
+      'agents.basicMovementAgent.acts.identityMovingTowardGoalTwice.inputs[0].attribute',
+    ]);
     expect(diagnostics.filter((d) => d.kind === 'moved')).toHaveLength(9);
     expect(model?.agents?.['basicMovementAgent']?.acts?.['goalinArea2']).toBeDefined();
     expect(model?.agents?.['networkAgent']?.acts?.['goalinArea2']).toBeUndefined();

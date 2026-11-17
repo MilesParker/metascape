@@ -249,14 +249,15 @@ describe('IDs (R1)', () => {
       m.agents!.region = {
         kind: 'scape',
         spaces: { grid2D: { kind: 'network' } },
-        agents: { bug: { kind: 'agent', attributes: { bugCount: { type: 'integer' } } } },
+        attributes: { bugCount: { type: 'integer' } },
+        agents: { bug: { kind: 'agent' } },
       };
       m.acts!.createRegionBugs = {
         kind: 'create',
         selected: 'buildStupidModel1',
         agent: 'region.bug',
         space: 'region.grid2D',
-        agentCount: { attribute: 'region.bug.bugCount' },
+        agentCount: { attribute: 'region.bugCount' },
       };
       Object.assign(m.acts!.buildStupidModel1!, {
         targets: ['createBugs', 'createHabitats', 'fillGrid', 'createRegionBugs'],
@@ -344,17 +345,73 @@ describe('IDs (R1)', () => {
           agents: { farmer: { kind: 'agent', attributes: { wealth: { type: 'real' } } } },
         };
         addBugActs(m, {
+          farmer: { kind: 'select', selected: 'bugRule', agent: 'region.farmer', targets: ['wet'] },
           wet: {
             kind: 'query',
             selected: 'bugRule',
             function: 'lesser',
-            inputs: [{ attribute: 'region.farmer.wealth' }, { attribute: 'region.rainfall' }],
+            inputs: [
+              { attribute: 'region.farmer.wealth', selected: 'farmer' },
+              { attribute: 'region.rainfall' },
+            ],
           },
         });
-        Object.assign(bugAct(m, 'bugRule'), { targets: ['nearbySpace', 'wet'] });
+        Object.assign(bugAct(m, 'bugRule'), { targets: ['nearbySpace', 'farmer'] });
       }),
     );
     expect(diagnostics).toEqual([]);
+  });
+});
+
+describe('reads (D7)', () => {
+  const reading = (acts: Record<string, Act>) =>
+    checkModel(
+      variant((m) => {
+        bug(m).attributes = { size: { type: 'real' } };
+        m.agents!.habitat!.attributes = { food: { type: 'real' } };
+        addBugActs(m, acts);
+        Object.assign(bugAct(m, 'nearbySpace'), {
+          targets: ['habitatAvailable', 'habitatWItin', ...Object.keys(acts)],
+        });
+      }),
+    );
+  const sum = (inputs: unknown[]): Act =>
+    ({ kind: 'evaluate', selected: 'nearbySpace', function: 'add', inputs }) as Act;
+
+  it("reads an attribute from the act's own selection, which must be of an agent that has it", () => {
+    const diagnostics = reading({
+      own: sum([{ attribute: 'habitat.food' }, { attribute: 'bugVision' }]),
+      wrong: sum([{ attribute: 'bug.size' }, { literal: 1 }]),
+    });
+    expect(diagnostics).toEqual([
+      {
+        path: `${BUG}.wrong.inputs[0].attribute`,
+        severity: 'error',
+        message:
+          '`bug.size` is read from `nearbySpace`, a selection of `habitat`, which has no such attribute. Name the selection of a `bug` to read it from.',
+      },
+    ]);
+  });
+
+  it('reads an attribute from the selection it names, which must be of an agent that has it', () => {
+    const diagnostics = reading({
+      named: sum([{ attribute: 'bug.size', selected: 'bugRule' }, { literal: 1 }]),
+      wrong: sum([{ attribute: 'habitat.food', selected: 'bugRule' }, { literal: 1 }]),
+    });
+    expect(diagnostics.map((d) => d.path)).toEqual([`${BUG}.wrong.inputs[0].selected`]);
+  });
+
+  it("reads a set's parameter from the root act's selection if its agent has it", () => {
+    expect(
+      reading({
+        feed: {
+          kind: 'set',
+          selected: 'nearbySpace',
+          attribute: 'habitat.food',
+          parameter: { attribute: 'bug.size' },
+        },
+      }),
+    ).toEqual([]);
   });
 });
 
