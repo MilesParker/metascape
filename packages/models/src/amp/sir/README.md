@@ -2,6 +2,8 @@
 
 The susceptible, infected and recovered compartment model, ported from the Eclipse Agent Modeling Platform (AMP) example `SIR.metaabm` (project `org.eclipse.amp.amf.examples.sd`). It is a stock-and-flow model, not an agent model.
 
+This is the one AMP example that is still a hand-written code port. The other AMP models are their `.metaabm` files, translated into the model format and run by its interpreter. SIR is written in the system dynamics extension of MetaABM (`sd.ecore`), which the translation reports as unsupported. This port stays until the system dynamics extension is ported (R10 in `docs/metamodel-review.md`).
+
 - Authors: W. O. Kermack and A. G. McKendrick. Citation: Kermack, W. O., & McKendrick, A. G. (1927). A contribution to the mathematical theory of epidemics. Proceedings of the Royal Society A, 115(772), 700-721. Both are as given for this port; the AMP model states neither.
 - Copyright: the model has no description or copyright statement. The files carry "Copyright (c) Metascape LLC and others, made available under the Eclipse Public License".
 - Licence of this port: EPL-2.0.

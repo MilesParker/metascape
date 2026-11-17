@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./metamodel": "./src/metamodel/index.ts",
-    "./metaabm": "./src/metaabm/index.ts"
+    "./metaabm": "./src/metaabm/index.ts",
+    "./examples/escape/*": "./examples/escape/*"
   },
   "dependencies": {
     "@metascape/engine": "*",

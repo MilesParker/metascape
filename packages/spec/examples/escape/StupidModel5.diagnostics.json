@@ -19,9 +19,9 @@
   },
   {
     "path": "//@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']/@body",
-    "severity": "warning",
-    "kind": "unsupported",
-    "message": "The body is Java, and the format's methods are TypeScript. The Java is kept as a comment, to be ported by hand."
+    "severity": "note",
+    "kind": "ported",
+    "message": "The body is Java in the original. It is replaced by the TypeScript port written by hand beside the model."
   },
   {
     "path": "//@agents[ID='habitat']/@implementation",

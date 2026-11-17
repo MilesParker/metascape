@@ -2,6 +2,7 @@
 /// <reference types="node" />
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { examplePorts } from '../../examples/escape/ports';
 import { checkModel } from '../metamodel/check';
 import { stupidModel1 } from '../metamodel/examples/stupid-model-1';
 import { parseModel } from '../metamodel/schema';
@@ -25,10 +26,6 @@ const EXPECTED_WARNINGS: Record<string, string[]> = {
   Markets: [
     "warning dropped //@agents[ID='trader']/@rootActivity/@members[ID='disconnect']/@destination",
   ],
-  // ConsumeFood is Java.
-  StupidModel5: [
-    "warning unsupported //@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']/@body",
-  ],
 };
 
 describe('the Escape examples', () => {
@@ -50,7 +47,8 @@ describe('the Escape examples', () => {
   });
 
   describe.each(escape)('%s', (name) => {
-    const translation = translateMetaabm(read(`escape/${name}.metaabm`));
+    const ports = examplePorts[name] ?? {};
+    const translation = translateMetaabm(read(`escape/${name}.metaabm`), { ports });
 
     it('translates with only the expected diagnostics', () => {
       expect(translation.model).toBeDefined();
@@ -63,7 +61,7 @@ describe('the Escape examples', () => {
     });
 
     it('is the translated example that is committed beside it', () => {
-      const rendered = renderTranslation(read(`escape/${name}.metaabm`));
+      const rendered = renderTranslation(read(`escape/${name}.metaabm`), { ports });
       expect(read(`escape/${name}.model.json`)).toBe(rendered.model);
       expect(read(`escape/${name}.diagnostics.json`)).toBe(rendered.diagnostics);
     });
@@ -125,6 +123,34 @@ describe('StupidModel5', () => {
     expect(body).toContain('// Habitat habitat = (Habitat) getHostCell();');
     expect(body?.split('\n').every((line) => line.startsWith('//'))).toBe(true);
     expect(diagnostics.filter((d) => d.kind === 'unsupported')).toHaveLength(1);
+  });
+
+  it('takes the TypeScript port of ConsumeFood in place of the Java, with a note', () => {
+    const { model, diagnostics } = translateMetaabm(read('escape/StupidModel5.metaabm'), {
+      ports: examplePorts['StupidModel5']!,
+    });
+    const method = model?.agents?.['bug']?.acts?.['consumeFood'];
+    const body = method && 'body' in method ? method.body : undefined;
+    expect(body).toContain("habitat.set('foodAvailability', availability - consumption);");
+    expect(body).not.toContain('getHostCell');
+    expect(diagnostics.filter((d) => d.kind === 'ported')).toEqual([
+      expect.objectContaining({
+        path: "//@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']/@body",
+        severity: 'note',
+      }),
+    ]);
+  });
+
+  it('reports a port that matches no method', () => {
+    const { diagnostics } = translateMetaabm(read('escape/StupidModel5.metaabm'), {
+      ports: { "//@agents[ID='bug']/@rootActivity/@members[ID='grow']": 'return;' },
+    });
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([
+      expect.objectContaining({
+        path: "//@agents[ID='bug']/@rootActivity/@members[ID='grow']",
+        kind: 'invalid',
+      }),
+    ]);
   });
 });
 

@@ -33,24 +33,24 @@ describe('the Escape examples, interpreted', () => {
   });
 });
 
-describe('what the Escape examples do', () => {
-  /** The agents of a type across the model, with a function of each. */
-  const tally = (root: RootScape, agent: string, attribute: string) => {
-    const values: (boolean | number | string)[] = [];
-    for (const scape of root.scapes) {
-      for (const member of scape.members) {
-        if (!(member instanceof InterpAgent) || member.scape !== scape) continue;
-        if (member.info.id !== agent) continue;
-        values.push(member.context.state.read(member, member.info.attribute.get(attribute)!));
-      }
+/** The values of an attribute of every agent of a type across the model. */
+const tally = (root: RootScape, agent: string, attribute: string) => {
+  const values: (boolean | number | string)[] = [];
+  for (const scape of root.scapes) {
+    for (const member of scape.members) {
+      if (!(member instanceof InterpAgent) || member.scape !== scape) continue;
+      if (member.info.id !== agent) continue;
+      values.push(member.context.state.read(member, member.info.attribute.get(attribute)!));
     }
-    return values;
-  };
-  const count = (values: readonly unknown[], value: unknown) =>
-    values.filter((found) => found === value).length;
-  const sum = (values: readonly unknown[]) =>
-    values.reduce<number>((total, value) => total + (value as number), 0);
+  }
+  return values;
+};
+const count = (values: readonly unknown[], value: unknown) =>
+  values.filter((found) => found === value).length;
+const sum = (values: readonly unknown[]) =>
+  values.reduce<number>((total, value) => total + (value as number), 0);
 
+describe('what the Escape examples do', () => {
   it('Epidemic spreads', () => {
     const root = new RootScape(compileModel(load('Epidemic')), { seed: 3 });
     const start = count(tally(root, 'individual', 'status'), 'susceptible');
@@ -71,6 +71,15 @@ describe('what the Escape examples do', () => {
     expect(tally(root, 'bug', 'size')).toEqual(Array.from({ length: 100 }, () => 10));
   });
 
+  it("Demographic Prisoner's Dilemma children take their parent's strategy, so players thrive", () => {
+    // Some seeds die out early, as in the code port that came before.
+    const root = new RootScape(compileModel(load('DemographicPrisoner_sDilemma')), { seed: 1 });
+    root.run(60);
+    const strategies = tally(root, 'player', 'cooperate');
+    expect(strategies.length).toBeGreaterThan(200);
+    expect(count(strategies, true)).toBeGreaterThan(strategies.length / 2);
+  });
+
   it('Heatbugs grow less unhappy', () => {
     const root = new RootScape(compileModel(load('Heatbugs')), { seed: 3 });
     const start = sum(tally(root, 'heatBug', 'unhappiness'));
@@ -89,29 +98,13 @@ describe('what the Escape examples do', () => {
 });
 
 describe('a method body (R21)', () => {
-  it("runs StupidModel5's ConsumeFood, ported from Java with the method API", () => {
-    const model = load('StupidModel5');
-    const consume = model.agents!.bug!.acts!.consumeFood as { body?: string };
-    consume.body = [
-      'const habitat = agent.cell;',
-      "const availability = habitat.get('foodAvailability');",
-      "const consumption = Math.min(availability, agent.get('maxConsumption'));",
-      "agent.set('size', agent.get('size') + consumption);",
-      "habitat.set('foodAvailability', availability - consumption);",
-    ].join('\n');
-    const root = new RootScape(compileModel(model), { seed: 3 });
+  it("runs StupidModel5's ConsumeFood, ported from Java beside the example", () => {
+    const root = new RootScape(compileModel(load('StupidModel5')), { seed: 3 });
     root.run(5);
-    const sizes: number[] = [];
-    for (const scape of root.scapes) {
-      for (const member of scape.members) {
-        if (member instanceof InterpAgent && member.info.id === 'bug') {
-          sizes.push(
-            member.context.state.read(member, member.info.attribute.get('size')!) as number,
-          );
-        }
-      }
-    }
+    const sizes = tally(root, 'bug', 'size') as number[];
     expect(sizes).toHaveLength(100);
-    expect(sizes.every((size) => size > 0)).toBe(true);
+    expect(sizes.every((size) => size > 0 && size <= 5 * 0.2 + 1e-9)).toBe(true);
+    // Each eats what its cell has, up to 0.2, so the bugs differ.
+    expect(new Set(sizes).size).toBeGreaterThan(1);
   });
 });

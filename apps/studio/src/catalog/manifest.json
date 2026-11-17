@@ -389,8 +389,7 @@
         "epidemic-amp",
         "epidemic-amp-contact",
         "epidemic-amp-plague",
-        "epidemic-amp-regional",
-        "epidemic-amp-regional-periods"
+        "epidemic-amp-regional"
       ]
     },
     {
@@ -3148,7 +3147,7 @@
       "spaces": [
         "lattice"
       ],
-      "parameterCount": 5,
+      "parameterCount": 6,
       "ruleCount": 2,
       "authors": "Steven F. Railsback, Steven L. Lytinen and Volker Grimm",
       "portedFrom": "Eclipse AMP, StupidModel2.metaabm",
@@ -3357,7 +3356,7 @@
       "spaces": [
         "lattice"
       ],
-      "parameterCount": 18,
+      "parameterCount": 17,
       "ruleCount": 16,
       "authors": "Miles Parker",
       "portedFrom": "Eclipse AMP, EpidemicRegional.metaabm",
@@ -3365,29 +3364,6 @@
         "file": "thumbs/epidemic-amp-regional.png",
         "width": 2,
         "height": 2,
-        "pixelated": true
-      }
-    },
-    {
-      "id": "epidemic-amp-regional-periods",
-      "name": "Epidemic (AMP): Regional Periods",
-      "familyId": "amp-epidemic",
-      "summary": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map.",
-      "description": "Several cities, each a bounded grid of individuals running the Epidemic disease model, stand on a wrapped regional map. Individuals occasionally migrate to a neighbouring city; one city is chosen at random as the origin of the infection. This run uses a long, thin region of 100 cities and rare migration, and stops after 3000 periods.",
-      "tags": [
-        "epidemics"
-      ],
-      "spaces": [
-        "lattice"
-      ],
-      "parameterCount": 18,
-      "ruleCount": 400,
-      "authors": "Miles Parker",
-      "portedFrom": "Eclipse AMP, EpidemicPeriods.java (subclass of the generated Region of EpidemicRegional.metaabm)",
-      "thumb": {
-        "file": "thumbs/epidemic-amp-regional-periods.png",
-        "width": 40,
-        "height": 4,
         "pixelated": true
       }
     },
@@ -3402,7 +3378,7 @@
         "economics"
       ],
       "spaces": [
-        "charts"
+        "network"
       ],
       "parameterCount": 14,
       "ruleCount": 5,
@@ -3410,7 +3386,7 @@
       "thumb": {
         "file": "thumbs/markets.png",
         "width": 192,
-        "height": 119,
+        "height": 192,
         "pixelated": false
       }
     },

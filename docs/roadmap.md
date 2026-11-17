@@ -22,9 +22,8 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
   settle it.
 - **Demographic PD wealth.** In the introductory `prisoners-dilemma` model, wealth grows very
   large in cooperator clusters; check against Epstein's model.
-- **Ported structure kept for faithful numbers.** Regional epidemic cities are agents beside
-  their map and people scapes rather than scapes standing on the regional map, and Sugarscape's
-  rule M, Boids and Schelling read their space directly. Giving them Ascape's structure would
+- **Ported structure kept for faithful numbers.** Sugarscape's rule M, Boids and Schelling read
+  their space directly. Giving them Ascape's structure would
   change agent ids or the order of random draws, so their numbers would no longer match the
   current ports. Keep the numbers, or restructure and accept new ones?
 
@@ -58,8 +57,7 @@ second user appears.
   `findWithin`/`findNearest` on a lattice use Chebyshev or Manhattan rings.
 - **Ascape diffusion** (mean of neighbours, two-phase); the engine's `diffusion()` shares
   quantity out instead (`ascape/bionland/lattice-model.ts`, `brookings/sugarscape/ascape-space.ts`).
-- **Graphs with Ascape semantics:** ordered neighbour lists that allow repeats, clearing both
-  directions (`amp/markets/markets.ts`); breadth-first search over a `Graph`
+- **Graphs with Ascape semantics:** breadth-first search over a `Graph`
   (`ascape/bionland/graph.ts`).
 - **Views:** a grid view cannot draw a network over the lattice (Sugarscape II-5); a continuous
   view takes one scape and cannot hide agents; there is no rotating view (Retirement); grid views
@@ -71,9 +69,18 @@ second user appears.
 
 The format is being redone from the MetaABM metamodel so that the AMP `.metaabm` models can be
 translated into it directly and become the source of truth (owner direction, 2026-11-16). The
-mapping and the open review items (R1 to R25) are in `docs/metamodel-review.md`. Until that work
-lands, the AMP models run as the code ports in `packages/models/src/amp`, which will then be
-deleted.
+mapping and the open review items (R1 to R25) are in `docs/metamodel-review.md`. The AMP models
+in `packages/models/src/amp` are now their `.metaabm` files, translated and interpreted; the code
+ports are gone, except SIR's.
+
+- **Statistics of nested scapes.** The interpreter does not collect statistics of a nested
+  scape's populations, so Epidemic (AMP): Regional, whose individuals live in its cities, has no
+  chart.
+- **Run specs** (R24). The Epidemic family's `.apar` parameter files and `EpidemicPeriods.java`
+  (the Regional model with 100 cities, rare migration and a stop period of 3000, a model in the
+  catalogue until the code ports went) are run specs, waiting for APar to be ported.
+- **Curation** (R24). The names, provenance, extra gathered attributes and charts of the AMP
+  models are in each family's `index.ts` until curation has a model of its own.
 
 - **System dynamics.** The SIR example uses AMP's separate system dynamics metamodel (`sd.ecore`:
   stocks, flows, auxiliary variables). Port it after the main metamodel (review item R10); until

@@ -5,7 +5,8 @@ function implementations, and the interpreter) are implemented in `packages/spec
 exported as `@metascape/spec/metamodel` (`compileModel`). Work item 5, the translation from
 `.metaabm` files, is implemented in `packages/spec/src/metaabm` (`@metascape/spec/metaabm`), with
 the twelve Escape examples and their translations in `packages/spec/examples`. All twelve run in
-the interpreter; StupidModel5's food consumption waits for its Java method to be ported (R21).
+the interpreter, and they are the AMP models of the catalogue (`packages/models/src/amp`) in
+place of the code ports; StupidModel5's Java method is ported by hand beside it (R21).
 
 ## Why
 
@@ -419,6 +420,11 @@ boolean1` for an attribute with no `sType`). The translation takes `integer`, ex
   after a first line saying it is Java to be ported by hand, so that the method act is in place;
   each has a warning. Leading whitespace of each line is trimmed. `generate` is dropped with a
   note.
+- **Ported methods.** A body ported by hand to TypeScript is kept beside its example
+  (`StupidModel5.ports.ts`), keyed by the XMI path of its method act, since the `.metaabm` file
+  stays as it is and the `.model.json` is generated. The translation takes the port in place of
+  the Java, with a `note` of the kind `ported`; a port whose path is not a method of the model is
+  an error. `npm run translate-examples` applies the ports (`examples/escape/ports.ts` lists them).
 - **Extensions.** A model that has an extension (`children`, an element of another metamodel, as
   in SIR's system dynamics) is not translated at all: no model, one error at the outermost
   extension element. Partial translation of SIR would leave something that can't run and is not
@@ -504,6 +510,13 @@ runtimes left the meaning open:
   offer price to `firm.lastPrice` within the selection of the instrument just created; the firm is
   the agent the flow runs for. Attributes of a scape or space are read from the one around the
   agent.
+- **A set's parameter** with no selection named is the exception: an attribute of an agent is read
+  from the agent the flow runs for (the root act's), if it has the attribute. In MetaABM a set's
+  parameter is an attribute with no selection at all, and the generators read it from the root's
+  selection (`selfrom(ASet)` in `infer.ext`; the generated Java for the Demographic Prisoner's
+  Dilemma is `createAgents.setCooperate(isCooperate())`). Read from the act's own selection, a
+  child there took its own default strategy rather than its parent's, every child defected, and
+  the players died out. This is the only set in the Escape examples whose reading changes.
 - **Numbers.** Integer arithmetic truncates, as Java's: `div` and `mod` of integers, with a clear
   error on division by zero; `pow` is a power (in the generated Java `^` was exclusive or). A set
   of an integer attribute truncates. A numeric constant (`zero`, `unit`) takes the type of the
@@ -566,6 +579,26 @@ runtimes left the meaning open:
   builder acts of agents that are not scapes. The interpreter lists what a model uses of these in
   one error.
 
+The catalogue (`packages/models/src/amp`), decided while replacing the code ports:
+
+- **What a family adds** is not part of the model: the name the catalogue knows it by (so that
+  Studio's addresses stay), its provenance, attributes to gather statistics on besides those the
+  original gathers, and charts, with their series named from the model's labels. It lives in each
+  family's `index.ts` until curation has a model of its own (R24). The extra gathered attributes
+  (bug size and habitat food in StupidModel 2, 3 and 5, cell heat in Heatbugs) only record values;
+  without them the StupidModel charts would show a count that never changes.
+- **Models with no counterpart.** "Epidemic (AMP): Regional Periods" was `EpidemicPeriods.java`, a
+  Java subclass of the Regional model with other parameter values and a stop period. It has no
+  `.metaabm` original and is gone; it is a run spec (R24).
+- **SIR** stays a code port until the system dynamics extension is ported (R10).
+- **Compared with the code ports.** Every model opens and runs in Studio. Demographic Prisoner's
+  Dilemma died out until a set's parameter was read as the generators read it (above); it now
+  grows to about 340 players, as the port did, and like the port it dies out early on some seeds.
+  Epidemic (AMP): Regional has no chart, since nested scapes' populations have no statistics yet.
+  Wiki Example has no chart: its original gathers only a constant count, and the port's
+  same-age-neighbour measure was an addition. Markets charts firm prices, earnings and trader
+  funds, not the port's count of instruments with a holder, which was an addition too.
+
 Core library:
 
 - `not` takes a boolean. Its prototype has no type in `core_library.metaabm`, which makes it the
@@ -625,8 +658,10 @@ Checking:
    system dynamics extension and is reported as unsupported).
 6. **Examples:** the Escape examples are imported, with their `.metaabm` originals and the
    generated translation beside each (`packages/spec/examples/escape`, regenerated by `npm run
-translate-examples`). Still to do: delete the code ports in `packages/models/src/amp`, rewrite
-   the five hand-written spec examples in the new format, and point Studio at the result.
+translate-examples`). The AMP models of the catalogue are these translations, run by the
+   interpreter; the code ports in `packages/models/src/amp` are deleted except SIR's (R10), and
+   StupidModel5's Java method is ported beside its example. _Done._ Still to do: rewrite the five
+   hand-written spec examples in the new format, point Studio at them, and remove the old format.
 
 7. **Run specs and curation** (R24), after the examples run: port APar and ATest, and move charts
    into the curation model.

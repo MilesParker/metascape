@@ -198,7 +198,7 @@
           "label": "ConsumeFood",
           "pluralLabel": "ConsumeFoods",
           "selected": "grow",
-          "body": "// Java, from the original model. Port it to TypeScript by hand.\n// Habitat habitat = (Habitat) getHostCell();\n// double availability = habitat.getFoodAvailability();\n// double consumption = availability <  getMaxConsumption() ? availability : getMaxConsumption();\n// setSize(getSize()+consumption);\n// habitat.setFoodAvailability(availability-consumption);"
+          "body": "const habitat = agent.cell;\nconst availability = habitat.get('foodAvailability');\nconst consumption = Math.min(availability, agent.get('maxConsumption'));\nagent.set('size', agent.get('size') + consumption);\nhabitat.set('foodAvailability', availability - consumption);"
         }
       },
       "styles": {

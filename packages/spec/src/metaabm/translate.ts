@@ -37,6 +37,8 @@ export type TranslationKind =
   | 'defaulted'
   /** Something the format keeps in another place than the XMI does. */
   | 'moved'
+  /** Something replaced by a port written by hand beside the model (a method body). */
+  | 'ported'
   /** Something the format has but this translation cannot carry over (yet). */
   | 'unsupported'
   /** Something that is wrong in the XMI. */
@@ -56,6 +58,18 @@ export interface TranslationDiagnostic {
   message: string;
 }
 
+/**
+ * Method bodies ported by hand from the Java of the original, keyed by the
+ * XMI path of the method act, as diagnostics name it:
+ * `//@agents[ID='bug']/@rootActivity/@members[ID='consumeFood']`.
+ */
+export type MethodPorts = Readonly<Record<string, string>>;
+
+export interface TranslateOptions {
+  /** TypeScript bodies that take the place of methods' Java (R21). */
+  readonly ports?: MethodPorts;
+}
+
 export interface Translation {
   /** The translated model. Missing if the model cannot be translated (see the diagnostics). */
   model: Model | undefined;
@@ -67,7 +81,7 @@ export interface Translation {
  * model: that is a diagnostic. The result is not checked; pass the model to
  * `checkModel`.
  */
-export function translateMetaabm(text: string): Translation {
+export function translateMetaabm(text: string, options: TranslateOptions = {}): Translation {
   let root: XNode;
   try {
     root = parseXml(text);
@@ -85,7 +99,7 @@ export function translateMetaabm(text: string): Translation {
       ],
     };
   }
-  return new Translator(root).run();
+  return new Translator(root, options.ports ?? {}).run();
 }
 
 // ───────────────────────────── Helpers ─────────────────────────────
@@ -237,7 +251,13 @@ class Translator {
   /** Every translated act, for the check of `sources` against `targets`. */
   private readonly acts: { node: XNode; targets: XNode[]; sources: XNode[] }[] = [];
 
-  constructor(private readonly root: XNode) {}
+  /** The ports that a method took, so that one that matches no method is reported. */
+  private readonly portsUsed = new Set<string>();
+
+  constructor(
+    private readonly root: XNode,
+    private readonly ports: MethodPorts,
+  ) {}
 
   report(
     node: XNode,
@@ -271,6 +291,15 @@ class Translator {
     this.findHomes();
     const model = this.model(this.root);
     this.checkLinks();
+    for (const path of Object.keys(this.ports)) {
+      if (this.portsUsed.has(path)) continue;
+      this.diagnostics.push({
+        path,
+        severity: 'error',
+        kind: 'invalid',
+        message: 'A port is given for this path, but it is not a method of the model.',
+      });
+    }
     return { model, diagnostics: this.diagnostics };
   }
 
@@ -1457,7 +1486,8 @@ class Translator {
 
   /**
    * A method's body is Java in every model there is. The format's methods are
-   * TypeScript, so the Java is kept as a comment, to be ported by hand.
+   * TypeScript, so the Java is kept as a comment, to be ported by hand, unless
+   * a port is given for the method.
    */
   private method(reader: Reader, node: XNode, named: Named, targets: ActId[] | undefined): Act {
     const selectedText = reader.attr('selected');
@@ -1475,7 +1505,19 @@ class Translator {
     }
     const java = reader.attr('body');
     let body: string | undefined;
-    if (java !== undefined && java.trim() !== '') {
+    const path = pathOf(node);
+    const port = Object.hasOwn(this.ports, path) ? this.ports[path] : undefined;
+    if (port !== undefined) {
+      this.portsUsed.add(path);
+      body = port;
+      this.report(
+        node,
+        'note',
+        'ported',
+        'The body is Java in the original. It is replaced by the TypeScript port written by hand beside the model.',
+        'body',
+      );
+    } else if (java !== undefined && java.trim() !== '') {
       const lines = java.replace(/\r\n?/g, '\n').replace(/\s+$/, '').split('\n');
       body = [
         '// Java, from the original model. Port it to TypeScript by hand.',

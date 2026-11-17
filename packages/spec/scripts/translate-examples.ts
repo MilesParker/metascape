@@ -3,7 +3,9 @@
 // Translates the AMP examples in examples/escape from their `.metaabm` files
 // and writes the model (`Name.model.json`) and the diagnostics of the
 // translation (`Name.diagnostics.json`) beside each. The `.metaabm` files are
-// the source of truth; the JSON is generated.
+// the source of truth; the JSON is generated. Method bodies ported by hand
+// from Java are in `Name.ports.ts` beside the model, and take the place of the
+// Java in the translation.
 //
 //   npm run translate-examples          write the files
 //   npm run translate-examples -- --check   fail if the files are out of date
@@ -11,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { examplePorts } from '../examples/escape/ports';
 import { renderTranslation } from '../src/metaabm/render';
 
 const directory = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'examples', 'escape');
@@ -21,7 +24,9 @@ for (const file of readdirSync(directory)
   .filter((name) => name.endsWith('.metaabm'))
   .sort()) {
   const name = file.slice(0, -'.metaabm'.length);
-  const rendered = renderTranslation(readFileSync(join(directory, file), 'utf8'));
+  const rendered = renderTranslation(readFileSync(join(directory, file), 'utf8'), {
+    ports: examplePorts[name] ?? {},
+  });
   if (rendered.model === undefined) {
     console.error(`${file} could not be translated: see ${name}.diagnostics.json`);
     stale++;

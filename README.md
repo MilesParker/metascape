@@ -17,7 +17,7 @@ from Ascape and Eclipse AMP, ported with their provenance. Open work is listed i
 | Path              | Package             | Purpose                                                                               |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------- |
 | `packages/engine` | `@metascape/engine` | Headless engine: scapes and their spaces, rules, statistics, views, run control       |
-| `packages/models` | `@metascape/models` | The model catalogue: 25 families, 127 models (see below)                              |
+| `packages/models` | `@metascape/models` | The model catalogue: 25 families, 126 models (see below)                              |
 | `packages/spec`   | `@metascape/spec`   | Models as data: typed format, checker, interpreter and five examples                  |
 | `packages/react`  | `@metascape/react`  | Views, charts, run controls, rule and chart editing, a model runner                   |
 | `apps/studio`     | `@metascape/studio` | Browser app: a Library to find models and a Workbench to run, inspect and change them |
@@ -29,7 +29,7 @@ from Ascape and Eclipse AMP, ported with their provenance. Open work is listed i
 | Introductory examples written for Metascape | `packages/models/src/<model>/`   | 1        | 8      |
 | Brookings Institution models (from Ascape)  | `packages/models/src/brookings/` | 14       | 82     |
 | Ascape example models                       | `packages/models/src/ascape/`    | 3        | 23     |
-| Eclipse AMP example models                  | `packages/models/src/amp/`       | 7        | 14     |
+| Eclipse AMP example models                  | `packages/models/src/amp/`       | 7        | 13     |
 
 The Brookings collection includes Sugarscape (every chapter II to IV variant), Artificial
 Anasazi with the Long House Valley data, Civil Violence (every paper run), Norms, Retirement,
@@ -37,7 +37,10 @@ Emergence of Classes, Emergence of Firms, the demographic and spatial Prisoner's
 Diffusion, Conway's Life and others.
 
 Ported models are faithful to the legacy code, including its quirks and bugs: each family's
-`README.md` lists every legacy class, how it was ported, and every kept bug or deviation.
+`README.md` lists every legacy class, how it was ported, and every kept bug or deviation. The
+Eclipse AMP models are not ported by hand: each is its original `.metaabm` file, translated into
+the model format and run by its interpreter. The one exception is SIR, which is written in
+MetaABM's system dynamics extension and stays a code port until that extension is ported.
 Each model carries its provenance (authors, publication, the legacy class it came from, and the
 original copyright), which Studio shows in each model's About panel, linked from the title bar. See [NOTICE](NOTICE) and
 [LICENSES](LICENSES) for the BSD terms of the Ascape-derived files.

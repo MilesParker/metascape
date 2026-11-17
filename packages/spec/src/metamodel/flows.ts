@@ -648,6 +648,29 @@ export class Behaviour {
     return { type, info, get: () => literal };
   }
 
+  /**
+   * A set's parameter. An attribute of an agent with no selection named is
+   * read from the agent the flow runs for, the root act's, if it holds the
+   * attribute, as the generators read it (`selfrom(ASet)` is the root's
+   * selection): a child created in Demographic Prisoner's Dilemma takes its
+   * parent's strategy. Otherwise as any value.
+   */
+  #setParameter(value: Value, selected: ActId): Getter {
+    const getter = this.#value(value, selected);
+    if (!('attribute' in value) || value.selected !== undefined) return getter;
+    const attribute = this.index.attribute(value.attribute);
+    if (attribute.owner.kind !== 'agent') return getter;
+    return {
+      ...getter,
+      get: (frame) => {
+        const root = frame.root.agent;
+        return isHolder(root) && root.info === attribute.owner
+          ? frame.state.read(root, attribute)
+          : getter.get(frame);
+      },
+    };
+  }
+
   #input(input: Input, selected: ActId): Getter {
     if (!('multiValue' in input)) return this.#value(input, selected);
     const attributes = input.multiValue.map((ref) => this.index.attribute(ref));
@@ -1155,7 +1178,7 @@ export class Behaviour {
       }
       case 'set': {
         const attribute = index.attribute(act.attribute);
-        const parameter = this.#value(act.parameter, act.selected);
+        const parameter = this.#setParameter(act.parameter, act.selected);
         return (frame) => {
           const value = parameter.get(frame) as Datum;
           const holder = holderFor(frame.agentOf(act.selected), attribute.owner, frame.state);
