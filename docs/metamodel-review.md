@@ -9,7 +9,9 @@ the interpreter, and they are the AMP models of the catalogue (`packages/models/
 place of the code ports; StupidModel5's Java method is ported by hand beside it (R21). Of the
 earlier format's five examples, Life, Schelling and Foragers are rewritten in the format; the
 small-world Epidemic and Pursuit are left out, since they need what the format does not have
-(see [Ambiguities](#ambiguities)).
+(see [Ambiguities](#ambiguities)). Work item 7: run specs and run tests, ported from AMP's APar
+and ATest, and curation sit beside the format (`packages/spec/src/runspec`,
+`packages/spec/src/curation`), with a translator from `.apar` and `.atest` files.
 
 ## Why
 
@@ -344,10 +346,21 @@ increment]`), linked sweeps together, and incorporated other run files. ATest (`
   The stop period is part of a run spec: in AMP it was Ascape's `Runner.stopPeriod`, set from an
   `.apar` file (`"Stop Period"=100`).
 
-Stopping on a condition (rather than at a period) has no counterpart in AMP. Where it belongs, in
-a run spec or in the model, is still open. The earlier format's examples stopped on conditions
-(Schelling once everyone is happy, Foragers once none is left); their rewrites run on until this
-is settled.
+_Implemented:_ both are typed (TypeScript types, Zod schemas, checkers that resolve references
+against a model). A run spec keeps APar's shape: single values, sweeps, links and
+`incorporates`, with the engine's `Stop Period` as a field of its own. A run test keeps ATest's:
+constraints of a `measure` (`count`, `average`, `sum`, `minimum`, `maximum`) of an agent's
+attribute with an optional qualifier, between a minimum and a maximum. A curation names the
+measures worth watching and the charts, whose series are measures of the same shape as ATest's.
+Every such measure is recorded whether or not the model gathers its attribute.
+
+Stopping on a condition (rather than at a period) has no counterpart in AMP. _Proposed, and
+implemented:_ it belongs in the run spec, beside the stop period, as `stopWhen`: constraints shaped
+like ATest's, and a run stops at the end of the first period in which one of them holds. How a
+model is run stays out of the model, as AMP kept it, and the same measures serve tests, stopping
+and charts. A model can be compiled with a run spec of its own, which is how it runs unless
+another is chosen. Schelling's run stops once no resident is unhappy, and Foragers' once no
+forager is left (`schellingRun`, `foragerRun`).
 
 **R25. Licence and provenance.** _Decided:_ the format credits its origin plainly, in the
 spec package's README and source headers, and in `NOTICE`. The metamodel began as "score", a
@@ -617,9 +630,6 @@ needed it, the example was left out or does without, as listed:
   (`moveBy` with `dx` and `dy`, `moveToward` a given distance, fleeing as a negative distance).
   A move goes to a chosen agent, or one unit toward or away from it (`toward`, `away`); there is
   no move by a vector or a speed.
-- **Stopping on a condition** (R24). Schelling stopped once everyone was happy and Foragers once no
-  forager was left. The rewrites do not stop; their tests check that everyone ends up happy
-  rather than that the run stops.
 - **Aggregates** (`count`, `mean`, `max` over a selection) are flows: every agent of an `all`
   selection flows on to a set that adds one (Life's live neighbours, Schelling's neighbours and
   neighbours of the same group), after a set that clears the count. A share is one count over the
@@ -637,6 +647,7 @@ needed it, the example was left out or does without, as listed:
   the foragers it can, as Ascape did.
 - **Charts** of the examples are curation (R24), held by Studio's "Written as data" family
   (`apps/studio/src/catalog/data-family.ts`), not by the model.
+- **Stopping** (R24, proposed). Schelling and Foragers stop again, by their run specs.
 - **Numbers.** The rewrites give numbers close to the earlier versions' (Foragers about 390 at
   period 180 in both; Schelling settles at a share of about 0.75 of similar neighbours), not the
   same ones: random draws are made in other places and orders. Their numbers are pinned again.
@@ -682,10 +693,62 @@ Checking:
   building geographies, shape styles, extensions) are warnings: the model is valid, and the
   interpreter will reject it.
 
+Run specs, run tests and curation (`packages/spec/src/runspec`, `packages/spec/src/curation`,
+the translator `packages/spec/src/metaabm/apar.ts`), decided while porting:
+
+- **Names in `.apar` files.** AMP's scope provider named attributes by their ID, capitalized
+  (`MinContactTransmissionProbability`; a space's attribute after the space's ID, `CityWidth`),
+  and the parameter plug-in's tests, written earlier, by label (`"Stop Period"`). Both are read;
+  a label gets a note. Only the root scape's and its spaces' attributes can be set (the model's
+  parameters), not immutable or derived ones, as in AMP.
+- **The engine's attributes.** `Stop Period` is the run spec's `stopPeriod`. It cannot be swept
+  (an error). `Pause Period` is dropped with a note: a run spec has none.
+- **Values.** A real cannot set an integer attribute; an integer can set a real one. A state
+  attribute takes an option's ID as a string (AMP could not set one). A symbol beginning with
+  `|` stood for the project folder at run time; it is kept as written, with a note.
+- **Incorporating** follows `AParInterpreter.collect`: a spec's own settings, then those it
+  incorporates, last first, each skipping attributes already set; so the last incorporated wins
+  over an earlier one (the plug-in's `TestIncorporateOrder`). AMP's interpreter collected single
+  values only; sweeps and links are taken the same way, a link keeping its members not already
+  set, and the stop period and stop conditions are taken like an attribute each.
+- **Sweeps** follow Ascape's `SweepGroup` and `SweepLink`, since AMP's interpreter never ran
+  them: sweeps cross, the first slowest; a link's members advance together and one that has run
+  out keeps its last value. A sweep includes its end; its values are computed without Ascape's
+  drift from adding the increment again and again. A sweep with no values gives no runs (an
+  error in the checker).
+- **Run files are referred to by ID**, their file name without extension
+  (`"|params/EpiBase.apar"` is `EpiBase`), and a run spec names its model by the model's ID. The
+  three grid Epidemic models share the ID `epidemic`, so AMP's run specs would check against all
+  three; they are offered only on Epidemic, the model the files name.
+- **A test without `tests`** runs the run spec with its own name, as in AMP; the translation
+  writes it out with a note. A test with constraints names a run spec, and holds constraints or
+  other tests (`contains`), not both, as the grammar has it.
+- **Constraints are checked as AMP's test runner did**: the value of the measure's series in the
+  last period, against the range, giving `none`, `belowRange`, `aboveRange` or `notFound` (ARes's
+  `Issue`). A measure without an attribute is a `count` of the agents (the ecore makes the
+  attribute optional; the grammar did not). A `count` of a numeric attribute is the number of
+  agents measured.
+- **Qualifiers of booleans** (not in ATest): a count of a boolean attribute counts `true` unless
+  the qualifier is `false`, which the stop condition of Schelling needs. A chart cannot show a
+  count of `false`, since the interpreter records only the count of `true`.
+- **What is recorded.** Statistics are collected for agents of the root scape only, and the
+  cells of a grid are not counted, so a measure of either is a warning ("not recorded") and a
+  constraint on it is `notFound`.
+- **ZeroTransmission** passes on some seeds and not others: its bound on deaths (0 to 5) is not
+  met on about a third of seeds, since those infected at the start die at the case mortality
+  rate whatever the transmission. The test runs it with a seed that passes.
+- **Labels of runs.** A run is named by its run spec's label, else its ID, then its number if it
+  sweeps. The catalogue gives the Epidemic run specs the labels Base, Low transmission, High
+  transmission and Zero transmission, and EpidemicRegional's the label Regional.
+- **Studio** shows one control where the parameters are, a list of the model's runs and
+  "Defaults" (the model without a run spec), only for a model that has runs. Choosing one
+  restarts with its values over the defaults and its stop period and conditions; the run chosen
+  is kept in the address (`run`).
+
 ## Work, in order
 
-1. Settle the review items. Still open: R21's method API (proposed), and where condition-based
-   stopping belongs (R24).
+1. Settle the review items. Still open: R21's method API (proposed), and condition-based stopping
+   in run specs (R24, proposed).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
    types of inputs against function prototypes, acyclic flows, boundaries). _Done._
 3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations
@@ -709,6 +772,12 @@ translate-examples`). The AMP models of the catalogue are these translations, ru
    (Ambiguities). _Done._
 
 7. **Run specs and curation** (R24), after the examples run: port APar and ATest, and move charts
-   into the curation model.
+   into the curation model. _Done._ The Escape `.apar` and `.atest` files and AMP's parameter
+   tests are kept byte-identical beside their translations (`examples/escape/params`,
+   `examples/escape/tests`, `examples/parameters`). `compileModel` offers a model's run specs as
+   its runs (one per run of a sweep), and Studio's Parameters panel offers them (Epidemic: Base,
+   Low, High and Zero transmission; Regional: Regional). The AMP families' and the data examples'
+   charts are curation; `@metascape/models/curation` is gone. The model format had no charts
+   left to move. Condition-based stopping is proposed (R24).
 
 The Brookings and Ascape ports are unaffected: their originals are Java, not MetaABM.

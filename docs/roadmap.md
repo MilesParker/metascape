@@ -76,14 +76,14 @@ ports are gone, except SIR's.
 - **Statistics of nested scapes.** The interpreter does not collect statistics of a nested
   scape's populations, so Epidemic (AMP): Regional, whose individuals live in its cities, has no
   chart.
-- **Run specs** (R24). The Epidemic family's `.apar` parameter files and `EpidemicPeriods.java`
-  (the Regional model with 100 cities, rare migration and a stop period of 3000, a model in the
-  catalogue until the code ports went) are run specs, waiting for APar to be ported.
-- **Curation** (R24). The names, provenance, extra gathered attributes and charts of the AMP
-  models are in each family's `index.ts`, and those of the examples written as data in Studio's
-  `catalog/data-family.ts`, until curation has a model of its own.
-- **Stopping on a condition** (R24). Schelling and Foragers stopped on a condition in the earlier
-  format; they run on until it is settled where such a condition belongs.
+- **Run specs** (R24). APar and ATest are ported (`packages/spec/src/runspec`), with the Escape
+  `.apar` and `.atest` files translated; Studio offers the Epidemic models' run specs. Still to
+  do: running a run test, or a sweep, from Studio (an experiment view); a run spec for
+  `EpidemicPeriods.java` (100 cities, rare migration, stop period 3000), which has no `.apar`;
+  and statistics of nested scapes, without which constraints on Regional's individuals are not
+  recorded.
+- **Stopping on a condition** (R24, _proposed_): a run spec's `stopWhen`, shaped like an ATest
+  constraint. Schelling and Foragers stop again. Waiting for the owner's review.
 - **Examples left out of the format.** The small-world Epidemic needs a network made by a
   generator and a way to drop one link; Pursuit needs movement by a heading and a speed in a
   continuous space. Neither is in the format (`docs/metamodel-review.md`, Ambiguities).

@@ -15,6 +15,11 @@ they were made available under the Eclipse Public License. They are distributed 
   is ported by hand to TypeScript in `Name.ports.ts`, keyed by the XMI path of its method act, and
   the translation takes the port in place of the Java (`ports.ts` lists the ports). StupidModel 5's
   `ConsumeFood` is the one there is.
+- `escape/params/` and `escape/tests/`: the Escape examples' run files, `.apar` (run specs) and
+  `.atest` (run tests), from the same project, each with its translation (`Name.run.json`,
+  `Name.test.json`) and the diagnostics of the translation. Generated, like the models.
+- `parameters/`: the files of `org.eclipse.amp.amf/tests/org.eclipse.amp.amf.parameters.test`,
+  which test the translation of `.apar` files.
 - `tests/`: the models of `org.eclipse.amp.amf/tests/org.eclipse.amp.amf.gen.test`, which test the
   translation (`TestBasics`, `TestMovement` and `TestSpatial`).
 - `sd/SIR.metaabm`: from `org.eclipse.amp.amf/examples/org.eclipse.amp.amf.examples.sd`. It uses the

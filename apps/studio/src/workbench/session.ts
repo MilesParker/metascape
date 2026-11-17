@@ -8,6 +8,7 @@ import {
   type Runner,
   type ScapeSettings,
   type RootScape,
+  type RunSetup,
 } from '@metascape/engine';
 import {
   describeTime,
@@ -55,9 +56,21 @@ export interface Session {
   readonly apply: () => string | undefined;
   /** Restarts with these parameter values (and any pending ones). */
   readonly restartWith: (values: Readonly<Record<string, number | string | boolean>>) => void;
+  /** The model's runs, from its run specs, to choose from. */
+  readonly runs: readonly RunSetup[];
+  /** The name of the run last chosen; undefined for the model's defaults. */
+  readonly run: string | undefined;
+  /** Restarts as a run says: its parameter values over the defaults, and when it stops. */
+  readonly chooseRun: (name: string | undefined) => void;
 }
 
 const randomSeed = (): number => Math.floor(Math.random() * 1_000_000);
+
+/** When a run stops, as a run of the model says, or as the model does without one. */
+const stopsFor = (setup: RunSetup | undefined) => ({
+  stopPeriod: setup?.stopPeriod ?? null,
+  stopWhen: setup?.stopWhen ?? null,
+});
 
 /** Parameter values from the address that the model accepts; others are dropped. */
 function acceptedParameters(
@@ -131,19 +144,45 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   const navigate = useNavigate({ from: '/models/$modelId' });
   const schema = model.parameters;
   const workbench = useWorkbench;
+  const runs = useMemo(() => model.runs ?? [], [model]);
+  const setupOf = useCallback(
+    (name: string | undefined) => runs.find((setup) => setup.name === name),
+    [runs],
+  );
+  /** A run's parameter values, then those of the address, over the defaults. */
+  const valuesFor = useCallback(
+    (setup: RunSetup | undefined, p?: WorkbenchSearch['p']) => ({
+      ...(resolveParameters(schema) as Record<string, number | string | boolean>),
+      ...(setup?.parameters as Record<string, number | string | boolean> | undefined),
+      ...acceptedParameters(schema, p),
+    }),
+    [schema],
+  );
 
   const [settings] = useState(() => new SettingsStore());
-  const [initial] = useState(() => ({
-    seed: search.seed ?? randomSeed(),
-    parameters: acceptedParameters(schema, search.p),
-    rules: decodeRules(search.r),
-  }));
+  const [initial] = useState(() => {
+    const setup = setupOf(search.run);
+    return {
+      seed: search.seed ?? randomSeed(),
+      parameters: {
+        ...(setup?.parameters as Record<string, number | string | boolean> | undefined),
+        ...acceptedParameters(schema, search.p),
+      },
+      ...(setup?.stopPeriod !== undefined && { stopPeriod: setup.stopPeriod }),
+      ...(setup?.stopWhen !== undefined && { stopWhen: setup.stopWhen }),
+      rules: decodeRules(search.r),
+    };
+  });
+  // The run chosen is in the address, which always reproduces the current run.
+  const run = setupOf(search.run)?.name;
   const runnerRef = useRef<Runner | undefined>(undefined);
   const firstRules = useRef<Record<string, ScapeSettings> | undefined>(initial.rules);
 
   const runner = useRunner(model, {
     seed: initial.seed,
     parameters: initial.parameters,
+    ...(initial.stopPeriod !== undefined && { stopPeriod: initial.stopPeriod }),
+    ...(initial.stopWhen !== undefined && { stopWhen: initial.stopWhen }),
     onRoot: (created) => {
       const previous = runnerRef.current?.root;
       settings.attach(created);
@@ -166,7 +205,7 @@ export function useSession(entry: ManifestModel, model: Model): Session {
   // What this session last wrote to the address, to tell its own changes from back and forward.
   const written = useRef<string | undefined>(undefined);
   const key = (s: WorkbenchSearch): string =>
-    JSON.stringify([s.seed ?? null, s.p ?? {}, s.r ?? {}]);
+    JSON.stringify([s.seed ?? null, s.run ?? null, s.p ?? {}, s.r ?? {}]);
 
   const [charts, setChartsState] = useState<ChartCustomizations>(
     () => search.c ?? readLocal(`charts:${entry.id}`, NO_CUSTOMIZATIONS),
@@ -182,13 +221,14 @@ export function useSession(entry: ManifestModel, model: Model): Session {
       const c = extra.c ?? charts;
       return compact({
         seed: runner.root.seed,
+        run: 'run' in extra ? extra.run : run,
         p: Object.keys(p).length > 0 ? p : undefined,
         r: encodeRules(settings.chosen),
         c: c.added.length > 0 || Object.keys(c.changed).length > 0 ? c : undefined,
         view: 'view' in extra ? extra.view : search.view,
       });
     },
-    [schema, runner, settings, charts, search.view],
+    [schema, runner, settings, charts, search.view, run],
   );
 
   const write = useCallback(
@@ -216,18 +256,19 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     }
     if (wanted === written.current) return;
     written.current = wanted;
-    const parameters = {
-      ...(resolveParameters(schema) as Record<string, number | string | boolean>),
-      ...acceptedParameters(schema, search.p),
-    };
+    const setup = setupOf(search.run);
     settings.reset(runner.root);
     firstRules.current = decodeRules(search.r);
     try {
-      runner.restart({ seed: search.seed ?? runner.root.seed, parameters });
+      runner.restart({
+        seed: search.seed ?? runner.root.seed,
+        parameters: valuesFor(setup, search.p),
+        ...stopsFor(setup),
+      });
     } catch {
       // Leave the current run; the address was not usable.
     }
-  }, [search, schema, runner, settings]);
+  }, [search, runner, settings, setupOf, valuesFor]);
 
   const parameters = useParameterController(model, runner, {
     onLiveChange: (name, value, current) => {
@@ -304,6 +345,21 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     [runner, parameters, write],
   );
 
+  const chooseRun = useCallback(
+    (name: string | undefined) => {
+      const setup = setupOf(name);
+      try {
+        runner.restart({ parameters: valuesFor(setup), ...stopsFor(setup) });
+      } catch {
+        // A run the model refuses leaves the run as it was.
+        return;
+      }
+      parameters.discard();
+      write(false, { run: setup?.name });
+    },
+    [runner, parameters, setupOf, valuesFor, write],
+  );
+
   // Keep the selection only while its model runs.
   useEffect(() => {
     const selection = workbench.getState().selection;
@@ -328,6 +384,9 @@ export function useSession(entry: ManifestModel, model: Model): Session {
     reseed,
     apply,
     restartWith,
+    runs,
+    run,
+    chooseRun,
   };
 }
 

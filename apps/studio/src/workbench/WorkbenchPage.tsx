@@ -132,7 +132,18 @@ function Rail({ session }: { readonly session: Session }): ReactElement {
           <AboutPanel session={session} />
         </TabsContent>
         <TabsContent value="parameters" className="min-h-0 flex-1 outline-none">
-          <ParametersPanel controller={session.parameters} />
+          <ParametersPanel
+            controller={session.parameters}
+            runs={
+              session.runs.length > 0
+                ? {
+                    names: session.runs.map((setup) => setup.name),
+                    current: session.run,
+                    choose: session.chooseRun,
+                  }
+                : undefined
+            }
+          />
         </TabsContent>
         <TabsContent value="rules" className="min-h-0 flex-1 outline-none">
           <RulesPanel controller={session.rules} />

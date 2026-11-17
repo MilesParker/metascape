@@ -470,10 +470,20 @@ function Section({
  * transport). Grouped, filterable, with defaults marked and every change
  * resettable.
  */
+/** The model's runs, to choose one from. */
+export interface RunChoice {
+  readonly names: readonly string[];
+  /** Undefined for the model's defaults. */
+  readonly current: string | undefined;
+  readonly choose: (name: string | undefined) => void;
+}
+
 export function ParametersPanel({
   controller,
+  runs,
 }: {
   readonly controller: ParameterController;
+  readonly runs?: RunChoice | undefined;
 }): ReactElement {
   const [filter, setFilter] = useState('');
   const names = Object.keys(controller.schema);
@@ -515,8 +525,23 @@ export function ParametersPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {(names.length > LONG_LIST || controller.changed.length > 0) && (
+      {(runs || names.length > LONG_LIST || controller.changed.length > 0) && (
         <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-2">
+          {runs && (
+            <select
+              aria-label="Run"
+              value={runs.current ?? ''}
+              onChange={(event) => runs.choose(event.target.value || undefined)}
+              className="h-7 shrink-0 rounded-md border border-line bg-surface px-1.5 text-xs"
+            >
+              <option value="">Defaults</option>
+              {runs.names.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
           {names.length > LONG_LIST && (
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-faint" />

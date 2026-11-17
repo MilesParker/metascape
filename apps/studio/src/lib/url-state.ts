@@ -9,8 +9,8 @@ import type { ChartCustomizations } from '@metascape/react';
 
 /*
  * Everything that reproduces a run lives in the address: model (the path),
- * seed, parameters, rule settings, chart choices and whether it is being
- * presented. Runs are deterministic, so the same address shows the same run.
+ * seed, the run chosen, parameters, rule settings, chart choices and whether
+ * it is being presented. Runs are deterministic, so the same address shows the same run.
  */
 
 /** One scape's rule settings in the address: rule keys in order, `!` marking those switched off. */
@@ -26,6 +26,8 @@ export interface CompactScape {
 
 export interface WorkbenchSearch {
   readonly seed?: number | string | undefined;
+  /** The name of the run (of the model's runs) last chosen. */
+  readonly run?: string | undefined;
   /** Parameter values that differ from the defaults. */
   readonly p?: Readonly<Record<string, number | string | boolean>> | undefined;
   /** Rule settings of the scapes the user changed. */
@@ -115,6 +117,7 @@ export function validateWorkbenchSearch(search: Record<string, unknown>): Workbe
   const seed = search['seed'];
   const p = search['p'];
   const view = search['view'];
+  const run = search['run'];
   const params = isRecord(p)
     ? Object.fromEntries(
         Object.entries(p).filter(
@@ -133,6 +136,7 @@ export function validateWorkbenchSearch(search: Record<string, unknown>): Workbe
         : typeof seed === 'string' && seed !== ''
           ? seed
           : undefined,
+    run: typeof run === 'string' && run !== '' ? run : undefined,
     p: params && Object.keys(params).length > 0 ? (params as WorkbenchSearch['p']) : undefined,
     r: encodeRules(rules),
     c: validCharts(search['c']),
