@@ -293,6 +293,10 @@ are visible to users.
 
 ## The model format
 
+This section describes the format `@metascape/spec` had before 2026-11-17. It has since been
+replaced by the format taken from the MetaABM metamodel (`docs/metamodel-review.md`), and its
+examples rewritten in that format (`packages/spec/src/metamodel/examples`).
+
 The format in `@metascape/spec` now says what the engine says. There is no reader for the old
 field names; a model that uses them fails to parse.
 
@@ -306,8 +310,7 @@ field names; a model that uses them fails to parse.
 | stop reason `'stopWhen condition met'` | the rule's own `stop` reason                                                                                                      |
 | scape `"<model name> as a whole"`      | the scape's own name, the key in `scapes`                                                                                         |
 
-The five examples give the numbers they gave before (`packages/spec/src/examples/numbers.test.ts`
-pins them).
+The five examples gave the numbers they gave before (their tests pinned them).
 
 ## Not done
 

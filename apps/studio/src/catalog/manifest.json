@@ -429,9 +429,7 @@
       "models": [
         "data-life",
         "data-schelling",
-        "data-epidemic",
-        "data-forager",
-        "data-pursuit"
+        "data-forager"
       ]
     }
   ],
@@ -3426,8 +3424,8 @@
       "spaces": [
         "lattice"
       ],
-      "parameterCount": 2,
-      "ruleCount": 1,
+      "parameterCount": 3,
+      "ruleCount": 2,
       "thumb": {
         "file": "thumbs/data-life.png",
         "width": 40,
@@ -3447,34 +3445,13 @@
       "spaces": [
         "lattice"
       ],
-      "parameterCount": 4,
+      "parameterCount": 5,
       "ruleCount": 2,
       "thumb": {
         "file": "thumbs/data-schelling.png",
         "width": 30,
         "height": 30,
         "pixelated": true
-      }
-    },
-    {
-      "id": "data-epidemic",
-      "name": "Small-world epidemic",
-      "familyId": "metascape-data",
-      "summary": "Susceptible, infected, recovered on a Watts-Strogatz network.",
-      "description": "Susceptible, infected, recovered on a Watts-Strogatz network.",
-      "tags": [
-        "model format"
-      ],
-      "spaces": [
-        "network"
-      ],
-      "parameterCount": 8,
-      "ruleCount": 4,
-      "thumb": {
-        "file": "thumbs/data-epidemic.png",
-        "width": 192,
-        "height": 192,
-        "pixelated": false
       }
     },
     {
@@ -3496,27 +3473,6 @@
         "width": 40,
         "height": 40,
         "pixelated": true
-      }
-    },
-    {
-      "id": "data-pursuit",
-      "name": "Pursuit",
-      "familyId": "metascape-data",
-      "summary": "Chasing and fleeing in a continuous space.",
-      "description": "Chasing and fleeing in a continuous space.",
-      "tags": [
-        "model format"
-      ],
-      "spaces": [
-        "plane"
-      ],
-      "parameterCount": 8,
-      "ruleCount": 6,
-      "thumb": {
-        "file": "thumbs/data-pursuit.png",
-        "width": 192,
-        "height": 192,
-        "pixelated": false
       }
     }
   ]

@@ -2,11 +2,14 @@
 
 Status: 2026-11-17. Work items 2 to 4 (the format, its checker, the core library with its
 function implementations, and the interpreter) are implemented in `packages/spec/src/metamodel`,
-exported as `@metascape/spec/metamodel` (`compileModel`). Work item 5, the translation from
+and are `@metascape/spec` (`compileModel`); the earlier format is gone. Work item 5, the translation from
 `.metaabm` files, is implemented in `packages/spec/src/metaabm` (`@metascape/spec/metaabm`), with
 the twelve Escape examples and their translations in `packages/spec/examples`. All twelve run in
 the interpreter, and they are the AMP models of the catalogue (`packages/models/src/amp`) in
-place of the code ports; StupidModel5's Java method is ported by hand beside it (R21).
+place of the code ports; StupidModel5's Java method is ported by hand beside it (R21). Of the
+earlier format's five examples, Life, Schelling and Foragers are rewritten in the format; the
+small-world Epidemic and Pursuit are left out, since they need what the format does not have
+(see [Ambiguities](#ambiguities)).
 
 ## Why
 
@@ -23,7 +26,7 @@ missing much of what MetaABM has. The plan:
 4. Import the AMP examples. The `.metaabm` files are the source of truth. The code ports in
    `packages/models/src/amp` are deleted, not compared against.
 
-This replaces the current format; it does not extend it. The current format is a nested,
+This replaces the earlier format; it does not extend it. The earlier format was a nested,
 statement-style language (`set`, `let`, `if`, `forEach`, expression trees). MetaABM is a graph of
 acts that selections flow through. The two don't sit well together, and the second is what the
 models are written in.
@@ -58,18 +61,18 @@ for each, under [Review items](#review-items).
 | `IID` (`label`, `ID`)                                          | key + `label`                                                                                          | IDs are unique model-wide in MetaABM, but in practice act IDs repeat across agents (`rootActGroup`, `bugRule`) (**R1**).                                                                      |
 | `SNamed` (`pluralLabel`, `description`)                        | same fields                                                                                            |                                                                                                                                                                                               |
 | `SAttributed.attributes`                                       | `attributes` record                                                                                    |                                                                                                                                                                                               |
-| `SAttribute`                                                   | attribute: `type`, `default`, `gatherData`, `units`, `immutable`, `derived`                            | `defaultValue` is a string in the ecore; the format stores a typed literal. The current format's `initial` expression goes, since initial values are set by Initialize acts.                  |
-| `SAttributeType`                                               | `boolean`, `integer`, `real`, `symbol`                                                                 | `UNDEFINED` and `NUMERIC` are only for function prototypes (polymorphic arguments); models may not use them. `symbol` is new compared with the current format (8 uses in the examples).       |
+| `SAttribute`                                                   | attribute: `type`, `default`, `gatherData`, `units`, `immutable`, `derived`                            | `defaultValue` is a string in the ecore; the format stores a typed literal. The earlier format's `initial` expression goes, since initial values are set by Initialize acts.                  |
+| `SAttributeType`                                               | `boolean`, `integer`, `real`, `symbol`                                                                 | `UNDEFINED` and `NUMERIC` are only for function prototypes (polymorphic arguments); models may not use them. `symbol` is new compared with the earlier format (8 uses in the examples).       |
 | `SAttributeArray` (`size`)                                     | —                                                                                                      | No array type (**R3**).                                                                                                                                                                       |
 | `SState`, `SStateValue`, `defaultOption`                       | state attribute with `options` (each labelled and described) and `defaultOption`                       |                                                                                                                                                                                               |
-| Context attributes                                             | the model's parameters                                                                                 | In MetaABM a context's attributes are its parameters. The current format's separate `parameters` block goes. Its `min`/`max` (used by Studio's sliders) have no MetaABM counterpart (**R4**). |
+| Context attributes                                             | the model's parameters                                                                                 | In MetaABM a context's attributes are its parameters. The earlier format's separate `parameters` block goes. Its `min`/`max` (used by Studio's sliders) have no MetaABM counterpart (**R4**). |
 | `SAgent` (`attributes`, `rootActivity`, `styles`, `children`)  | agent: `attributes`, `acts` (a group), `styles`, `extensions`                                          | (**R5**)                                                                                                                                                                                      |
 | `SContext` (`agents`, `projections`, `valueLayers`, `library`) | context: everything an agent has, plus `agents` (which may include contexts), `projections`, `library` | The root of a model is a context, as in Ascape where the model is the root scape. Nesting fixes the "agents that own their own scapes" gap (EpidemicRegional).                                |
 | `SProjection`                                                  | projection, with `attributes`                                                                          | Projections have attributes, which hold their sizes (`width`, `height`).                                                                                                                      |
 | `SNDimensional` (`dimensionality`, `borderRule`)               | `dimensions` (ordered size attributes), `borderRule`                                                   | Dimensionality is the number of size attributes (**R3**).                                                                                                                                     |
 | `SBorderRule`                                                  | `periodic`, `sticky`                                                                                   | Strict and bouncy are Repast-only and dropped (**R6**).                                                                                                                                       |
 | `SContinuousSpace`                                             | continuous space                                                                                       |                                                                                                                                                                                               |
-| `SGrid` (`multiOccupant`, `neighborhood`)                      | grid                                                                                                   | `neighborhood`: `euclidean`, `moore`, `vonNeumann`. Euclidean is new compared with the current format.                                                                                        |
+| `SGrid` (`multiOccupant`, `neighborhood`)                      | grid                                                                                                   | `neighborhood`: `euclidean`, `moore`, `vonNeumann`. Euclidean is new compared with the earlier format.                                                                                        |
 | `SNetwork` (`directed`)                                        | network                                                                                                |                                                                                                                                                                                               |
 | `SGeography`                                                   | geography                                                                                              | Not used by any example. Kept in the format; the interpreter rejects it for now (**R7**).                                                                                                     |
 | `SValueLayer`                                                  | —                                                                                                      | Only a name, unused (**R7**).                                                                                                                                                                 |
@@ -80,7 +83,7 @@ for each, under [Review items](#review-items).
 Membership in projections comes from the builder acts, not from the agent. `ABuildGrid.agents`
 lists the agents that may occupy a grid and `fillAgent` its cells; `ABuildNetwork.agents` and
 `ABuildSpace.agents` work the same way. So an agent can be in a grid and a network at once, which
-fixes that gap. The current format's `agent.space` and `as: cell | occupant` go.
+fixes that gap. The earlier format's `agent.space` and `as: cell | occupant` go.
 
 ## Functions
 
@@ -342,7 +345,9 @@ increment]`), linked sweeps together, and incorporated other run files. ATest (`
   `.apar` file (`"Stop Period"=100`).
 
 Stopping on a condition (rather than at a period) has no counterpart in AMP. Where it belongs, in
-a run spec or in the model, is still open.
+a run spec or in the model, is still open. The earlier format's examples stopped on conditions
+(Schelling once everyone is happy, Foragers once none is left); their rewrites run on until this
+is settled.
 
 **R25. Licence and provenance.** _Decided:_ the format credits its origin plainly, in the
 spec package's README and source headers, and in `NOTICE`. The metamodel began as "score", a
@@ -599,6 +604,43 @@ The catalogue (`packages/models/src/amp`), decided while replacing the code port
   same-age-neighbour measure was an addition. Markets charts firm prices, earnings and trader
   funds, not the port's count of instruments with a holder, which was an addition too.
 
+The examples written for Metascape (`packages/spec/src/metamodel/examples`), rewritten from the
+earlier format. What that format had and this one does not was not added; where an example
+needed it, the example was left out or does without, as listed:
+
+- **Left out: the small-world Epidemic.** Its network was made by a generator
+  (`initial: { topology: 'smallWorld', k, probability }`), which the format does not have: networks
+  are built by connect acts (R20). Each day a few people dropped one contact and met a stranger;
+  a disconnect removes every link of an agent (as `clearNeighbors` did), so dropping one link has
+  no counterpart either.
+- **Left out: Pursuit.** Prey and hunters in a continuous space moved by a heading and a speed
+  (`moveBy` with `dx` and `dy`, `moveToward` a given distance, fleeing as a negative distance).
+  A move goes to a chosen agent, or one unit toward or away from it (`toward`, `away`); there is
+  no move by a vector or a speed.
+- **Stopping on a condition** (R24). Schelling stopped once everyone was happy and Foragers once no
+  forager was left. The rewrites do not stop; their tests check that everyone ends up happy
+  rather than that the run stops.
+- **Aggregates** (`count`, `mean`, `max` over a selection) are flows: every agent of an `all`
+  selection flows on to a set that adds one (Life's live neighbours, Schelling's neighbours and
+  neighbours of the same group), after a set that clears the count. A share is one count over the
+  other, and zero with no neighbours, as the earlier format's mean of nothing was.
+- **Life's synchronous rule** is two rules, Count and Update. Rules run across every cell before
+  the next starts (R14), so every cell counts before any changes, and the order cells act in does
+  not matter (tested).
+- **Grid sizes** are the space's own attributes (`world.width`, `world.height`), not one `size`
+  parameter, and Schelling's number of residents is worked out by evaluates in its build act.
+- **Foragers.** A forager moves to the free neighbouring patch with the most food among those with
+  more than its own, which is the earlier version's move. It halves its energy only when a child
+  is born; the earlier version halved it whenever it had enough, child or not. The "Show foragers"
+  parameter hid the foragers in the view; a style cannot hide an agent, and the parameter is gone.
+  The test that a grid too small for the foragers gave an error is gone: the interpreter places
+  the foragers it can, as Ascape did.
+- **Charts** of the examples are curation (R24), held by Studio's "Written as data" family
+  (`apps/studio/src/catalog/data-family.ts`), not by the model.
+- **Numbers.** The rewrites give numbers close to the earlier versions' (Foragers about 390 at
+  period 180 in both; Schelling settles at a share of about 0.75 of similar neighbours), not the
+  same ones: random draws are made in other places and orders. Their numbers are pinned again.
+
 Core library:
 
 - `not` takes a boolean. Its prototype has no type in `core_library.metaabm`, which makes it the
@@ -660,8 +702,11 @@ Checking:
    generated translation beside each (`packages/spec/examples/escape`, regenerated by `npm run
 translate-examples`). The AMP models of the catalogue are these translations, run by the
    interpreter; the code ports in `packages/models/src/amp` are deleted except SIR's (R10), and
-   StupidModel5's Java method is ported beside its example. _Done._ Still to do: rewrite the five
-   hand-written spec examples in the new format, point Studio at them, and remove the old format.
+   StupidModel5's Java method is ported beside its example. The earlier format's examples are
+   rewritten in the format where it can hold them (Life, Schelling, Foragers, in
+   `packages/spec/src/metamodel/examples`), Studio's "Written as data" family runs them, and the
+   earlier format is removed: `@metascape/spec` is the format. Epidemic and Pursuit are left out
+   (Ambiguities). _Done._
 
 7. **Run specs and curation** (R24), after the examples run: port APar and ATest, and move charts
    into the curation model.

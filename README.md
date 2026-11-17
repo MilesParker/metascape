@@ -18,7 +18,7 @@ from Ascape and Eclipse AMP, ported with their provenance. Open work is listed i
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------- |
 | `packages/engine` | `@metascape/engine` | Headless engine: scapes and their spaces, rules, statistics, views, run control       |
 | `packages/models` | `@metascape/models` | The model catalogue: 25 families, 126 models (see below)                              |
-| `packages/spec`   | `@metascape/spec`   | Models as data: typed format, checker, interpreter and five examples                  |
+| `packages/spec`   | `@metascape/spec`   | Models as data: the format taken from MetaABM, checker, interpreter and examples      |
 | `packages/react`  | `@metascape/react`  | Views, charts, run controls, rule and chart editing, a model runner                   |
 | `apps/studio`     | `@metascape/studio` | Browser app: a Library to find models and a Workbench to run, inspect and change them |
 
@@ -124,8 +124,8 @@ Changing `Array2DMoore` to `Array2DVonNeumann` changes the neighbourhood and not
 engine realises the three abstractions of Ascape is set out in
 [docs/architecture.md](docs/architecture.md).
 
-The same model can be written purely as data in the `@metascape/spec` format; see
-`packages/spec/src/examples`.
+The same model can be written purely as data in the `@metascape/spec` format, which is taken
+from the MetaABM metamodel of Eclipse AMP; see `packages/spec/src/metamodel/examples/life.ts`.
 
 ## Principles
 

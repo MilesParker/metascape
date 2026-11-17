@@ -2,13 +2,14 @@
 import { RootScape, type Model } from '@metascape/engine';
 import { catalog } from '@metascape/models';
 import { isModelScape, latticeOf } from '@metascape/react';
-import { compileModel, exampleSpecs } from '@metascape/spec';
+import { compileCurated } from '@metascape/models/curation';
+import { examples } from '@metascape/spec';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { DATA_FAMILY } from './data-family';
+import { DATA_CURATION, DATA_FAMILY, dataModelId } from './data-family';
 import { slug } from './slug';
 import { renderThumbnail, type Picture } from './thumbnail';
 import type { Manifest, ManifestFamily, ManifestModel, SpaceKind } from './types';
@@ -148,13 +149,13 @@ function build(withPictures: boolean): Built {
     );
   }
   const dataIds: string[] = [];
-  for (const [key, spec] of Object.entries(exampleSpecs)) {
-    const id = `data-${slug(key)}`;
+  for (const [key, model] of Object.entries(examples)) {
+    const id = dataModelId(key);
     dataIds.push(id);
     models.push(
       describeModel(
         id,
-        compileModel(spec),
+        compileCurated(model, DATA_CURATION[key]),
         DATA_FAMILY.id,
         DATA_FAMILY.tags,
         withPictures,

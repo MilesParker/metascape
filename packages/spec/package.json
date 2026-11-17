@@ -1,13 +1,12 @@
 {
   "name": "@metascape/spec",
   "version": "0.0.0",
-  "description": "A strongly typed, declarative format for agent-based models, with a checker and an interpreter for the Metascape engine.",
+  "description": "The Metascape model format, taken from the MetaABM metamodel: a typed schema, a checker, the core function library and an interpreter for the Metascape engine.",
   "license": "EPL-2.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./metamodel": "./src/metamodel/index.ts",
     "./metaabm": "./src/metaabm/index.ts",
     "./examples/escape/*": "./examples/escape/*"
   },
