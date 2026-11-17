@@ -1,0 +1,6 @@
+model "TestModel.metaabm"
+"Stop Period"=100
+"Test Symbol"="Hello"
+"Test Float"=1.234
+"Test int"=1234
+"Test Boolean"=false

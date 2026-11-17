@@ -6,7 +6,7 @@ import { compileModel } from '../interpreter';
 import { InterpScape, isHolder, type Holder } from '../runtime';
 import { parseModel } from '../schema';
 import type { Model } from '../types';
-import { examples, forager, life, schelling } from './index';
+import { examples, forager, foragerRun, life, schelling, schellingRun } from './index';
 
 type Parameters = Record<string, number | boolean | string>;
 
@@ -129,18 +129,26 @@ describe('life', () => {
 });
 
 describe('schelling', () => {
-  it('conserves residents, keeps one per site, and everyone ends up happy', () => {
-    const root = start(schelling, 2);
+  it('conserves residents, keeps one per site, and stops once everyone is happy', () => {
+    const root = new RootScape(compileModel(schelling, { runSpec: schellingRun }), { seed: 2 });
     const sites = agentsOf(root, 'site') as HostCell[];
     const total = agentsOf(root, 'resident').length;
     expect(total).toBe(Math.floor(0.85 * 30 * 30));
-    while (root.data.latest('resident.happy') < total && root.period < 500) {
+    while (!root.stopped && root.period < 500) {
       root.iterate();
       expect(agentsOf(root, 'resident')).toHaveLength(total);
       expect(sites.every((site) => site.occupants.length <= 1)).toBe(true);
       expect(sites.filter((site) => !site.isAvailable)).toHaveLength(total);
     }
+    expect(root.stopped).toBe(true);
+    expect(root.stopReason).toBe('Residents not happy = 0');
     expect(root.data.latest('resident.happy')).toBe(total);
+    expect(
+      root.data
+        .values('resident.happy')
+        .slice(0, -1)
+        .every((happy) => happy < total),
+    ).toBe(true);
     expect(root.data.values('resident.similar.mean')[0]).toBe(0);
     expect(root.data.latest('resident.similar.mean')).toBeGreaterThan(0.6);
   });
@@ -171,6 +179,25 @@ describe('forager', () => {
     }
     expect(births).toBeGreaterThan(0);
     expect(deaths).toBeGreaterThan(0);
+  });
+
+  it('stops once no forager is left', () => {
+    const model = compileModel(forager, { runSpec: foragerRun });
+    const root = new RootScape(model, { seed: 3, parameters: { metabolism: 10, immigration: 0 } });
+    root.run(500);
+    expect(root.stopped).toBe(true);
+    expect(root.stopReason).toBe('Foragers = 0');
+    expect(root.data.latest('forager.count')).toBe(0);
+    expect(
+      root.data
+        .values('forager.count')
+        .slice(0, -1)
+        .every((count) => count > 0),
+    ).toBe(true);
+    // With its defaults it runs on.
+    const lasting = new RootScape(model, { seed: 3 });
+    lasting.run(200);
+    expect(lasting.stopped).toBe(false);
   });
 
   it('has no child when no neighbouring patch is free', () => {

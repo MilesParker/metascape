@@ -1,0 +1,4 @@
+model "TestModel.metaabm"
+incorporates "Test.apar"
+"Test Symbol"="Goodbye"
+"Test int"=111

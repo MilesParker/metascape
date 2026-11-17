@@ -99,6 +99,15 @@ export interface Model<S extends ParameterSchema = ParameterSchema> {
   /** Readable names for agent fields shown by inspectors; `null` hides a field. */
   readonly fields?: Readonly<Record<string, string | null>>;
   readonly parameters: S;
+  /**
+   * Ways to run the model that tools offer to choose from, such as the run
+   * specs of an AMP model: parameter values, and when to stop.
+   */
+  readonly runs?: readonly RunSetup<S>[];
+  /** Where a run stops when it is not told otherwise (see {@link RootOptions}). */
+  readonly stopPeriod?: number;
+  /** When a run stops when it is not told otherwise (see {@link RootOptions}). */
+  readonly stopWhen?: readonly StopCondition<S>[];
   build(root: RootScape<S>): void;
   /**
    * Further views of a run, besides those `build` adds to scapes with
@@ -113,13 +122,34 @@ export function defineModel<const S extends ParameterSchema>(model: Model<S>): M
   return model;
 }
 
+/**
+ * A condition that ends a run: checked at the end of every period, once the
+ * period's statistics are collected.
+ */
+export interface StopCondition<S extends ParameterSchema = ParameterSchema> {
+  /** Why the run stopped, when it did because of this, such as "Foragers = 0". */
+  readonly reason: string;
+  holds(root: RootScape<S>): boolean;
+}
+
+/** A way to run a model: parameter values and when to stop. */
+export interface RunSetup<S extends ParameterSchema = ParameterSchema> {
+  readonly name: string;
+  /** Values for the model's parameters, in place of their defaults. */
+  readonly parameters?: Partial<ParameterValues<S>>;
+  readonly stopPeriod?: number;
+  readonly stopWhen?: readonly StopCondition<S>[];
+}
+
 export interface RootOptions<S extends ParameterSchema> {
   /** Determines every random choice in the run. Default: a fresh seed, kept in `root.seed`. */
   readonly seed?: number | string;
   /** Values for the model's parameters, in place of their defaults. */
   readonly parameters?: Partial<ParameterValues<S>>;
-  /** Stop automatically once this period has been reached. */
+  /** Stop automatically once this period has been reached. Default: the model's. */
   readonly stopPeriod?: number;
+  /** Stop at the end of the first period in which one of these holds. Default: the model's. */
+  readonly stopWhen?: readonly StopCondition<S>[];
   /** Keep every period's statistics (default) or only the latest. */
   readonly history?: boolean;
 }
@@ -171,6 +201,7 @@ export class RootScape<S extends ParameterSchema = ParameterSchema> extends Scap
   /** The period the model starts at. */
   readonly startPeriod: number;
   readonly stopPeriod: number | undefined;
+  readonly stopWhen: readonly StopCondition<S>[];
   /** The model's data: a series for everything its scapes collect. */
   readonly data: DataGroup;
 
@@ -195,7 +226,8 @@ export class RootScape<S extends ParameterSchema = ParameterSchema> extends Scap
     // The only use of ambient entropy: choosing a seed when none is given.
     // eslint-disable-next-line no-restricted-properties
     this.seed = options.seed ?? Math.floor(Math.random() * 0x1_0000_0000);
-    this.stopPeriod = options.stopPeriod;
+    this.stopPeriod = options.stopPeriod ?? model.stopPeriod;
+    this.stopWhen = options.stopWhen ?? model.stopWhen ?? [];
     const scale = model.period;
     this.startPeriod = scale?.startOf ? scale.startOf(this.#parameters) : (scale?.start ?? 0);
     this.data = new DataGroup(options.history === undefined ? {} : { history: options.history });
@@ -287,7 +319,9 @@ export class RootScape<S extends ParameterSchema = ParameterSchema> extends Scap
       this.execute(EXECUTE_RULES_RULE);
       this.#collect();
       this.execute(NOTIFY_RULES.scapeIterated);
-      if (this.stopPeriod !== undefined && this.period >= this.stopPeriod) {
+      const condition = this.stopWhen.find((c) => c.holds(this));
+      if (condition) this.stop(condition.reason);
+      else if (this.stopPeriod !== undefined && this.period >= this.stopPeriod) {
         this.stop('stopPeriod reached');
       }
     } finally {

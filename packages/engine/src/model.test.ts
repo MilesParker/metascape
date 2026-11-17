@@ -313,6 +313,29 @@ describe('run control and listeners', () => {
     expect(events).toEqual(['init@0', 'step@1', 'step@2', 'stop@2']);
   });
 
+  it('stops at the end of the first period in which a stop condition holds', () => {
+    const model = hosting(() => walkers(1).addRule('move', (walker) => walker.position++));
+    const checked: number[] = [];
+    const root = new RootScape(model, {
+      stopPeriod: 10,
+      stopWhen: [
+        {
+          reason: 'Third period',
+          holds: (r) => {
+            checked.push(r.period);
+            return r.period === 3;
+          },
+        },
+      ],
+    });
+    expect(root.run(10)).toBe(3);
+    expect(root.stopReason).toBe('Third period');
+    expect(checked).toEqual([1, 2, 3]);
+    const defaults = { ...model, stopPeriod: 2, stopWhen: [] };
+    expect(new RootScape(defaults).run(10)).toBe(2);
+    expect(new RootScape(defaults, { stopPeriod: 4 }).run(10)).toBe(4);
+  });
+
   it('lets a rule stop the run after the current iteration', () => {
     const model = hosting(() =>
       walkers(3).addRule(

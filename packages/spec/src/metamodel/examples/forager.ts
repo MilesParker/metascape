@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
+import type { RunSpec } from '../../runspec/types';
 import type { Model } from '../types';
 
 const real = (value: number) => ({ literal: value, type: 'real' as const });
@@ -465,4 +466,12 @@ export const forager: Model = {
       },
     },
   },
+};
+
+/** The Foragers' run: it stops once no forager is left (R24, proposed). */
+export const foragerRun: RunSpec = {
+  schemaVersion: 1,
+  id: 'foragers',
+  model: 'foragers',
+  stopWhen: [{ measure: 'count', agent: 'forager', min: 0, max: 0 }],
 };

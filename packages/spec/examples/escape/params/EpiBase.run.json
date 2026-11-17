@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "id": "EpiBase",
+  "model": "epidemic",
+  "stopPeriod": 500
+}

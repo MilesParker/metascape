@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metaabm:SContext xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:act="http://metaabm.org/act" xmlns:metaabm="http://metaabm.org/metaabm.org/structure" label="Test Context" ID="testContext" pluralLabel="Test Contexts">
+  <attributes label="Test Boolean" ID="testBoolean" pluralLabel="Test Booleans"/>
+  <attributes label="Test int" ID="testint" pluralLabel="Test ints" sType="INTEGER"/>
+  <attributes label="Test Symbol" ID="testSymbol" pluralLabel="Test Symbols" sType="SYMBOL"/>
+  <attributes label="Test Float" ID="testFloat" pluralLabel="Test Floats" sType="REAL"/>
+  <rootActivity xsi:type="act:AGroup" label="Root Act Group" ID="rootActGroup" pluralLabel="Root Act Groups"/>
+  <implementation package="org.eclipse.amp.amf.parameters.test" className="TestContext" basePath=""/>
+</metaabm:SContext>

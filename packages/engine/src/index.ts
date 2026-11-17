@@ -31,6 +31,8 @@ export {
   type PeriodScale,
   type Provenance,
   type RootOptions,
+  type RunSetup,
+  type StopCondition,
 } from './root';
 export {
   type ExecutionOrder,

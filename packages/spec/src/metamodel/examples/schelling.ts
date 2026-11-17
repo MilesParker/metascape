@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
+import type { RunSpec } from '../../runspec/types';
 import type { Model } from '../types';
 
 const rgb = (r: number, g: number, b: number) => [
@@ -383,4 +384,14 @@ export const schelling: Model = {
       },
     },
   },
+};
+
+/** Schelling's run: it stops once every resident is happy (R24, proposed). */
+export const schellingRun: RunSpec = {
+  schemaVersion: 1,
+  id: 'schelling',
+  model: 'schelling',
+  stopWhen: [
+    { measure: 'count', agent: 'resident', attribute: 'happy', qualifier: false, min: 0, max: 0 },
+  ],
 };

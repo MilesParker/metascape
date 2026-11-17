@@ -16,6 +16,7 @@ import {
   networkView,
   Scape,
   stat,
+  timeSeriesView,
   type Agent,
   type Cell,
   type Color,
@@ -26,6 +27,18 @@ import {
   type Rule,
   type Space,
 } from '@metascape/engine';
+import type { Curation } from '../curation/types';
+import { assertNoErrors, checkCuration, checkRunSpec } from '../runspec/check';
+import { agentAt, measuredAttributes, measurementLabel, seriesOf } from '../runspec/measure';
+import {
+  lookupIn,
+  resolveRunSpec,
+  runSetups,
+  runsOf,
+  stopConditions,
+  type RunSpecLookup,
+} from '../runspec/runs';
+import type { RunSpec } from '../runspec/types';
 import { assertValidModel } from './check';
 import { coreLibrary } from './core-library';
 import { Behaviour, holderFor, indexFunctions, type FunctionEntry } from './flows';
@@ -54,13 +67,32 @@ import {
   type Holder,
   type SpaceInstance,
 } from './runtime';
-import type { Constant, Library, Model } from './types';
+import type { AttributeRef, Constant, Library, Model } from './types';
 
 export interface CompileOptions {
   /** The function library sinks refer to. Default: the core library. */
   readonly library?: Library;
   /** Implementations of the library's functions, by ID, in addition to (or in place of) the core ones. */
   readonly functions?: Readonly<Record<string, FunctionImplementation>>;
+  /**
+   * What to look at (R24): its measures and the series of its charts are
+   * recorded whether or not the model gathers them, and its charts are views
+   * of the model.
+   */
+  readonly curation?: Curation;
+  /**
+   * The model's run specs (R24), offered as its runs (`runs` of the engine
+   * model), one per run of each. What they stop on is recorded.
+   */
+  readonly runSpecs?: readonly RunSpec[];
+  /**
+   * The run spec the model runs by when no other is chosen (R24): its values
+   * become the parameters' defaults, and its stop period and stop conditions
+   * the model's. It must describe one run, not a sweep.
+   */
+  readonly runSpec?: RunSpec;
+  /** Finds run specs the given ones incorporate. Default: among `runSpecs` and `runSpec`. */
+  readonly runSpecLookup?: RunSpecLookup;
 }
 
 /** Default colours of agents without a style, by agent type. */
@@ -97,6 +129,77 @@ const num = (value: Datum): number =>
 export function compileModel(model: Model, options: CompileOptions = {}): EngineModel {
   const library = options.library ?? coreLibrary;
   assertValidModel(model, library);
+  const { curation, runSpec } = options;
+  const specs = options.runSpecs ?? [];
+  const all = runSpec ? [...specs, runSpec] : specs;
+  const lookup = options.runSpecLookup ?? lookupIn(all);
+  if (curation) assertNoErrors(checkCuration(curation, model));
+  for (const spec of all) assertNoErrors(checkRunSpec(spec, model, lookup));
+  const own = runSpec && runsOf(runSpec, lookup);
+  if (runSpec && own?.length !== 1) {
+    throw new Error(`The run spec ${runSpec.id} describes ${own?.length} runs, not one`);
+  }
+  const run = own?.[0];
+  const recorded = measuredAttributes([
+    ...(curation?.measures ?? []),
+    ...(curation?.charts ?? []).flatMap((chart) => chart.series),
+    ...specs.flatMap((spec) => resolveRunSpec(spec, lookup).stopWhen),
+    ...(run?.stopWhen ?? []),
+  ]);
+  const charts = curation?.charts ?? [];
+  const runs = runSetups(model, specs, lookup);
+  const compiled = compileChecked(
+    recorded.length > 0 ? gathering(model, recorded) : model,
+    options,
+  );
+  return {
+    ...compiled,
+    ...(run && {
+      parameters: Object.fromEntries(
+        Object.entries(compiled.parameters).map(([name, parameter]) => [
+          name,
+          name in run.parameters ? { ...parameter, default: run.parameters[name] } : parameter,
+        ]),
+      ) as ParameterSchema,
+      ...(run.stopPeriod !== undefined && { stopPeriod: run.stopPeriod }),
+      ...(run.stopWhen.length > 0 && { stopWhen: stopConditions(model, run.stopWhen) }),
+    }),
+    ...(runs.length > 0 && { runs }),
+    ...(charts.length > 0 && {
+      views: () =>
+        charts.map((chart) => {
+          const ids = chart.series.map((m) => {
+            const series = seriesOf(model, m);
+            return series && 'id' in series ? series.id : '';
+          });
+          return timeSeriesView({
+            title: chart.title,
+            series: ids,
+            labels: Object.fromEntries(
+              chart.series.map((m, i) => [ids[i]!, m.label ?? measurementLabel(model, m)]),
+            ),
+            ...(chart.yMin !== undefined && { yMin: chart.yMin }),
+            ...(chart.yMax !== undefined && { yMax: chart.yMax }),
+            ...(chart.yLabel !== undefined && { yLabel: chart.yLabel }),
+          });
+        }),
+    }),
+  };
+}
+
+/** A copy of a model that gathers data on the given attributes too. */
+function gathering(model: Model, refs: readonly AttributeRef[]): Model {
+  const copy = JSON.parse(JSON.stringify(model)) as Model;
+  for (const ref of refs) {
+    const dot = ref.lastIndexOf('.');
+    const attribute = agentAt(copy, ref.slice(0, dot))?.attributes?.[ref.slice(dot + 1)];
+    if (attribute) attribute.gatherData = true;
+  }
+  return copy;
+}
+
+function compileChecked(model: Model, options: CompileOptions): EngineModel {
+  const library = options.library ?? coreLibrary;
   const index = indexModel(model);
   const functions = indexFunctions(library, { ...coreFunctions, ...options.functions });
   compileBehaviours(index, functions, indexConstants(library));

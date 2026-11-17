@@ -1,0 +1,3 @@
+model "../TestModel.metaabm"
+incorporates "../Test.apar"
+"Test Symbol"="Ola"

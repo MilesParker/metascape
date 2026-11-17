@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "EpidemicRegional",
+  "model": "region",
+  "parameters": [
+    {
+      "kind": "single",
+      "attribute": "initialInfectionProbability",
+      "value": 0.002
+    },
+    {
+      "kind": "single",
+      "attribute": "maxContactTransmissionProbability",
+      "value": 0.1
+    },
+    {
+      "kind": "single",
+      "attribute": "migrationProbability",
+      "value": 0.001
+    }
+  ]
+}

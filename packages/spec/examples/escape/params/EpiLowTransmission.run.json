@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "EpiLowTransmission",
+  "model": "epidemic",
+  "incorporates": [
+    "EpiBase"
+  ],
+  "parameters": [
+    {
+      "kind": "single",
+      "attribute": "minContactTransmissionProbability",
+      "value": 0
+    },
+    {
+      "kind": "single",
+      "attribute": "maxContactTransmissionProbability",
+      "value": 0.15
+    }
+  ]
+}

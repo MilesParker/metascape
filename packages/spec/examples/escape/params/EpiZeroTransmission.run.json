@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "EpiZeroTransmission",
+  "model": "epidemic",
+  "stopPeriod": 500,
+  "parameters": [
+    {
+      "kind": "single",
+      "attribute": "minContactTransmissionProbability",
+      "value": 0
+    },
+    {
+      "kind": "single",
+      "attribute": "maxContactTransmissionProbability",
+      "value": 0
+    }
+  ]
+}

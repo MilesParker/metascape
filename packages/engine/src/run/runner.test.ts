@@ -124,6 +124,24 @@ describe('Runner states', () => {
     expect(runner.state).toBe('stopped');
   });
 
+  it('keeps a stop period and stop conditions given to restart', () => {
+    const { runner } = rig({ stopPeriod: 2 });
+    runner.restart({
+      stopPeriod: null,
+      stopWhen: [{ reason: 'four', holds: (r) => r.period === 4 }],
+    });
+    while (runner.step());
+    expect(runner.root.period).toBe(4);
+    expect(runner.root.stopReason).toBe('four');
+    runner.restart({ stopPeriod: 3 });
+    while (runner.step());
+    expect(runner.root.period).toBe(3);
+    runner.restart({ stopPeriod: null, stopWhen: null });
+    for (let i = 0; i < 6; i++) runner.step();
+    expect(runner.root.period).toBe(6);
+    expect(runner.state).toBe('paused');
+  });
+
   it('a model that stops while building stops on the first frame', () => {
     const clock = new ManualClock();
     const scheduler = new ManualScheduler(clock);

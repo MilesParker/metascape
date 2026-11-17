@@ -10,3 +10,12 @@ export type {
   TranslationDiagnostic,
   TranslationKind,
 } from './translate';
+export {
+  runFileId,
+  translateApar,
+  translateAtest,
+  type AparOptions,
+  type AtestOptions,
+  type ModelResolver,
+  type RunFileTranslation,
+} from './apar';

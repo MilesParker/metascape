@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "ZeroTransmission",
+  "label": "Test that no disease transmission occurs with contact transmission set to 0.",
+  "runSpec": "EpiZeroTransmission",
+  "constraints": [
+    {
+      "measure": "count",
+      "agent": "individual",
+      "attribute": "status",
+      "qualifier": "dead",
+      "min": 0,
+      "max": 5
+    },
+    {
+      "measure": "count",
+      "agent": "individual",
+      "attribute": "status",
+      "qualifier": "exposed",
+      "min": 0,
+      "max": 10
+    },
+    {
+      "measure": "count",
+      "agent": "individual",
+      "attribute": "status",
+      "qualifier": "symptomInfectious",
+      "min": 0,
+      "max": 0
+    }
+  ]
+}

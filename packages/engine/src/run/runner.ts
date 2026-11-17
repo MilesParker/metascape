@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import { ParameterError, type ParameterSchema, type ParameterValues } from '../parameters';
-import { RootScape, type Model } from '../root';
+import { RootScape, type Model, type StopCondition } from '../root';
 import { PerformanceClock, TimeoutScheduler, type Clock, type Scheduler } from './scheduler';
 
 /** The lifecycle of a {@link Runner}. */
@@ -12,6 +12,8 @@ export interface RunnerOptions<S extends ParameterSchema> {
   readonly parameters?: Partial<ParameterValues<S>>;
   /** Passed to every root: stop automatically once this period has been reached. */
   readonly stopPeriod?: number;
+  /** Passed to every root: stop at the end of the first period in which one of these holds. */
+  readonly stopWhen?: readonly StopCondition<S>[];
   /** Target speed while running. Default 30. `Infinity` iterates as fast as the frame budget allows. */
   readonly iterationsPerSecond?: number;
   /** The most clock time one frame may spend iterating. Default 12 ms. */
@@ -37,6 +39,10 @@ export interface RestartOverrides<S extends ParameterSchema> {
   readonly seed?: number | string;
   /** Merged over the runner's current parameter overrides, and kept for later restarts. */
   readonly parameters?: Partial<ParameterValues<S>>;
+  /** Becomes the runner's stop period from now on; `null` goes back to the model's. */
+  readonly stopPeriod?: number | null;
+  /** Become the runner's stop conditions from now on; `null` goes back to the model's. */
+  readonly stopWhen?: readonly StopCondition<S>[] | null;
 }
 
 interface Entry<T> {
@@ -88,7 +94,8 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   /** Pause when the model reaches exactly this period while running. May be changed at any time. */
   pausePeriod: number | undefined;
 
-  readonly #stopPeriod: number | undefined;
+  #stopPeriod: number | undefined;
+  #stopWhen: readonly StopCondition<S>[] | undefined;
   readonly #onRoot: ((root: RootScape) => void) | undefined;
   readonly #scheduler: Scheduler;
   readonly #clock: Clock;
@@ -115,6 +122,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     this.#seed = options.seed;
     this.#parameters = options.parameters;
     this.#stopPeriod = options.stopPeriod;
+    this.#stopWhen = options.stopWhen;
     this.#onRoot = options.onRoot;
     this.pausePeriod = options.pausePeriod;
     this.#speed = options.iterationsPerSecond ?? DEFAULT_ITERATIONS_PER_SECOND;
@@ -186,7 +194,8 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
   /**
    * Discards the root and builds a fresh one. A seed passed to the
    * constructor or here is reused; without one, each run gets a new seed.
-   * Parameter overrides are merged over earlier ones and kept. If the new
+   * Parameter overrides are merged over earlier ones and kept, as are a new
+   * stop period and stop conditions. If the new
    * root cannot be built (for example an invalid parameter) the error is
    * thrown and the runner is left untouched. Ends `ready`, or `running` if it
    * was running; frame listeners are called so views can redraw.
@@ -197,7 +206,18 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
     const parameters = overrides.parameters
       ? { ...this.#parameters, ...overrides.parameters }
       : this.#parameters;
-    const root = this.#create(seed, parameters);
+    const stopPeriod = this.#stopPeriod;
+    const stopWhen = this.#stopWhen;
+    if (overrides.stopPeriod !== undefined) this.#stopPeriod = overrides.stopPeriod ?? undefined;
+    if (overrides.stopWhen !== undefined) this.#stopWhen = overrides.stopWhen ?? undefined;
+    let root: RootScape<S>;
+    try {
+      root = this.#create(seed, parameters);
+    } catch (error) {
+      this.#stopPeriod = stopPeriod;
+      this.#stopWhen = stopWhen;
+      throw error;
+    }
     this.#seed = seed;
     this.#parameters = parameters;
     this.#root = root;
@@ -290,6 +310,7 @@ export class Runner<S extends ParameterSchema = ParameterSchema> {
       ...(seed !== undefined && { seed }),
       ...(parameters !== undefined && { parameters }),
       ...(this.#stopPeriod !== undefined && { stopPeriod: this.#stopPeriod }),
+      ...(this.#stopWhen !== undefined && { stopWhen: this.#stopWhen }),
     });
     this.#onRoot?.(root as unknown as RootScape);
     return root;

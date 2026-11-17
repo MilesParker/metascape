@@ -3,4 +3,4 @@ node_modules
 package-lock.json
 LICENSE
 apps/studio/src/catalog/manifest.json
-packages/spec/examples/escape/*.json
+packages/spec/examples/escape/**/*.json
