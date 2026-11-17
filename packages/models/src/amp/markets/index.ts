@@ -12,20 +12,36 @@ export const markets = fromMetaabm(source, {
     copyright: AMP_COPYRIGHT,
     note: "The model carries no description, author or citation. A sale disconnects the seller, which removes all of the seller's links, as the generated code did.",
   },
-  charts: [
-    {
-      title: 'Firm last price',
-      series: ['firm.lastPrice.mean', 'firm.lastPrice.min', 'firm.lastPrice.max'],
-    },
-    {
-      title: 'Firm earnings',
-      series: ['firm.lastEarnings.mean', 'firm.lastEarnings.min', 'firm.lastEarnings.max'],
-    },
-    {
-      title: 'Trader funds',
-      series: ['trader.funds.mean', 'trader.funds.min', 'trader.funds.max'],
-    },
-  ],
+  curation: {
+    schemaVersion: 1,
+    model: 'markets',
+    charts: [
+      {
+        title: 'Firm last price',
+        series: [
+          { measure: 'average', agent: 'firm', attribute: 'lastPrice' },
+          { measure: 'minimum', agent: 'firm', attribute: 'lastPrice' },
+          { measure: 'maximum', agent: 'firm', attribute: 'lastPrice' },
+        ],
+      },
+      {
+        title: 'Firm earnings',
+        series: [
+          { measure: 'average', agent: 'firm', attribute: 'lastEarnings' },
+          { measure: 'minimum', agent: 'firm', attribute: 'lastEarnings' },
+          { measure: 'maximum', agent: 'firm', attribute: 'lastEarnings' },
+        ],
+      },
+      {
+        title: 'Trader funds',
+        series: [
+          { measure: 'average', agent: 'trader', attribute: 'funds' },
+          { measure: 'minimum', agent: 'trader', attribute: 'funds' },
+          { measure: 'maximum', agent: 'trader', attribute: 'funds' },
+        ],
+      },
+    ],
+  },
 });
 
 /** The Eclipse AMP Markets model. */

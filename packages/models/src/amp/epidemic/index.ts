@@ -3,6 +3,12 @@ import epidemicSource from '@metascape/spec/examples/escape/Epidemic.model.json'
 import contactSource from '@metascape/spec/examples/escape/EpidemicContact.model.json';
 import plagueSource from '@metascape/spec/examples/escape/EpidemicPlague.model.json';
 import regionalSource from '@metascape/spec/examples/escape/EpidemicRegional.model.json';
+import base from '@metascape/spec/examples/escape/params/EpiBase.run.json';
+import high from '@metascape/spec/examples/escape/params/EpiHighTransmission.run.json';
+import low from '@metascape/spec/examples/escape/params/EpiLowTransmission.run.json';
+import zero from '@metascape/spec/examples/escape/params/EpiZeroTransmission.run.json';
+import regional from '@metascape/spec/examples/escape/params/EpidemicRegional.run.json';
+import { parseRunSpec, type Curation, type RunSpec } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
 import { AMP_COPYRIGHT, fromMetaabm } from '../metaabm';
 
@@ -16,38 +22,59 @@ const provenance = (file: string) => ({
     'Copyright 2009, Miles Parker. Released under Eclipse Public License. All uses should be attributed.',
 });
 
-const statusChart = {
-  title: 'Individuals by status',
-  series: [
-    'individual.status.susceptible',
-    'individual.status.exposed',
-    'individual.status.asymptomInfectious',
-    'individual.status.symptomInfectious',
-    'individual.status.recovered',
-    'individual.status.dead',
+/** The individuals of each status. */
+const curation: Curation = {
+  schemaVersion: 1,
+  model: 'epidemic',
+  charts: [
+    {
+      title: 'Individuals by status',
+      series: [
+        'susceptible',
+        'exposed',
+        'asymptomInfectious',
+        'symptomInfectious',
+        'recovered',
+        'dead',
+      ].map((status) => ({
+        measure: 'count' as const,
+        agent: 'individual',
+        attribute: 'status',
+        qualifier: status,
+      })),
+      yMin: 0,
+    },
   ],
-  yMin: 0,
 };
+
+/** AMP's run specs of the Epidemic model (params/*.apar), under the names Studio shows. */
+const runSpecs: RunSpec[] = [
+  { ...parseRunSpec(base), label: 'Base' },
+  { ...parseRunSpec(low), label: 'Low transmission' },
+  { ...parseRunSpec(high), label: 'High transmission' },
+  { ...parseRunSpec(zero), label: 'Zero transmission' },
+];
 
 export const epidemic = fromMetaabm(epidemicSource, {
   name: 'Epidemic (AMP)',
   description: DESCRIPTION,
   provenance: provenance('Epidemic'),
-  charts: [statusChart],
+  curation,
+  runSpecs,
 });
 
 export const epidemicContact = fromMetaabm(contactSource, {
   name: 'Epidemic (AMP): Contact',
   description: `${DESCRIPTION} This variant also records a directed network of who infected whom.`,
   provenance: provenance('EpidemicContact'),
-  charts: [statusChart],
+  curation,
 });
 
 export const epidemicPlague = fromMetaabm(plagueSource, {
   name: 'Epidemic (AMP): Plague',
   description: `${DESCRIPTION} This variant adds stationary rats and fleas that move toward the nearest rat within range; it starts with no individuals.`,
   provenance: provenance('EpidemicPlague'),
-  charts: [statusChart],
+  curation,
 });
 
 export const epidemicRegional = fromMetaabm(regionalSource, {
@@ -60,6 +87,7 @@ export const epidemicRegional = fromMetaabm(regionalSource, {
     copyright: AMP_COPYRIGHT,
     note: 'The AMP model has no description or attribution statement; the authors are taken from the other Epidemic models of the same project.',
   },
+  runSpecs: [{ ...parseRunSpec(regional), label: 'Regional' }],
 });
 
 /** The Eclipse AMP Epidemic models. */

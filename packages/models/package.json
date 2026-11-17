@@ -7,8 +7,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./loaders": "./src/loaders.ts",
-    "./curation": "./src/curation.ts"
+    "./loaders": "./src/loaders.ts"
   },
   "dependencies": {
     "@metascape/engine": "*",

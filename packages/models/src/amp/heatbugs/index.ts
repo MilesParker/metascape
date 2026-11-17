@@ -12,14 +12,27 @@ export const heatbugs = fromMetaabm(source, {
     copyright: AMP_COPYRIGHT,
     note: 'The sources name no author or publication for this model.',
   },
-  gather: ['heatCell.heat'],
-  charts: [
-    {
-      title: 'Heat bug unhappiness',
-      series: ['heatBug.unhappiness.mean', 'heatBug.unhappiness.min', 'heatBug.unhappiness.max'],
-    },
-    { title: 'Heat', series: ['heatCell.heat.mean', 'heatCell.heat.max'] },
-  ],
+  curation: {
+    schemaVersion: 1,
+    model: 'heatbugs',
+    charts: [
+      {
+        title: 'Heat bug unhappiness',
+        series: [
+          { measure: 'average', agent: 'heatBug', attribute: 'unhappiness' },
+          { measure: 'minimum', agent: 'heatBug', attribute: 'unhappiness' },
+          { measure: 'maximum', agent: 'heatBug', attribute: 'unhappiness' },
+        ],
+      },
+      {
+        title: 'Heat',
+        series: [
+          { measure: 'average', agent: 'heatCell', attribute: 'heat' },
+          { measure: 'maximum', agent: 'heatCell', attribute: 'heat' },
+        ],
+      },
+    ],
+  },
 });
 
 /** The Heatbugs example of the Eclipse AMP examples. */

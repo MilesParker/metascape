@@ -4,6 +4,7 @@ import stupidModel2Source from '@metascape/spec/examples/escape/StupidModel2.mod
 import stupidModel3Source from '@metascape/spec/examples/escape/StupidModel3.model.json';
 import stupidModel5Source from '@metascape/spec/examples/escape/StupidModel5.model.json';
 import type { Provenance } from '@metascape/engine';
+import type { Chart, Curation } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
 import { AMP_COPYRIGHT, fromMetaabm } from '../metaabm';
 
@@ -15,12 +16,24 @@ const provenance = (file: string): Provenance => ({
   copyright: AMP_COPYRIGHT,
 });
 
-const sizeChart = { title: 'Bug size', series: ['bug.size.mean', 'bug.size.max'], yMin: 0 };
-const foodChart = {
-  title: 'Food per habitat',
-  series: ['habitat.foodAvailability.mean'],
+const sizeChart: Chart = {
+  title: 'Bug size',
+  series: [
+    { measure: 'average', agent: 'bug', attribute: 'size' },
+    { measure: 'maximum', agent: 'bug', attribute: 'size' },
+  ],
   yMin: 0,
 };
+const foodChart: Chart = {
+  title: 'Food per habitat',
+  series: [{ measure: 'average', agent: 'habitat', attribute: 'foodAvailability' }],
+  yMin: 0,
+};
+const curation = (model: string, charts: Chart[]): Curation => ({
+  schemaVersion: 1,
+  model,
+  charts,
+});
 
 export const stupidModel1 = fromMetaabm(stupidModel1Source, {
   name: 'StupidModel 1',
@@ -34,8 +47,7 @@ export const stupidModel2 = fromMetaabm(stupidModel2Source, {
   description:
     'Bugs move as in StupidModel 1 and also grow by one each period; their colour fades from white to red with size.',
   provenance: provenance('StupidModel2'),
-  gather: ['bug.size'],
-  charts: [sizeChart],
+  curation: curation('stupidModel2', [sizeChart]),
 });
 
 export const stupidModel3 = fromMetaabm(stupidModel3Source, {
@@ -43,8 +55,7 @@ export const stupidModel3 = fromMetaabm(stupidModel3Source, {
   description:
     'As StupidModel 2, and every habitat also accumulates food by a draw in [0, 0.01) per period. Bugs neither eat nor look for food.',
   provenance: provenance('StupidModel3'),
-  gather: ['bug.size', 'habitat.foodAvailability'],
-  charts: [sizeChart, foodChart],
+  curation: curation('stupidModel3', [sizeChart, foodChart]),
 });
 
 export const stupidModel5 = fromMetaabm(stupidModel5Source, {
@@ -55,8 +66,7 @@ export const stupidModel5 = fromMetaabm(stupidModel5Source, {
     ...provenance('StupidModel5'),
     note: 'The food consumption is a method written in Java in the original; it is ported by hand to TypeScript (StupidModel5.ports.ts).',
   },
-  gather: ['bug.size', 'habitat.foodAvailability'],
-  charts: [sizeChart, foodChart],
+  curation: curation('stupidModel5', [sizeChart, foodChart]),
 });
 
 /** The StupidModel steps 1, 2, 3 and 5 as defined in the Eclipse AMP examples. */

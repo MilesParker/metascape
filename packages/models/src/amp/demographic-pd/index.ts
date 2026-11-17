@@ -15,14 +15,27 @@ export const demographicPd = fromMetaabm(source, {
     copyright: AMP_COPYRIGHT,
     note: "The model file's acts are what runs; the paper's variants (such as a different neighbourhood or move rule) are not part of this file.",
   },
-  charts: [
-    {
-      title: 'Players and cooperators',
-      series: ['player.count', 'player.cooperate'],
-      yMin: 0,
-    },
-    { title: 'Player wealth and age', series: ['player.wealth.mean', 'player.age.mean'] },
-  ],
+  curation: {
+    schemaVersion: 1,
+    model: 'demographicPrisoner_sDilemma',
+    charts: [
+      {
+        title: 'Players and cooperators',
+        series: [
+          { measure: 'count', agent: 'player' },
+          { measure: 'count', agent: 'player', attribute: 'cooperate' },
+        ],
+        yMin: 0,
+      },
+      {
+        title: 'Player wealth and age',
+        series: [
+          { measure: 'average', agent: 'player', attribute: 'wealth' },
+          { measure: 'average', agent: 'player', attribute: 'age' },
+        ],
+      },
+    ],
+  },
 });
 
 /** The Demographic Prisoner's Dilemma of the Eclipse AMP examples. */

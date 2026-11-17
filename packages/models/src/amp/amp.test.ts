@@ -25,6 +25,19 @@ describe('the AMP models, from their MetaABM originals', () => {
     },
   );
 
+  it("Epidemic offers AMP's run specs as its runs", () => {
+    const runs = (name: string) =>
+      epidemic.models.find((model) => model.name === name)!.runs?.map((run) => run.name);
+    expect(runs('Epidemic (AMP)')).toEqual([
+      'Base',
+      'Low transmission',
+      'High transmission',
+      'Zero transmission',
+    ]);
+    expect(runs('Epidemic (AMP): Regional')).toEqual(['Regional']);
+    expect(runs('Epidemic (AMP): Contact')).toBeUndefined();
+  });
+
   it('StupidModel 5 bugs grow by what they eat', () => {
     const model = stupidModel.models.find((found) => found.name === 'StupidModel 5')!;
     const root = new RootScape(model, { seed: 1 });
