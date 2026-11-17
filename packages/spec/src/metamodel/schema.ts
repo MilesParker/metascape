@@ -11,6 +11,7 @@ import {
   type AttributeType,
   type BorderRule,
   type Diagnostic,
+  type ExecutionSettings,
   type Extension,
   type Input,
   type Library,
@@ -268,12 +269,19 @@ const style: z.ZodType<Style> = z.discriminatedUnion('kind', [
 
 // ────────────────────────── Agents and scapes ──────────────────────────
 
+const execution: z.ZodType<ExecutionSettings> = z.strictObject({
+  order: z.enum(['rule', 'agent']).optional(),
+  randomOrder: z.boolean().optional(),
+  rules: z.array(path).optional(),
+});
+
 const agentBase = {
   ...named,
   attributes,
   acts,
   styles: z.record(id, style).optional(),
   extensions: z.array(extension).optional(),
+  execution: execution.optional(),
 };
 
 const scapeBase = {

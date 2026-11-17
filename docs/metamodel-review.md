@@ -1,10 +1,11 @@
 # The model format, taken from the MetaABM metamodel
 
-Status: 2026-11-16. Work items 2 and 3 (the format, its checker, and the core library as data)
-are implemented in `packages/spec/src/metamodel`, exported as `@metascape/spec/metamodel`. Work
-item 5, the translation from `.metaabm` files, is implemented in `packages/spec/src/metaabm`
-(`@metascape/spec/metaabm`), with the twelve Escape examples and their translations in
-`packages/spec/examples`. The function implementations and the interpreter are not.
+Status: 2026-11-17. Work items 2 to 4 (the format, its checker, the core library with its
+function implementations, and the interpreter) are implemented in `packages/spec/src/metamodel`,
+exported as `@metascape/spec/metamodel` (`compileModel`). Work item 5, the translation from
+`.metaabm` files, is implemented in `packages/spec/src/metaabm` (`@metascape/spec/metaabm`), with
+the twelve Escape examples and their translations in `packages/spec/examples`. All twelve run in
+the interpreter; StupidModel5's food consumption waits for its Java method to be ported (R21).
 
 ## Why
 
@@ -248,9 +249,11 @@ drops `for`, and the translation drops it with a warning if it disagrees with th
 
 **R14. Execution order.** Settled by the generators: every scape, including grids, gets
 `setExecutionOrder(Scape.RULE_ORDER)`, rules are added in the order the acts appear, and agents are
-visited in Ascape's default random order. _Proposed:_ those are the defaults, held as optional
-execution settings on each scape (Ascape's execution order, random execution and rule order), so
-Metascape's run-time editing of them keeps working.
+visited in Ascape's default random order. _Proposed, and implemented:_ those are the defaults,
+held as optional `execution` settings on each agent and scape (`order: 'rule' | 'agent'`,
+`randomOrder`, and `rules`, the rule acts in the order they run). They become the settings of the
+engine scape the agents are in, so Metascape's run-time editing of them keeps working. The
+checker makes sure `rules` names the agent's own rule, schedule or diffuse acts, each once.
 
 **R15. Initialize for created agents.** Settled by the generators: initialize acts become Ascape
 initial rules (`addInitialRule`), which run once over the agents present when the scape starts.
@@ -283,8 +286,37 @@ Networks are built with connect acts.
 **R21. Methods.** _Decided:_ a model states its implementation language once, at the root;
 the only option for now is TypeScript, and method bodies are TypeScript. StupidModel5's
 `ConsumeFood` is Java, so the translation flags it, and it is ported by hand to TypeScript as a
-recorded deviation. Still to design: what a method body can see (the acting agent and its
-attributes, the scape, the model's random stream) and how it is sandboxed.
+recorded deviation.
+
+_Proposed (implemented in `method.ts`):_ a body is the statements of a function of three
+arguments, written in TypeScript without type annotations, so that it runs without a compiler:
+
+- `agent`: the agent bound by the method's `selected` (default: the agent whose flow it is), as
+  `get(attribute)`, `set(attribute, value)`, `id`, and `cell`, the grid cell it stands on, seen
+  the same way. Attributes are named by ID. `set` runs the attribute's watches, as a set act does.
+- `scape`: the scape the agent is in (the root scape's own for the root), with the same `get` and
+  `set` for its attributes (the model's parameters), and `period`.
+- `random`: the model's seeded stream, as the acting agent draws from it: `unit()`, `int(min, max)`
+  (both inclusive), `chance(p)` and `pick(items)`.
+
+`this` is undefined and a return value is ignored. The body is compiled once, when the model is,
+so a body that does not compile is reported then. `Math` is there without `Math.random`, and
+`Date`, `globalThis`, `window`, `document`, `fetch`, `XMLHttpRequest`, `setTimeout`,
+`setInterval`, `crypto` and `performance` are hidden, so that a run stays determined by its seed.
+That keeps honest code honest; it is not a security boundary, which would be needed if models
+came from people the user does not trust (left open). StupidModel5's `ConsumeFood`, ported by
+hand, reads:
+
+```ts
+const habitat = agent.cell;
+const availability = habitat.get('foodAvailability');
+const consumption = Math.min(availability, agent.get('maxConsumption'));
+agent.set('size', agent.get('size') + consumption);
+habitat.set('foodAvailability', availability - consumption);
+```
+
+Left open: whether a body should see agents bound by other selections of its flow; for now a
+method that needs another agent reaches it only through its cell.
 
 **R22. Multi-values.** Settled by the generator (`Java.xpt`, `MultiBlock`): a multi-value is the
 first input of a distribution function (`uniformAdditiveDistribution`, `crossDistribution` and so
@@ -360,7 +392,8 @@ Structure and references:
   kept as a list of attribute references, though nothing sets it and its meaning is unknown.
 - **Typed references** are type aliases (`ActRef`, `AgentRef`, `AttributeRef` and so on), not branded
   types, so a model written in TypeScript stays a plain object literal. The checker resolves them.
-- **Execution settings** (R14's proposal) are not in the format yet.
+- **Execution settings** (R14) are an optional `execution` on agents and scapes: an addition
+  to MetaABM, which had none.
 
 Translation (`packages/spec/src/metaabm`). Each translated element that loses something, or
 gets something written out that the XMI left out, has a diagnostic with its XMI path: a `note`
@@ -423,6 +456,116 @@ boolean1` for an attribute with no `sType`). The translation takes `integer`, ex
 - **Implementation.** The `implementation` element of agents, styles and spaces is dropped with a
   note (R9). A `library` in a model is dropped with a warning.
 
+Interpreter (`packages/spec/src/metamodel`: `interpreter.ts`, `flows.ts`, `runtime.ts`,
+`functions.ts`, `method.ts`). Decided while implementing, where the guide, the generators and the
+runtimes left the meaning open:
+
+- **How a flow runs.** Depth first, as the generated code nests: an act fires for each frame (an
+  agent with every selection bound on its path) that reaches it, then the flow goes on to its
+  targets, in the order flows run (upstream first, then the order the acts are written). So sets
+  inside an `all` selection accumulate, as they did in Ascape.
+- **A select's region** (refines R18). The set a select chooses from is described by the queries
+  reached from it through queries alone, where a query that is not spatial counts only straight
+  from the select, and by the logic acts fed only by those. A query that is not spatial and follows
+  another query filters what was chosen, as the generators had it: in the Demographic Prisoner's
+  Dilemma one neighbour is chosen (`neighbor`), and its strategy is then tested on two branches.
+  Read the other way, both branches would choose a neighbour of their own.
+- **Spatial terms and logic acts.** Spatial terms say where to look and how many to choose; they
+  are not operands of logic acts. Every spatial filter (`neighbor`, `within`, `here`, `available`,
+  `location2D`) upstream of where a flow leaves the region holds for what is chosen there, and the
+  logic acts combine the other queries. So a `none` beside an `all` term takes every candidate the
+  other queries reject. This is the generators' reading (spatial terms went into the `find…` call,
+  the rest into the condition).
+- **Cardinality and modifiers** (`all`, `nearest`, `minimize`, `maximize`, `includeSelf`,
+  `toward`, `away`) apply where the flow leaves the region if they are upstream of that place in
+  the region. Ties are broken uniformly at random; `all` with `nearest`, `minimize` or `maximize`
+  takes every one tied for best.
+- **The origin.** A selection searches from the agent bound by the select's own selection, at its
+  cell in a grid. With a term that places the search around it (`neighbor`, `within`, `nearest`,
+  `minimize`, `maximize`, `here`), the origin, and its cell unless the term is `here`, are left out
+  unless `includeSelf`; `includeSelf` lets them pass `neighbor` and `within`. Without such a term
+  nothing is left out, as Ascape's `findRandom` did not.
+- **`available`** is true of a cell with no occupant, or of any cell in a multi-occupant grid. Of
+  an agent that is not a cell it is true. **`neighbor`** in a continuous space is "within 1".
+- **Euclidean grids** have Moore neighbours and measure straight-line distance, as Ascape's
+  `Array2DEuclidian` (the generator names a class `Array2DEuclidean`, which does not exist).
+- **`toward` and `away`** change the move whose destination they choose: the mover steps one cell
+  (one unit in a continuous space) toward or away from the agent chosen, if that cell is free.
+- **Queries and logic acts after a select's region** (gates). A query fires for every frame that
+  reaches it, as a plain act; a query reached along two paths decides twice, each time with what
+  has changed in between (EpidemicRegional's first individual marks its city as the origin, and
+  the query that follows is reached both from the initialize act and after that set). A logic act,
+  and anything after one, is decided once, when the flow reaches the last act that feeds it, so
+  that everything it combines is bound; if that act never fires (its select found nothing), the
+  logic act does not either. Each arrival decides afresh, but the queries and `none`s of one
+  arrival see the same results, so a random query is drawn once.
+- **Attributes read with no selection named.** From the act's own selection if that agent has the
+  attribute, else from the nearest selection on the path that does. Markets sets an instrument's
+  offer price to `firm.lastPrice` within the selection of the instrument just created; the firm is
+  the agent the flow runs for. Attributes of a scape or space are read from the one around the
+  agent.
+- **Numbers.** Integer arithmetic truncates, as Java's: `div` and `mod` of integers, with a clear
+  error on division by zero; `pow` is a power (in the generated Java `^` was exclusive or). A set
+  of an integer attribute truncates. A numeric constant (`zero`, `unit`) takes the type of the
+  numbers beside it in a call: real if any is real, else integer if any is an integer.
+- **Random functions** follow Ascape's `RandomFunctions`, which the generated code called:
+  `randomInRange` of integers includes both ends and of reals excludes the upper one;
+  `randomToLimit` of an integer is `nextInt(limit)`, from 0 to the limit exclusive, although the
+  library's description says inclusive; of a real, from 0 to the limit exclusive. `randomIs` is a
+  fair coin. Every draw uses the acting agent's stream, so runs are determined by the seed.
+- **Distributions** (R22). For an additive parameter, the attributes listed are the base, then
+  one per option of each state, states in order; for a cross parameter, one per combination of
+  options, the first state varying slowest. A parameter listed as one attribute does not vary. Every
+  multi-value in the Escape examples is one attribute or none, so the order is untested against
+  an original.
+- **`original`** is the value an attribute had once the model started (after build and
+  initialize), or, for an agent created later, once its creating flow had run.
+- **Colours** are those of `java.awt.Color`, which the generated code used (orange is 255, 200,
+  0). AWT has no purple; it is 128, 0, 128. `colorRGB` clamps its inputs to 0..1 (AWT throws).
+- **Styles.** The colour, shape, fill and outline each graphic function reaches are recorded as
+  marks, in order (`styleOf`). The views draw an agent in the colour of its first filled mark,
+  else its first mark, else a default colour for its type; occupants of a grid take the first
+  shape of their type's style (oval as a circle, rectangle as a square).
+- **Moves.** A move onto a taken cell of a single-occupant grid does nothing (Ascape threw). A
+  move into a grid of another scape instance makes the agent a member of that scape, as the
+  generator's code did. An agent placed in no grid by a builder act stands on one once moved there
+  (EpidemicPlague's fleas).
+- **Create.** Without `agentCount`, one agent is created, as the generated loop did. Creating the
+  cell type of a grid creates nothing: a grid makes its cells (the generator skipped those
+  creates). A created agent stands nowhere until moved; one in a continuous space is placed at
+  random.
+- **Leave** steps off the grid cell, or leaves the network, of the space its selection is in; in a
+  continuous space it does nothing. **Die** of a cell is an error. **Disconnect** removes every link
+  of the agent, as the generators' `clearNeighbors` did; in Markets a sale removes all of the
+  seller's holdings from the network, as it did in the original. **Connect** with
+  `directed: false` in a directed network links both ways.
+- **Watch and derive** apply to attributes of the agent that has the act; the generators wired
+  them only so, and the interpreter rejects others. A derive's value is the last evaluate without
+  targets that its flow reaches, else the attribute's default. It is computed again when an
+  attribute it read has changed, when agents have moved, been born, died or been linked if it
+  looked at where agents are, or in a new period; otherwise it is kept.
+- **Diffusion** (R17) is the generator's formula: new = own + rate × (mean of the neighbours −
+  own), then × (1 − evaporation). With no rate a cell takes the mean; with no evaporation rate
+  nothing evaporates. Setting the new value runs watches (Heatbugs clamps its heat so). The engine
+  applies every two-phase rule's update after every rule's execute, where Ascape updated after each
+  rule; the Escape examples have one rule on their cells.
+- **Order of scapes.** Each period the root scape's own rules run first (on a scape whose one
+  member is the root scape, as the generator's manager scape), then the scapes of grid cells and
+  networks in the order the spaces are declared, then the populations in the order the agents are
+  declared; a nested scape's spaces and populations run after its own population's rules. Ascape
+  added grids before agent populations too.
+- **Schedules** run from `start` (default 0) every `interval` (default 1) periods; `priority` and
+  `pick` are ignored. No example has one.
+- **Parameters** are the root scape's attributes and its spaces' (`grid2D.width`). Attributes of a
+  nested scape start at their defaults in each instance. Statistics are collected for the root
+  scape's own gathered attributes and for the populations of its agents (a count, and the gathered
+  attributes, as Ascape's CSAMM statistics); nested scapes' populations are not collected yet.
+  Each instance of a nested scape made while the model is built gets views of its spaces.
+- **Not run yet**: geography, value layers, shaped and loaded agents, shape styles, extensions, an
+  agent on two grids or in a grid and a continuous space, spaces of more than two dimensions, and
+  builder acts of agents that are not scapes. The interpreter lists what a model uses of these in
+  one error.
+
 Core library:
 
 - `not` takes a boolean. Its prototype has no type in `core_library.metaabm`, which makes it the
@@ -466,13 +609,14 @@ Checking:
 
 ## Work, in order
 
-1. Settle the review items. Still open: R21's method API, and where condition-based stopping
-   belongs (R24).
+1. Settle the review items. Still open: R21's method API (proposed), and where condition-based
+   stopping belongs (R24).
 2. **Format:** types and Zod schemas for structure, functions and acts; the checker (references,
    types of inputs against function prototypes, acyclic flows, boundaries). _Done._
-3. **Core library:** `core_library.metaabm` translated to data (_done_), with TypeScript
-   implementations of every function the examples use (with the interpreter).
-4. **Interpreter:** acts compiled once into closures over the engine, following the semantics above.
+3. **Core library:** `core_library.metaabm` translated to data, with TypeScript implementations
+   of every function (`functions.ts`). _Done._
+4. **Interpreter:** acts compiled once into closures over the engine, following the semantics
+   above (`compileModel`). _Done._ The twelve translated Escape examples run and are tested.
 5. **Translation:** `.metaabm` → format, with diagnostics for anything dropped or not supported.
    _Done_ (`packages/spec/src/metaabm`). Its tests are the twelve Escape examples, which all
    translate and check without errors or warnings besides one Java method (StupidModel5) and one

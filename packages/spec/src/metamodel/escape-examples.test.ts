@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: EPL-2.0
+/// <reference types="node" />
+import { readdirSync, readFileSync } from 'node:fs';
+import { RootScape } from '@metascape/engine';
+import { describe, expect, it } from 'vitest';
+import { compileModel } from './interpreter';
+import { InterpAgent } from './runtime';
+import { parseModel } from './schema';
+
+// The Escape examples of AMP, as the translation (../metaabm) writes them.
+const folder = new URL('../../examples/escape/', import.meta.url);
+const examples = readdirSync(folder)
+  .filter((name) => name.endsWith('.model.json'))
+  .map((name) => name.slice(0, -'.model.json'.length))
+  .sort();
+
+const load = (name: string) =>
+  parseModel(JSON.parse(readFileSync(new URL(`${name}.model.json`, folder), 'utf8')));
+
+describe('the Escape examples, interpreted', () => {
+  describe.each(examples)('%s', (name) => {
+    it('runs, the same from the same seed', () => {
+      const model = compileModel(load(name));
+      const run = (seed: number) => {
+        const root = new RootScape(model, { seed });
+        root.run(20);
+        return { root, data: root.data.toCSV() };
+      };
+      const first = run(11);
+      expect(first.root.stopReason).toBeUndefined();
+      expect(run(11).data).toEqual(first.data);
+    });
+  });
+});
+
+describe('what the Escape examples do', () => {
+  /** The agents of a type across the model, with a function of each. */
+  const tally = (root: RootScape, agent: string, attribute: string) => {
+    const values: (boolean | number | string)[] = [];
+    for (const scape of root.scapes) {
+      for (const member of scape.members) {
+        if (!(member instanceof InterpAgent) || member.scape !== scape) continue;
+        if (member.info.id !== agent) continue;
+        values.push(member.context.state.read(member, member.info.attribute.get(attribute)!));
+      }
+    }
+    return values;
+  };
+  const count = (values: readonly unknown[], value: unknown) =>
+    values.filter((found) => found === value).length;
+  const sum = (values: readonly unknown[]) =>
+    values.reduce<number>((total, value) => total + (value as number), 0);
+
+  it('Epidemic spreads', () => {
+    const root = new RootScape(compileModel(load('Epidemic')), { seed: 3 });
+    const start = count(tally(root, 'individual', 'status'), 'susceptible');
+    root.run(120);
+    expect(count(tally(root, 'individual', 'status'), 'susceptible')).toBeLessThan(start - 100);
+  });
+
+  it('EpidemicRegional starts in one city and spreads', () => {
+    const root = new RootScape(compileModel(load('EpidemicRegional')), { seed: 3 });
+    expect(count(tally(root, 'individual', 'status'), 'exposed')).toBeGreaterThan(0);
+    root.run(120);
+    expect(count(tally(root, 'individual', 'status'), 'susceptible')).toBeLessThan(1150);
+  });
+
+  it('StupidModel 2 grows its bugs by one each period', () => {
+    const root = new RootScape(compileModel(load('StupidModel2')), { seed: 3 });
+    root.run(10);
+    expect(tally(root, 'bug', 'size')).toEqual(Array.from({ length: 100 }, () => 10));
+  });
+
+  it('Heatbugs grow less unhappy', () => {
+    const root = new RootScape(compileModel(load('Heatbugs')), { seed: 3 });
+    const start = sum(tally(root, 'heatBug', 'unhappiness'));
+    root.run(60);
+    expect(sum(tally(root, 'heatBug', 'unhappiness'))).toBeLessThan(start * 0.7);
+  });
+
+  it('Markets trades: money moves between traders and is kept', () => {
+    const root = new RootScape(compileModel(load('Markets')), { seed: 3 });
+    const start = tally(root, 'trader', 'funds');
+    root.run(5);
+    const after = tally(root, 'trader', 'funds');
+    expect(after).not.toEqual(start);
+    expect(sum(after)).toBeCloseTo(sum(start));
+  });
+});
+
+describe('a method body (R21)', () => {
+  it("runs StupidModel5's ConsumeFood, ported from Java with the method API", () => {
+    const model = load('StupidModel5');
+    const consume = model.agents!.bug!.acts!.consumeFood as { body?: string };
+    consume.body = [
+      'const habitat = agent.cell;',
+      "const availability = habitat.get('foodAvailability');",
+      "const consumption = Math.min(availability, agent.get('maxConsumption'));",
+      "agent.set('size', agent.get('size') + consumption);",
+      "habitat.set('foodAvailability', availability - consumption);",
+    ].join('\n');
+    const root = new RootScape(compileModel(model), { seed: 3 });
+    root.run(5);
+    const sizes: number[] = [];
+    for (const scape of root.scapes) {
+      for (const member of scape.members) {
+        if (member instanceof InterpAgent && member.info.id === 'bug') {
+          sizes.push(
+            member.context.state.read(member, member.info.attribute.get('size')!) as number,
+          );
+        }
+      }
+    }
+    expect(sizes).toHaveLength(100);
+    expect(sizes.every((size) => size > 0)).toBe(true);
+  });
+});

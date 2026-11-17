@@ -5,6 +5,25 @@
 export { assertValidModel, checkModel } from './check';
 export { coreLibrary } from './core-library';
 export {
+  coreFunctions,
+  StyleAccumulator,
+  type Argument,
+  type Call,
+  type CallContext,
+  type CallInfo,
+  type Datum,
+  type FunctionImplementation,
+  type InputInfo,
+  type Mark,
+  type Shape,
+  type SpatialTerm,
+  type ValueType,
+} from './functions';
+export { compileModel, styleOf, type CompileOptions } from './interpreter';
+export type { MethodAgent, MethodRandom, MethodScape } from './method';
+export { UnsupportedModelError } from './model-index';
+export { MAX_TRIGGER_DEPTH } from './runtime';
+export {
   formatPath,
   librarySchema,
   ModelFormatError,

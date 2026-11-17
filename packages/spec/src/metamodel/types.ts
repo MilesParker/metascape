@@ -228,6 +228,28 @@ export type Style = Style2D | Style3D | ShapeStyle;
 
 // ────────────────────────── Agents and scapes ──────────────────────────
 
+/**
+ * How the rules of an agent's population run each period, as Ascape's scape
+ * settings. Not in MetaABM, whose generators gave every population the
+ * defaults below (R14). They can be changed while a model runs.
+ */
+export interface ExecutionSettings {
+  /**
+   * `rule` (Ascape's rule order): each rule runs across every agent before the
+   * next rule starts. `agent`: each agent runs every rule before the next agent
+   * starts. Default `rule`.
+   */
+  order?: 'rule' | 'agent' | undefined;
+  /** Whether agents are visited in a fresh random order each period. Default true. */
+  randomOrder?: boolean | undefined;
+  /**
+   * The rule acts (and schedule and diffuse acts), by their paths within the
+   * agent's acts, in the order they run. Those not listed run after the listed ones, in the order of the acts.
+   * Default: the order of the acts.
+   */
+  rules?: ActRef[] | undefined;
+}
+
 /** What every agent has. MetaABM's `SAgent`. */
 interface AgentBase extends Named {
   attributes?: Record<AttributeId, Attribute> | undefined;
@@ -238,6 +260,8 @@ interface AgentBase extends Named {
   acts?: Record<ActId, Act> | undefined;
   styles?: Record<Id, Style> | undefined;
   extensions?: Extension[] | undefined;
+  /** How the agent's rules run. Default: as MetaABM's generators ran them (R14). */
+  execution?: ExecutionSettings | undefined;
 }
 
 /** An agent type. MetaABM's `SAgent`. */

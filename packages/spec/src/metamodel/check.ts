@@ -352,6 +352,7 @@ class Checker {
     }
     this.checkAttributes(agent.attributes, path);
     this.checkExtensions(agent.extensions, path);
+    this.checkExecution(agent, path);
     if (agent.acts) {
       this.actables.push({ name, acts: agent.acts, path: [...path, 'acts'] });
     }
@@ -366,6 +367,37 @@ class Checker {
         });
       }
     }
+  }
+
+  /** R14: the rules named by an agent's execution settings are its own rule, schedule or diffuse acts, each once. */
+  private checkExecution(agent: Model | Scape | Agent, path: Path): void {
+    const rules = agent.execution?.rules;
+    if (!rules) return;
+    const kinds = new Map<string, string>();
+    const visit = (members: Record<ActId, Act>, prefix: string) => {
+      for (const [actId, act] of Object.entries(members)) {
+        if (act.kind === 'group') visit(act.members, `${prefix}${actId}.`);
+        else kinds.set(`${prefix}${actId}`, act.kind);
+      }
+    };
+    if (agent.acts) visit(agent.acts, '');
+    const seen = new Set<string>();
+    rules.forEach((actId, index) => {
+      const at = [...path, 'execution', 'rules', index];
+      const kind = kinds.get(actId);
+      if (kind === undefined) {
+        const owner = 'kind' in agent && agent.kind === 'agent' ? 'agent' : 'scape';
+        this.error(at, `\`${actId}\` is not an act of this ${owner}.`);
+      } else if (kind !== 'rule' && kind !== 'schedule' && kind !== 'diffuse') {
+        this.error(
+          at,
+          `\`${actId}\` is not a rule, schedule or diffuse act, which are what run each period.`,
+        );
+      } else if (seen.has(actId)) {
+        this.error(at, `\`${actId}\` is listed twice.`);
+      }
+      seen.add(actId);
+    });
   }
 
   /** R1: the IDs of an element's children are unique, across all the records that hold them. */
