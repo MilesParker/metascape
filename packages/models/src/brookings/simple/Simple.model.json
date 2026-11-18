@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "id": "simple",
+  "label": "Simple",
+  "description": "The smallest of the Ascape example models (Ascape 5.6.1, edu.brook.Simple.Simple and SimpleAgent; the sources name no author and cite no publication). One agent, the subject, doubles its happiness every period up to a ceiling of 1000. Every other agent is the environment: each period it has a one in ten chance of resetting the subject's happiness to 3. The legacy model numbers its agents in creation order and makes agent 0 the subject; here the subject and the environment are two agent types, which is the same model with the number of agents the total of both. Rules run by rule, in creation order, so the subject acts before the environment each period. Departures from the legacy model: the legacy model also builds a 30 by 30 von Neumann lattice and shows it, but never places an agent on it (the call that would is commented out in CellOccupant), so the lattice is always empty and is left out here; the legacy printing to System.out is dropped; and the legacy bug that makes a second run in one JVM have no agent 0, because a static counter is never reset, does not arise.",
+  "language": "typescript",
+  "attributes": {
+    "numberOfAgents": {
+      "type": "integer",
+      "label": "Number of agents",
+      "description": "Agents in the model: the first one is the subject, whose happiness grows, and the rest are the environment, which resets it. The legacy model's only parameter (nAgents, default 2); its lattice size is private there and is not a parameter here.",
+      "default": 2,
+      "min": 1,
+      "max": 1000
+    }
+  },
+  "acts": {
+    "setUp": {
+      "kind": "build",
+      "label": "Set up",
+      "description": "Creates the subject, then the rest of the agents as the environment: the legacy scapeSetup sets the size of its one population, whose first agent gets behaviour 0 as it is initialized.",
+      "targets": ["createSubject", "othersCount"]
+    },
+    "createSubject": {
+      "kind": "create",
+      "label": "Create the subject",
+      "description": "Creates the one agent whose happiness grows (legacy behaviour 0). It is created first, so it acts first.",
+      "selected": "setUp",
+      "agent": "subject",
+      "agentCount": { "literal": 1 }
+    },
+    "othersCount": {
+      "kind": "evaluate",
+      "label": "Agents of the environment",
+      "description": "The number of agents beyond the subject: the number of agents less one.",
+      "selected": "setUp",
+      "function": "sub",
+      "inputs": [{ "attribute": "numberOfAgents" }, { "literal": 1 }],
+      "targets": ["createEnvironment"]
+    },
+    "createEnvironment": {
+      "kind": "create",
+      "label": "Create the environment",
+      "description": "Creates the agents that only disturb the subject (every legacy agent with behaviour above 0).",
+      "selected": "setUp",
+      "agent": "environment",
+      "agentCount": { "evaluate": "othersCount" }
+    }
+  },
+  "agents": {
+    "subject": {
+      "kind": "agent",
+      "label": "Subject",
+      "pluralLabel": "Subjects",
+      "description": "The agent with behaviour 0 in the legacy model (SimpleAgent). Its happiness starts at 3, doubles each period and is capped at 1000, until the environment breaks it back to 3. Only this agent reports a happiness; every other legacy agent reports 0, so the legacy chart of the maximum happiness is this agent's happiness.",
+      "attributes": {
+        "happiness": {
+          "type": "real",
+          "label": "Happiness",
+          "description": "The agent's current happiness, from 3 up to 1000. It holds whole numbers, but is declared real because no function yet turns a real into an integer (`min`, which applies the ceiling, gives a real). The legacy field is a double.",
+          "default": 3,
+          "min": 0,
+          "max": 1000,
+          "gatherData": true
+        }
+      },
+      "acts": {
+        "grow": {
+          "kind": "rule",
+          "label": "Grow",
+          "description": "The legacy update method for behaviour 0: happiness += happiness, then no more than 1000.",
+          "targets": ["doubled"]
+        },
+        "doubled": {
+          "kind": "evaluate",
+          "selected": "grow",
+          "function": "add",
+          "inputs": [{ "attribute": "subject.happiness" }, { "attribute": "subject.happiness" }],
+          "targets": ["capped"]
+        },
+        "capped": {
+          "kind": "evaluate",
+          "description": "The ceiling of the legacy model (MAXIMUM_HAPPINESS, 1000).",
+          "selected": "grow",
+          "function": "min",
+          "inputs": [{ "evaluate": "doubled" }, { "literal": 1000, "type": "real" }],
+          "targets": ["setHappiness"]
+        },
+        "setHappiness": {
+          "kind": "set",
+          "selected": "grow",
+          "attribute": "subject.happiness",
+          "parameter": { "evaluate": "capped" }
+        }
+      },
+      "execution": { "randomOrder": false }
+    },
+    "environment": {
+      "kind": "agent",
+      "label": "Environment",
+      "pluralLabel": "Environment",
+      "description": "Every legacy agent with a behaviour above 0. It does nothing but, with probability one in ten each period, reset the subject's happiness to 3 (the legacy `randomInRange(0, 9) < 1`, which is one of ten equally likely whole numbers). Declared after the subject, so its rule runs after the subject's each period, as agent 0 acts first in the legacy model.",
+      "acts": {
+        "disturb": {
+          "kind": "rule",
+          "label": "Disturb",
+          "description": "The legacy update method for every other behaviour.",
+          "targets": ["draw"]
+        },
+        "draw": {
+          "kind": "evaluate",
+          "selected": "disturb",
+          "function": "randomUnit",
+          "targets": ["breaks"]
+        },
+        "breaks": {
+          "kind": "query",
+          "label": "One in ten",
+          "description": "The environment breaks the subject with probability 1/10.",
+          "selected": "disturb",
+          "function": "lesser",
+          "inputs": [{ "evaluate": "draw" }, { "literal": 0.1, "type": "real" }],
+          "targets": ["findSubject"]
+        },
+        "findSubject": {
+          "kind": "select",
+          "label": "The subject",
+          "description": "The one subject (the legacy `theAgent`, the agent with behaviour 0).",
+          "selected": "disturb",
+          "agent": "subject",
+          "targets": ["reset"]
+        },
+        "reset": {
+          "kind": "set",
+          "label": "Break happiness",
+          "description": "The legacy setHappiness: back to the starting happiness of 3 (INITIAL_HAPPINESS).",
+          "selected": "findSubject",
+          "attribute": "subject.happiness",
+          "parameter": { "literal": 3, "type": "real" }
+        }
+      },
+      "execution": { "randomOrder": false }
+    }
+  }
+}
