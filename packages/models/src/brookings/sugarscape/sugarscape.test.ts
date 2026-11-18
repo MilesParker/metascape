@@ -16,7 +16,12 @@ import { gasII1, gasII2, gasII6, gasII7, gasII8 } from './chapter-2';
 import { gasIII2, gasIII6 } from './chapter-3';
 import { gasIVa, gasIVc, gasIVi } from './chapter-4';
 import { Exchange } from './exchange';
+import { gasII1Format, gasII2Format, gasII3Format } from './format';
 import { family } from './index';
+
+/** The models written in the model format; the rest are coded ports (see format.test.ts). */
+const formatModels: readonly Model[] = [gasII1Format, gasII2Format, gasII3Format];
+const codedModels = family.models.filter((model) => !formatModels.includes(model));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- models differ in their schemas
 type AnyModel = Model<any>;
@@ -61,14 +66,15 @@ describe('every model', () => {
   it('has a unique name and provenance naming its legacy class', () => {
     const names = family.models.map((m) => m.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(family.models).toHaveLength(23);
+    expect(family.models).toHaveLength(23 + formatModels.length);
+    expect(codedModels).toHaveLength(23);
     for (const model of family.models) {
       expect(model.provenance?.portedFrom).toMatch(/^Ascape 5\.6\.1, edu\.brook\.sugarscape\./);
       expect(model.provenance?.authors).toBe('Joshua M. Epstein and Robert Axtell');
     }
   });
 
-  it.each(family.models.map((m) => [m.name, m] as const))(
+  it.each(codedModels.map((m) => [m.name, m] as const))(
     '%s builds, runs 20 periods and keeps one agent per cell',
     (_name, model: AnyModel) => {
       const root = new RootScape(model, { seed: 7, parameters: { initialPopulation: 200 } });

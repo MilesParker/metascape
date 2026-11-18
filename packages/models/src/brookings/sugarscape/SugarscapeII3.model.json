@@ -1,0 +1,955 @@
+{
+  "schemaVersion": 2,
+  "id": "sugarscapeII3",
+  "label": "Sugarscape II-3",
+  "description": "The II-2 model with a chart of the population, which settles at the carrying capacity of the sugar landscape.",
+  "language": "typescript",
+  "attributes": {
+    "sugarMoundness": {
+      "type": "real",
+      "label": "Sugar moundness",
+      "description": "Topology parameter of the two sugar peaks: larger values give narrower peaks.",
+      "default": 0.004,
+      "min": 0,
+      "max": 0.1
+    },
+    "minVision": {
+      "type": "integer",
+      "label": "Min vision",
+      "description": "The minimum vision an agent may be given on initialization.",
+      "default": 1,
+      "min": 0,
+      "max": 24
+    },
+    "maxVision": {
+      "type": "integer",
+      "label": "Max vision",
+      "description": "The maximum vision an agent may be given on initialization.",
+      "default": 6,
+      "min": 0,
+      "max": 24
+    },
+    "minSugarMetabolism": {
+      "type": "integer",
+      "label": "Min sugar metabolism",
+      "description": "The minimum sugar metabolism an agent may be given on initialization.",
+      "default": 1,
+      "min": 0,
+      "max": 10
+    },
+    "maxSugarMetabolism": {
+      "type": "integer",
+      "label": "Max sugar metabolism",
+      "description": "The maximum sugar metabolism an agent may be given on initialization.",
+      "default": 4,
+      "min": 0,
+      "max": 10
+    },
+    "minInitialSugar": {
+      "type": "integer",
+      "label": "Min initial sugar",
+      "description": "The minimum sugar an agent may be given on initialization.",
+      "default": 0,
+      "min": 0,
+      "max": 200
+    },
+    "maxInitialSugar": {
+      "type": "integer",
+      "label": "Max initial sugar",
+      "description": "The maximum sugar an agent may be given on initialization.",
+      "default": 30,
+      "min": 0,
+      "max": 200
+    },
+    "minDeathAge": {
+      "type": "integer",
+      "label": "Min death age",
+      "description": "The minimum death age an agent may be given on initialization.",
+      "default": 60,
+      "min": 0,
+      "max": 500
+    },
+    "maxDeathAge": {
+      "type": "integer",
+      "label": "Max death age",
+      "description": "The maximum death age an agent may be given on initialization.",
+      "default": 100,
+      "min": 0,
+      "max": 500
+    },
+    "initialPopulation": {
+      "type": "integer",
+      "label": "Initial population",
+      "description": "Agents created at setup.",
+      "default": 400,
+      "min": 0,
+      "max": 2500
+    }
+  },
+  "acts": {
+    "setUp": {
+      "kind": "build",
+      "targets": ["createAgents", "fillLattice"]
+    },
+    "createAgents": {
+      "kind": "create",
+      "selected": "setUp",
+      "agent": "sugarAgent",
+      "agentCount": {
+        "attribute": "initialPopulation"
+      }
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "selected": "setUp",
+      "agents": ["sugarAgent"],
+      "space": "lattice",
+      "fillAgent": "sugarCell"
+    }
+  },
+  "agents": {
+    "sugarAgent": {
+      "kind": "agent",
+      "label": "Sugar Agent",
+      "pluralLabel": "Sugar Agents",
+      "attributes": {
+        "sugar": {
+          "type": "real",
+          "gatherData": true
+        },
+        "age": {
+          "type": "integer",
+          "gatherData": true
+        },
+        "vision": {
+          "type": "integer",
+          "gatherData": true
+        },
+        "sugarMetabolism": {
+          "type": "integer",
+          "gatherData": true
+        },
+        "deathAge": {
+          "type": "integer"
+        }
+      },
+      "execution": {
+        "order": "agent"
+      },
+      "acts": {
+        "initialize": {
+          "kind": "initialize",
+          "space": "lattice",
+          "targets": ["findHome", "drawDeathAge", "drawVision", "drawMetabolism", "drawSugar"]
+        },
+        "findHome": {
+          "kind": "select",
+          "selected": "initialize",
+          "agent": "sugarCell",
+          "space": "lattice",
+          "targets": ["homeIsFree"]
+        },
+        "homeIsFree": {
+          "kind": "query",
+          "selected": "findHome",
+          "function": "available",
+          "targets": ["settle"]
+        },
+        "settle": {
+          "kind": "move",
+          "selected": "initialize",
+          "destination": "findHome"
+        },
+        "drawDeathAge": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "attribute": "minDeathAge"
+            },
+            {
+              "attribute": "maxDeathAge"
+            }
+          ],
+          "targets": ["setDeathAge"]
+        },
+        "setDeathAge": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarAgent.deathAge",
+          "parameter": {
+            "evaluate": "drawDeathAge"
+          },
+          "targets": ["drawAge"]
+        },
+        "drawAge": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "literal": 0
+            },
+            {
+              "attribute": "sugarAgent.deathAge"
+            }
+          ],
+          "targets": ["setAge"]
+        },
+        "setAge": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarAgent.age",
+          "parameter": {
+            "evaluate": "drawAge"
+          }
+        },
+        "drawVision": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "attribute": "minVision"
+            },
+            {
+              "attribute": "maxVision"
+            }
+          ],
+          "targets": ["setVision"]
+        },
+        "setVision": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarAgent.vision",
+          "parameter": {
+            "evaluate": "drawVision"
+          }
+        },
+        "drawMetabolism": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "attribute": "minSugarMetabolism"
+            },
+            {
+              "attribute": "maxSugarMetabolism"
+            }
+          ],
+          "targets": ["setMetabolism"]
+        },
+        "setMetabolism": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarAgent.sugarMetabolism",
+          "parameter": {
+            "evaluate": "drawMetabolism"
+          }
+        },
+        "drawSugar": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "attribute": "minInitialSugar"
+            },
+            {
+              "attribute": "maxInitialSugar"
+            }
+          ],
+          "targets": ["setSugar"]
+        },
+        "setSugar": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarAgent.sugar",
+          "parameter": {
+            "evaluate": "drawSugar"
+          }
+        },
+        "movement": {
+          "kind": "rule",
+          "space": "lattice",
+          "targets": ["inSight"]
+        },
+        "inSight": {
+          "kind": "select",
+          "selected": "movement",
+          "agent": "sugarCell",
+          "space": "lattice",
+          "targets": ["withinVision", "mostSugar", "orHere"]
+        },
+        "withinVision": {
+          "kind": "query",
+          "selected": "inSight",
+          "function": "lineOfSight",
+          "inputs": [
+            {
+              "attribute": "sugarAgent.vision",
+              "selected": "movement"
+            }
+          ],
+          "targets": ["best"]
+        },
+        "mostSugar": {
+          "kind": "query",
+          "selected": "inSight",
+          "function": "maximize",
+          "inputs": [
+            {
+              "attribute": "sugarCell.sugar"
+            }
+          ],
+          "targets": ["best"]
+        },
+        "orHere": {
+          "kind": "query",
+          "selected": "inSight",
+          "function": "includeSelf",
+          "targets": ["best"]
+        },
+        "best": {
+          "kind": "all",
+          "selected": "inSight",
+          "targets": ["bestIsFree"]
+        },
+        "bestIsFree": {
+          "kind": "query",
+          "selected": "inSight",
+          "function": "available",
+          "targets": ["goThere"]
+        },
+        "goThere": {
+          "kind": "move",
+          "selected": "movement",
+          "destination": "inSight"
+        },
+        "harvest": {
+          "kind": "rule",
+          "space": "lattice",
+          "targets": ["underfoot"]
+        },
+        "underfoot": {
+          "kind": "select",
+          "selected": "harvest",
+          "agent": "sugarCell",
+          "space": "lattice",
+          "targets": ["here"]
+        },
+        "here": {
+          "kind": "query",
+          "selected": "underfoot",
+          "function": "here",
+          "targets": ["gather"]
+        },
+        "gather": {
+          "kind": "evaluate",
+          "selected": "harvest",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "sugarAgent.sugar"
+            },
+            {
+              "attribute": "sugarCell.sugar",
+              "selected": "underfoot"
+            }
+          ],
+          "targets": ["keep"]
+        },
+        "keep": {
+          "kind": "set",
+          "selected": "harvest",
+          "attribute": "sugarAgent.sugar",
+          "parameter": {
+            "evaluate": "gather"
+          },
+          "targets": ["eaten"]
+        },
+        "eaten": {
+          "kind": "set",
+          "selected": "underfoot",
+          "attribute": "sugarCell.sugar",
+          "parameter": {
+            "literal": 0
+          }
+        },
+        "metabolism": {
+          "kind": "rule",
+          "targets": ["spend", "older"]
+        },
+        "spend": {
+          "kind": "evaluate",
+          "selected": "metabolism",
+          "function": "sub",
+          "inputs": [
+            {
+              "attribute": "sugarAgent.sugar"
+            },
+            {
+              "attribute": "sugarAgent.sugarMetabolism"
+            }
+          ],
+          "targets": ["paid"]
+        },
+        "paid": {
+          "kind": "set",
+          "selected": "metabolism",
+          "attribute": "sugarAgent.sugar",
+          "parameter": {
+            "evaluate": "spend"
+          }
+        },
+        "older": {
+          "kind": "evaluate",
+          "selected": "metabolism",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "sugarAgent.age"
+            }
+          ],
+          "targets": ["aged"]
+        },
+        "aged": {
+          "kind": "set",
+          "selected": "metabolism",
+          "attribute": "sugarAgent.age",
+          "parameter": {
+            "evaluate": "older"
+          }
+        },
+        "starvation": {
+          "kind": "rule",
+          "targets": ["noSugar"]
+        },
+        "noSugar": {
+          "kind": "query",
+          "selected": "starvation",
+          "function": "lesserorEqual",
+          "inputs": [
+            {
+              "attribute": "sugarAgent.sugar"
+            },
+            {
+              "constant": "zero"
+            }
+          ],
+          "targets": ["starve"]
+        },
+        "starve": {
+          "kind": "die",
+          "selected": "starvation"
+        }
+      },
+      "styles": {
+        "agentStyle": {
+          "kind": "2d",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "lattice",
+              "targets": ["red"]
+            },
+            "red": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRed",
+              "targets": ["circle"]
+            },
+            "circle": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "shapeOval",
+              "targets": ["fill"]
+            },
+            "fill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    },
+    "sugarCell": {
+      "kind": "agent",
+      "label": "Sugar Cell",
+      "pluralLabel": "Sugar Cells",
+      "attributes": {
+        "sugar": {
+          "type": "real"
+        },
+        "capacity": {
+          "type": "real"
+        }
+      },
+      "acts": {
+        "initialize": {
+          "kind": "initialize",
+          "space": "lattice",
+          "targets": ["column"]
+        },
+        "column": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "locationX",
+          "targets": ["row"]
+        },
+        "row": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "locationY",
+          "targets": ["peak1X"]
+        },
+        "peak1X": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "lattice.width"
+            },
+            {
+              "literal": 0.8,
+              "type": "real"
+            }
+          ],
+          "targets": ["peak1Y"]
+        },
+        "peak1Y": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "lattice.height"
+            },
+            {
+              "literal": 0.2,
+              "type": "real"
+            }
+          ],
+          "targets": ["across1"]
+        },
+        "across1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "column"
+            },
+            {
+              "evaluate": "peak1X"
+            }
+          ],
+          "targets": ["down1"]
+        },
+        "down1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "row"
+            },
+            {
+              "evaluate": "peak1Y"
+            }
+          ],
+          "targets": ["away1"]
+        },
+        "away1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "hypotuneuse",
+          "inputs": [
+            {
+              "evaluate": "across1"
+            },
+            {
+              "evaluate": "down1"
+            }
+          ],
+          "targets": ["squared1"]
+        },
+        "squared1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "away1"
+            },
+            {
+              "evaluate": "away1"
+            }
+          ],
+          "targets": ["scaled1"]
+        },
+        "scaled1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "squared1"
+            },
+            {
+              "attribute": "sugarMoundness"
+            }
+          ],
+          "targets": ["fall1"]
+        },
+        "fall1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "neg",
+          "inputs": [
+            {
+              "evaluate": "scaled1"
+            }
+          ],
+          "targets": ["height1"]
+        },
+        "height1": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "fall1"
+            }
+          ],
+          "targets": ["peak2X"]
+        },
+        "peak2X": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "lattice.width"
+            },
+            {
+              "literal": 0.3,
+              "type": "real"
+            }
+          ],
+          "targets": ["peak2Y"]
+        },
+        "peak2Y": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "lattice.height"
+            },
+            {
+              "literal": 0.7,
+              "type": "real"
+            }
+          ],
+          "targets": ["across2"]
+        },
+        "across2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "column"
+            },
+            {
+              "evaluate": "peak2X"
+            }
+          ],
+          "targets": ["down2"]
+        },
+        "down2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "row"
+            },
+            {
+              "evaluate": "peak2Y"
+            }
+          ],
+          "targets": ["away2"]
+        },
+        "away2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "hypotuneuse",
+          "inputs": [
+            {
+              "evaluate": "across2"
+            },
+            {
+              "evaluate": "down2"
+            }
+          ],
+          "targets": ["squared2"]
+        },
+        "squared2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "away2"
+            },
+            {
+              "evaluate": "away2"
+            }
+          ],
+          "targets": ["scaled2"]
+        },
+        "scaled2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "squared2"
+            },
+            {
+              "attribute": "sugarMoundness"
+            }
+          ],
+          "targets": ["fall2"]
+        },
+        "fall2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "neg",
+          "inputs": [
+            {
+              "evaluate": "scaled2"
+            }
+          ],
+          "targets": ["height2"]
+        },
+        "height2": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "fall2"
+            }
+          ],
+          "targets": ["bothPeaks"]
+        },
+        "bothPeaks": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "height1"
+            },
+            {
+              "evaluate": "height2"
+            }
+          ],
+          "targets": ["upToOne"]
+        },
+        "upToOne": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "min",
+          "inputs": [
+            {
+              "evaluate": "bothPeaks"
+            },
+            {
+              "literal": 1.0,
+              "type": "real"
+            }
+          ],
+          "targets": ["toCapacity"]
+        },
+        "toCapacity": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "upToOne"
+            },
+            {
+              "literal": 4,
+              "type": "real"
+            }
+          ],
+          "targets": ["roundUp"]
+        },
+        "roundUp": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "toCapacity"
+            },
+            {
+              "literal": 0.5,
+              "type": "real"
+            }
+          ],
+          "targets": ["rounded"]
+        },
+        "rounded": {
+          "kind": "evaluate",
+          "selected": "initialize",
+          "function": "floor",
+          "inputs": [
+            {
+              "evaluate": "roundUp"
+            }
+          ],
+          "targets": ["setCapacity"]
+        },
+        "setCapacity": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarCell.capacity",
+          "parameter": {
+            "evaluate": "rounded"
+          },
+          "targets": ["fillUp"]
+        },
+        "fillUp": {
+          "kind": "set",
+          "selected": "initialize",
+          "attribute": "sugarCell.sugar",
+          "parameter": {
+            "attribute": "sugarCell.capacity"
+          }
+        },
+        "growBack": {
+          "kind": "rule",
+          "space": "lattice",
+          "targets": ["oneMore"]
+        },
+        "oneMore": {
+          "kind": "evaluate",
+          "selected": "growBack",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "sugarCell.sugar"
+            }
+          ],
+          "targets": ["notMore"]
+        },
+        "notMore": {
+          "kind": "evaluate",
+          "selected": "growBack",
+          "function": "min",
+          "inputs": [
+            {
+              "evaluate": "oneMore"
+            },
+            {
+              "attribute": "sugarCell.capacity"
+            }
+          ],
+          "targets": ["grown"]
+        },
+        "grown": {
+          "kind": "set",
+          "selected": "growBack",
+          "attribute": "sugarCell.sugar",
+          "parameter": {
+            "evaluate": "notMore"
+          }
+        }
+      },
+      "styles": {
+        "cellStyle": {
+          "kind": "2d",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "lattice",
+              "targets": ["share"]
+            },
+            "share": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "div",
+              "inputs": [
+                {
+                  "attribute": "sugarCell.sugar"
+                },
+                {
+                  "literal": 4,
+                  "type": "real"
+                }
+              ],
+              "targets": ["yellow"]
+            },
+            "yellow": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "evaluate": "share"
+                },
+                {
+                  "evaluate": "share"
+                },
+                {
+                  "constant": "zero"
+                }
+              ],
+              "targets": ["square"]
+            },
+            "square": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "shapeRectangle",
+              "targets": ["fill"]
+            },
+            "fill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "lattice": {
+      "kind": "grid",
+      "label": "Sugar Lattice",
+      "neighborhood": "vonNeumann",
+      "borderRule": "periodic",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "default": 50
+        },
+        "height": {
+          "type": "integer",
+          "default": 50
+        }
+      }
+    }
+  }
+}

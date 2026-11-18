@@ -38,6 +38,16 @@ come from the source comments and the book's chapter structure.
 | `batch.ts`          | The `Multiple*` batch harnesses as experiment designs                                                    |
 | `ascape-space.ts`   | Ascape semantics: line-of-sight order, `findMaximum` ties, random free cell, `uniqueSeries`, `Diffusion` |
 
+## Written in the model format
+
+II-1, II-2 and II-3 are also written as format files (`SugarscapeII1.model.json`,
+`SugarscapeII2.model.json`, `SugarscapeII3.model.json`, wired in by `format.ts`) and run by the
+interpreter, shown as "Sugarscape II-n: … (format)" beside the coded ports. They keep the coded
+ports' rules (movement to the best cell in line of sight, free or not, and only if that cell is
+free), not the numbers or the random draw order; `format.test.ts` compares the two statistically.
+What it took, and what the format lacks for the rest of the family, is in
+`docs/format-pilot/sugarscape.md`.
+
 ## Legacy classes
 
 | Legacy class                                                                                                                    | New model or shared file                                         | Status                                                    |

@@ -12,6 +12,7 @@ import {
   spiceII2,
 } from './chapter-2';
 import { gasII4, gasIII2, gasIII3, gasIII6 } from './chapter-3';
+import { gasII1Format, gasII2Format, gasII3Format } from './format';
 import {
   gasIV1,
   gasIVa,
@@ -50,6 +51,7 @@ export {
   spiceII1,
   spiceII2,
 };
+export { gasII1Format, gasII2Format, gasII3Format };
 export {
   multipleGasII2,
   multipleGasIVa,
@@ -65,7 +67,10 @@ export {
   type SugarscapeBatch,
 } from './batch';
 
-/** The Sugarscape models of Growing Artificial Societies, ported from Ascape, in book order. */
+/**
+ * The Sugarscape models of Growing Artificial Societies, ported from Ascape, in book order. II-1 to
+ * II-3 are also written in the model format (`format.ts`), each after its coded port.
+ */
 export const family = defineFamily({
   id: 'brookings-sugarscape',
   name: 'Sugarscape',
@@ -78,8 +83,11 @@ export const family = defineFamily({
     'inheritance and culture (III), and spice and trade (IV).',
   models: [
     gasII1,
+    gasII1Format,
     gasII2,
+    gasII2Format,
     gasII3,
+    gasII3Format,
     gasII4,
     gasII5,
     gasII6,
