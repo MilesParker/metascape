@@ -140,7 +140,17 @@ Open for the owner:
   reuse, Sugarscape's 23 models and Bionland's 21 steps would be about 40,000 lines of JSON. The
   pilot recommends an overlay: a model names a base and holds what it adds, replaces (by path) or
   removes, merged before checking (`docs/format-pilot/sugarscape.md`). Steps that are only settings
-  become run specs or catalogue aliases.
+  become run specs or catalogue aliases. The same idea applies to agent types (a `person` holding
+  the placement and walk that Civil Violence's citizen and cop now each repeat). Owner,
+  2026-11-18: both are resolved at load into a flat model, and a selection of a type does not find
+  its subtypes, since for the science it must be plain when behaviour changes.
+- **YAML as the file syntax** (owner's idea, 2026-11-18): the same metamodel and checker, written
+  as YAML instead of JSON, for comments, less noise and readable diffs. YAML's own reuse (anchors,
+  and the `<<` merge key, which YAML 1.2 dropped) works only within one file and merges only the top
+  level of a mapping, so overlays still need the format's own `extends`. Anchors would also leave no
+  trace in the model that something is shared or replaced, so they are probably best refused in
+  model files (which also removes alias bombs). Needs: YAML 1.2 core schema (no `no` read as
+  `false`), a canonical writer for the editor that keeps comments.
 - **When a format version replaces the coded one,** as the AMP ports were replaced.
 - **Speed.** Format models run as generated JavaScript by default, with the same
   runs as the interpreter (`docs/codegen.md`). They are now about 2 to 4 times slower per period than
