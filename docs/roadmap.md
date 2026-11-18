@@ -108,9 +108,11 @@ they are converted. What follows from it, still to design:
   code (D4); or methods written in a TypeScript subset that is parsed, type-checked against the
   method API only, restricted to an allowlist of syntax, and re-emitted by Metascape, so the author's
   text is never run. D2's switch stays for anything else.
-- **Running loaded files.** A model file is data and the interpreter only reads it, but runs should
-  still be contained: a Web Worker in a sandboxed iframe with no origin of its own and no network,
-  stopped from outside on a runaway loop.
+- **Running loaded files.** A model file is data: the interpreter only reads it, and generated
+  execution (`docs/codegen.md`) puts none of its text into code. Runs should still be contained: a
+  Web Worker in a sandboxed iframe with no origin of its own and no network, stopped from outside on
+  a runaway loop. That worker would also be the one place a Content-Security-Policy need allow
+  `unsafe-eval` for generated code.
 - **Reviewable files.** A pull request is only as good as its diff: a canonical serialization
   (stable key order and formatting), stable IDs, and small files (overlays for model chains, above).
 - **Checks on a pull request:** the checker, a run of some periods, the model's run tests (ATest),
@@ -137,9 +139,12 @@ Open for the owner:
   removes, merged before checking (`docs/format-pilot/sugarscape.md`). Steps that are only settings
   become run specs or catalogue aliases.
 - **When a format version replaces the coded one,** as the AMP ports were replaced.
-- **Speed.** The interpreter is about 14 to 16 times slower per period than the ports, and 150 times
-  for Classes, where each choice scans every memory. It has not been profiled. Anasazi, Bionland and
-  Sugarscape's trade models need this looked at first.
+- **Speed.** Format models in the catalogue and Studio run as generated JavaScript, with the same
+  runs as the interpreter (`docs/codegen.md`). They are now about 2 to 4 times slower per period than
+  the ports (Sugarscape II-1, Civil Violence I, Heatbugs), and 20 times for Classes, against 12 to
+  160 times before. What remains is mostly the models' own search work: a `nearest` search by rings
+  on a grid (Civil Violence), and counts kept instead of recounted memories (Classes). Still open:
+  whether `compileModel` should default to generated execution.
 
 Gaps found, to fill when a model needs them (D4):
 

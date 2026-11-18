@@ -112,6 +112,11 @@ declared under `scapes`: the interpreter gives each a `Singleton` space and adds
 agent types' scapes, so its rules execute once per period with no acting agent. Network wiring is
 an initial rule of the root.
 
+`compileModel` makes those rules from the model's acts once, when the model is compiled, in one of
+two ways that give the same run: closures of the interpreter, or JavaScript generated from the acts
+and made with `new Function` (`execution: 'generated'`, `docs/codegen.md`), which the catalogue and
+Studio use. Both run on the engine like any other model.
+
 ## Outside the model
 
 `Runner` drives a model interactively and `runExperiment` runs it in batches. They are run-time
