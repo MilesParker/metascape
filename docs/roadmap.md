@@ -96,6 +96,51 @@ ports are gone, except SIR's.
   stocks, flows, auxiliary variables). Port it after the main metamodel (review item R10); until
   then SIR stays as code.
 
+## Moving the coded models into the format
+
+The owner wants every coded model (Ascape, Brookings, the introductory models) written as a format
+model. Equivalence is statistical: deterministic per seed, with no reproduction of the ports' draws.
+A pilot (2026-11-17, reports in `docs/format-pilot/`) wrote Civil Violence Model I (with Runs 1 to 5
+as run specs), Sugarscape II-1 to II-3, and Emergence of Classes Model One (with Figures 2 and 3 as
+run specs). All three are pure spec, with no method acts, and match their ports over many seeds. They
+sit in the catalogue beside the coded models as "… (format)". The format gained `lineOfSight`,
+`locationX` and `locationY`. Memory as agents nested in the bargainer works, so R3 (no arrays)
+stands.
+
+Open for the owner:
+
+- **Building one model on another.** Sugarscape II-2 is 96% II-1, and II-3 is II-2 renamed. Without
+  reuse, Sugarscape's 23 models and Bionland's 21 steps would be about 40,000 lines of JSON. The
+  pilot recommends an overlay: a model names a base and holds what it adds, replaces (by path) or
+  removes, merged before checking (`docs/format-pilot/sugarscape.md`). Steps that are only settings
+  become run specs or catalogue aliases.
+- **When a format version replaces the coded one,** as the AMP ports were replaced.
+- **Speed.** The interpreter is about 14 to 16 times slower per period than the ports, and 150 times
+  for Classes, where each choice scans every memory. It has not been profiled. Anasazi, Bionland and
+  Sugarscape's trade models need this looked at first.
+
+Gaps found, to fill when a model needs them (D4):
+
+- curation measures: ratios, means over a qualified subset, products and scaled series (Civil
+  Violence's Measures Chart);
+- a change of a parameter at a period, in a run spec (Civil Violence Runs 3 to 5 use inert
+  parameters and a rule instead);
+- `toInteger`, or integer results from `floor`, `ceil` and `rint`;
+- an `other` term for picking another agent of one's own kind without a space (Classes uses
+  `minimize` of `zero`);
+- setting one state attribute from another with the same options;
+- the checker warns about a query after a logic act even where it is meant (Sugarscape's "move only
+  if the best cell is free");
+- a root attribute changed by a `set` is not shown with the parameters in Studio;
+- colouring cells by a value (Civil Violence's grievance view), and placing a nested scape in a
+  continuous space at computed coordinates (Classes' simplex view);
+- `fromMetaabm` (in `packages/models/src/amp/metaabm.ts`) compiles any format model; move it out
+  of `amp/` under a neutral name.
+
+Writing the JSON by hand is slow and error-prone: both Civil Violence and Sugarscape were written
+by throwaway scripts that generated the files. This is a cost of the whole effort until a model
+editor exists.
+
 ## Not ported, on purpose
 
 - `edu.brooksantafe` Heatbugs from Ascape: its directory carries a GNU GPL notice. The AMP
