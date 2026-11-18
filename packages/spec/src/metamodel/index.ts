@@ -19,7 +19,13 @@ export {
   type SpatialTerm,
   type ValueType,
 } from './functions';
-export { compileModel, styleOf, type CompileOptions } from './interpreter';
+export {
+  compileModel,
+  generationReport,
+  styleOf,
+  type CompileOptions,
+  type GenerationReport,
+} from './interpreter';
 export type {
   MethodAgent,
   MethodImplementation,
@@ -38,4 +44,5 @@ export {
   parseLibrary,
   parseModel,
 } from './schema';
+export { traceRun } from './trace';
 export * from './types';

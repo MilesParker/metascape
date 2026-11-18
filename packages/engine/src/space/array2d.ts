@@ -82,6 +82,8 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
   readonly #cells: C[] = [];
   readonly #neighborCache: (readonly C[] | undefined)[] = [];
   readonly #templates = new Map<string, readonly Offset[]>();
+  /** The rays of each cell, by range in whole steps. */
+  readonly #rayCache = new Map<number, (readonly C[] | undefined)[]>();
   #populated = false;
 
   constructor(options: Array2DOptions = {}) {
@@ -229,12 +231,24 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
    * vonNeumann, 8 for moore) up to `range` steps away, nearest first,
    * direction by direction in the order of {@link neighbors}. The origin is
    * never included and no cell is listed twice (relevant on small tori).
+   * Computed once per cell and range.
    */
-  rays(cell: C, range: number): C[] {
-    this.#indexOf(cell);
+  rays(cell: C, range: number): readonly C[] {
+    const index = this.#indexOf(cell);
+    const steps = Math.floor(range);
+    let byCell = this.#rayCache.get(steps);
+    if (!byCell) this.#rayCache.set(steps, (byCell = []));
+    let cached = byCell[index];
+    if (!cached) {
+      cached = Object.freeze(this.#rays(cell, steps)) as readonly C[];
+      byCell[index] = cached;
+    }
+    return cached;
+  }
+
+  #rays(cell: C, steps: number): C[] {
     const result: C[] = [];
     const seen = new Set<C>([cell]);
-    const steps = Math.floor(range);
     for (const { dx, dy } of this.neighborhood === 'moore' ? MOORE : VON_NEUMANN) {
       for (let step = 1; step <= steps; step++) {
         const other = this.#resolve(cell.x + dx * step, cell.y + dy * step);

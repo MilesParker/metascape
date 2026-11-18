@@ -40,6 +40,8 @@ import {
 } from '../runspec/runs';
 import type { RunSpec } from '../runspec/types';
 import { assertValidModel } from './check';
+import { UnsafeNameError } from './codegen/emit';
+import { generateBehaviour } from './codegen/generate';
 import { coreLibrary } from './core-library';
 import { Behaviour, holderFor, indexFunctions, type FunctionEntry } from './flows';
 import { coreFunctions, type Datum, type FunctionImplementation, type Mark } from './functions';
@@ -107,6 +109,33 @@ export interface CompileOptions {
    * unless this is set. Set it only for models from a source you trust.
    */
   readonly allowMethodBodies?: boolean;
+  /**
+   * How the model's acts run: `interpreted` by the interpreter's closures
+   * (the default), or `generated` as JavaScript made from the acts when the
+   * model is compiled (docs/codegen.md). Both give the same run for a seed;
+   * a root act that cannot be generated yet is interpreted, as is every act
+   * if the page does not allow code to be made.
+   */
+  readonly execution?: 'interpreted' | 'generated';
+}
+
+/** What generated execution made of a compiled model. */
+export interface GenerationReport {
+  /** The source generated for each agent type and style, by the file it is named as. */
+  readonly sources: ReadonlyMap<string, string>;
+  /** The root acts left to the interpreter, with the reason. */
+  readonly interpreted: readonly {
+    readonly agent: string;
+    readonly act: string;
+    readonly reason: string;
+  }[];
+}
+
+const reports = new WeakMap<EngineModel, GenerationReport>();
+
+/** What generated execution made of a model compiled with `execution: 'generated'`. */
+export function generationReport(model: EngineModel): GenerationReport | undefined {
+  return reports.get(model);
 }
 
 /** Default colours of agents without a style, by agent type. */
@@ -162,11 +191,11 @@ export function compileModel(model: Model, options: CompileOptions = {}): Engine
   ]);
   const charts = curation?.charts ?? [];
   const runs = runSetups(model, specs, lookup);
-  const compiled = compileChecked(
+  const { compiled, report } = compileChecked(
     recorded.length > 0 ? gathering(model, recorded) : model,
     options,
   );
-  return {
+  const result: EngineModel = {
     ...compiled,
     ...(run && {
       parameters: Object.fromEntries(
@@ -199,6 +228,8 @@ export function compileModel(model: Model, options: CompileOptions = {}): Engine
         }),
     }),
   };
+  if (report) reports.set(result, report);
+  return result;
 }
 
 /** A copy of a model that gathers data on the given attributes too. */
@@ -212,7 +243,10 @@ function gathering(model: Model, refs: readonly AttributeRef[]): Model {
   return copy;
 }
 
-function compileChecked(model: Model, options: CompileOptions): EngineModel {
+function compileChecked(
+  model: Model,
+  options: CompileOptions,
+): { compiled: EngineModel; report: GenerationReport | undefined } {
   const library = options.library ?? coreLibrary;
   const index = indexModel(model);
   const functions = indexFunctions(library, { ...coreFunctions, ...options.functions });
@@ -222,14 +256,46 @@ function compileChecked(model: Model, options: CompileOptions): EngineModel {
     indexConstants(library),
     methodsOf(index, options.methods ?? {}, options.allowMethodBodies ?? false),
   );
+  const report = options.execution === 'generated' ? generate(index) : undefined;
   const keepsOriginals = actsUse(index, 'original');
   const parameters = engineParameters(index);
-  return {
+  const compiled: EngineModel = {
     name: model.label ?? model.id,
     ...(model.description !== undefined ? { description: model.description } : {}),
     parameters,
     build: (root) => new World(index, root as RootScape, keepsOriginals).build(),
   };
+  return { compiled, report };
+}
+
+/** Generates the acts of every agent type and style (docs/codegen.md). */
+function generate(index: ModelIndex): GenerationReport {
+  const sources = new Map<string, string>();
+  const interpreted: { agent: string; act: string; reason: string }[] = [];
+  for (const agent of index.agents) {
+    const path = agent.path === '' ? [] : agent.path.split('.');
+    const behaviours: [Behaviour, string[]][] = [];
+    if (agent.behaviour) behaviours.push([agent.behaviour, [index.model.id, ...path]]);
+    agent.styles.forEach((style, i) =>
+      behaviours.push([style, [index.model.id, ...path, `style${i + 1}`]]),
+    );
+    for (const [behaviour, file] of behaviours) {
+      let source: string | undefined;
+      try {
+        source = generateBehaviour(behaviour, file);
+      } catch (error) {
+        if (!(error instanceof UnsafeNameError)) throw error;
+        for (const node of behaviour.nodes.values()) {
+          if (node.role === 'root') behaviour.interpretedBecause.set(node.id, error.message);
+        }
+      }
+      if (source !== undefined) sources.set(file.join('/'), source);
+      for (const [act, reason] of behaviour.interpretedBecause) {
+        interpreted.push({ agent: agent.path, act, reason });
+      }
+    }
+  }
+  return { sources, interpreted };
 }
 
 /** The constants of a library and its sub-libraries, by ID. */
@@ -333,6 +399,10 @@ function compileBehaviours(
         new Behaviour(index, agent, style.acts, functions, constants, styleMethods),
       );
     }
+    for (const ref of agent.behaviour.watches.keys()) {
+      const attribute = index.attribute(ref);
+      if (attribute.owner === agent) attribute.watched = true;
+    }
     for (const [actId, act] of actsOf(agent.decl.acts)) {
       if (
         (act.kind === 'watch' || act.kind === 'derive') &&
@@ -434,6 +504,7 @@ class World {
   readonly state: RunState;
   readonly #watchers = new Map<AttributeInfo, ((holder: Holder) => void)[]>();
   readonly #colors = new WeakMap<Agent, { version: number; color: Color | undefined }>();
+  #diffusions = 0;
 
   constructor(
     readonly index: ModelIndex,
@@ -647,11 +718,14 @@ class World {
           },
         });
       } else {
+        const generated = behaviour.generated.get(id);
         scape.addRule({
           name,
           ...description,
           randomExecution,
-          execute: (member) => behaviour.run(id, member, state),
+          execute: generated
+            ? (member) => generated(member, state)
+            : (member) => behaviour.run(id, member, state),
         });
       }
     }
@@ -684,32 +758,44 @@ class World {
       act.evaporationRate !== undefined ? index.attribute(act.evaporationRate) : undefined;
     const read = (cell: Agent, attribute: AttributeInfo) =>
       num(state.read(holderFor(cell, attribute.owner, state), attribute));
-    const pending = new Map<Agent, number>();
+    // The diffused attribute of a cell is read straight from it, unless it
+    // is derived or a derived value is being worked out.
+    const plain = !diffused.decl.derived;
+    const owner = diffused.owner;
+    const at = diffused.index;
+    const heat = (cell: Agent, direct: boolean) =>
+      direct && (cell as Partial<InterpCell>).info === owner
+        ? num((cell as InterpCell).values[at]!)
+        : read(cell, diffused);
+    const slot = this.#diffusions++;
     return {
       name,
       ...(act.description !== undefined ? { description: act.description } : {}),
       randomExecution: false,
       causesRemoval: false,
       execute: (cell) => {
-        const own = read(cell, diffused);
+        const direct = plain && !state.tracking;
+        const own = heat(cell, direct);
         const neighbors = (cell.scape.space as unknown as Array2DMoore<Cell>).neighbors(
           cell as Cell,
         );
         let value = own;
         if (neighbors.length > 0) {
           let sum = 0;
-          for (const neighbor of neighbors) sum += read(neighbor, diffused);
+          for (const neighbor of neighbors) sum += heat(neighbor, direct);
           const mean = sum / neighbors.length;
           value = own + (mean - own) * (rate ? read(cell, rate) : 1);
         }
         if (evaporation) value *= 1 - read(cell, evaporation);
-        pending.set(cell, value);
+        const target = cell as InterpCell;
+        (target.diffusing ??= [])[slot] = value;
       },
       update: (cell) => {
-        const value = pending.get(cell);
+        const target = cell as InterpCell;
+        const value = target.diffusing?.[slot];
         if (value === undefined) return;
-        pending.delete(cell);
-        state.write(cell as InterpCell, diffused, value);
+        target.diffusing![slot] = undefined;
+        state.write(target, diffused, value);
       },
     };
   }

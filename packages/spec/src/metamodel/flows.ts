@@ -34,6 +34,7 @@ import {
   resultType,
   StyleAccumulator,
   type Argument,
+  type Call,
   type CallInfo,
   type Datum,
   type FunctionImplementation,
@@ -41,7 +42,7 @@ import {
   type SpatialTerm,
   type ValueType,
 } from './functions';
-import { createMethod, type MethodImplementation } from './method';
+import { createMethod, type MethodImplementation, type MethodRunner } from './method';
 import {
   actsOf,
   type AgentInfo,
@@ -133,16 +134,22 @@ export class Frame {
   }
 }
 
-type Role = 'root' | 'select' | 'create' | 'control' | 'statement';
+export type Role = 'root' | 'select' | 'create' | 'control' | 'statement';
 
-interface Unit {
-  readonly topo: number;
-  /** Whether this is a gate, decided on a frame of its own for each arrival. */
-  readonly gate?: boolean;
-  readonly run: (frame: Frame) => void;
-}
+/** What a flow goes on to from an act: an act to fire, or a gate and the acts after it. */
+export type Unit =
+  | { readonly kind: 'fire'; readonly topo: number; readonly target: Node }
+  | {
+      readonly kind: 'gate';
+      readonly topo: number;
+      /** The query or logic act decided, on a frame of its own for each arrival. */
+      readonly gate: Node;
+      /** The acts after the gate, upstream first. */
+      readonly after: readonly Node[];
+      readonly predicate: (frame: Frame) => boolean;
+    };
 
-interface Node {
+export interface Node {
   readonly id: ActId;
   readonly act: FlowAct;
   /** Position in the order the acts are written. */
@@ -160,13 +167,16 @@ interface Node {
   fire: (frame: Frame) => void;
 }
 
-interface Region {
+export interface Region {
   readonly select: Node;
   readonly members: Set<Node>;
   readonly exits: Exit[];
 }
 
-type Cardinality = 'one' | 'all' | 'nearest' | 'minimize' | 'maximize';
+export type Cardinality = 'one' | 'all' | 'nearest' | 'minimize' | 'maximize';
+
+/** Where the candidates of a selection come from: around the origin by a spatial term, else the whole population. */
+export type Generator = 'here' | 'neighbor' | 'sight' | 'within' | 'population';
 
 /** A place where a flow leaves a select's region, choosing from the set the region describes. */
 export interface Exit {
@@ -174,9 +184,36 @@ export interface Exit {
   readonly region: Region;
   /** The members of the region upstream of the exit, the exit included. */
   readonly upstream: Set<Node>;
+  /** The first query upstream of the exit for each spatial term. */
+  readonly terms: ReadonlyMap<SpatialTerm, Node>;
+  readonly cardinality: Cardinality;
+  /** Whether every agent of the set is chosen (`all`), rather than one. */
+  readonly every: boolean;
   readonly includeSelf: boolean;
+  /** Whether a term places the search around the origin, so that the origin is left out. */
+  readonly locating: boolean;
+  readonly here: boolean;
   readonly toward: boolean;
   readonly away: boolean;
+  /** The agent type chosen from, if the select names one. */
+  readonly type: AgentInfo | undefined;
+  readonly generator: Generator;
+  /** The radius of `within`, or the range of `lineOfSight`, when it does not depend on the candidate. */
+  readonly radius: Input | undefined;
+  readonly sight: Input | undefined;
+  /**
+   * The coordinates of `location2D`, when they are plain values that do not
+   * depend on the candidate: the cell of a grid there is found directly
+   * rather than by testing every cell.
+   */
+  readonly at: readonly [Input, Input] | undefined;
+  /**
+   * The spatial filters upstream of the exit (all must hold), in order, and
+   * for each whether the generator's search on a grid already ensures it.
+   */
+  readonly filters: readonly { readonly node: Node; readonly implied: boolean }[];
+  /** The input whose value `minimize` or `maximize` takes the extreme of. */
+  readonly score: Input | undefined;
   units: Unit[];
   choose: (env: Env) => Agent[];
 }
@@ -261,6 +298,10 @@ export function holderFor(bound: Agent, owner: OwnerInfo, state: RunState): Hold
     const space = enclosing(bound, owner.context, state)?.spaces.get(owner.id);
     if (space) return space;
   } else if (owner.kind === 'scape') {
+    // Every agent of the model is inside the one instance of the root scape.
+    if (owner === state.index.root && (bound as Partial<Holder>).info !== undefined) {
+      return state.scape;
+    }
     const scape = enclosing(bound, owner as ScapeInfo, state);
     if (scape) return scape;
   } else if (isHolder(bound) && bound.info === owner) {
@@ -279,7 +320,7 @@ export function spaceAround(
 }
 
 /** Where an agent is in a space: its cell in a grid, or itself. */
-function locate(space: SpaceInstance | undefined, agent: Agent): Agent | undefined {
+export function locate(space: SpaceInstance | undefined, agent: Agent): Agent | undefined {
   if (space instanceof GridInstance) return space.location(agent);
   return agent;
 }
@@ -319,67 +360,128 @@ export class Env {
   }
 
   isNeighbor(candidate: Agent): boolean {
-    const { space, origin } = this;
-    if (!space || !origin) return false;
-    if (space instanceof GridInstance) {
-      const from = this.originLocation as Cell | undefined;
-      const at = space.location(candidate);
-      if (!from || !at) return false;
-      if (this.includeSelf && at === from) return true;
-      return space.grid.neighbors(from).includes(at);
-    }
-    if (space instanceof NetworkInstance) {
-      if (this.includeSelf && candidate === origin) return true;
-      return space.graph.neighbors(origin).includes(candidate);
-    }
-    return this.isWithin(candidate, 1);
+    return isNeighbor(this.space, this.origin, this.originLocation, this.includeSelf, candidate);
   }
 
   isWithin(candidate: Agent, distance: number): boolean {
-    const { space, origin } = this;
-    if (!space || !origin) return false;
-    const d = space.distance(origin, candidate);
-    return d !== undefined && d <= distance;
+    return isWithin(this.space, this.origin, candidate, distance);
   }
 
-  /** Whether a candidate is in sight along a direction of the grid's neighbourhood; elsewhere, within. */
   isInLine(candidate: Agent, distance: number): boolean {
-    const { space, origin } = this;
-    if (!space || !origin) return false;
-    if (!(space instanceof GridInstance)) return this.isWithin(candidate, distance);
-    const from = this.originLocation as Cell | undefined;
-    const at = space.location(candidate);
-    if (!from || !at) return false;
-    return at === from ? this.includeSelf : space.grid.rays(from, distance).includes(at);
+    return isInLine(
+      this.space,
+      this.origin,
+      this.originLocation,
+      this.includeSelf,
+      candidate,
+      distance,
+    );
   }
 
   isHere(candidate: Agent): boolean {
-    const { space, origin } = this;
-    if (!space || !origin) return false;
-    if (space instanceof GridInstance) {
-      const at = space.location(candidate);
-      return at !== undefined && at === this.originLocation;
-    }
-    if (space instanceof NetworkInstance) return candidate === origin;
-    return space.distance(origin, candidate) === 0;
+    return isHere(this.space, this.origin, this.originLocation, candidate);
   }
 
   isAvailable(candidate: Agent): boolean {
-    if (!(candidate instanceof HostCell)) return true;
-    return candidate.isAvailable || candidate.scape.space.multiOccupancy;
+    return isAvailable(candidate);
   }
 
   isAt(candidate: Agent, x: number, y: number): boolean {
-    const at = locate(this.space, candidate);
-    return at instanceof LocatedAgent && at.x === x && at.y === y;
+    return isAt(this.space, candidate, x, y);
   }
 }
 
+// The spatial terms as tests of a candidate, from an origin in a space. `from`
+// is where the origin is in the space (its cell in a grid).
+
+export function isNeighbor(
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  from: Agent | undefined,
+  includeSelf: boolean,
+  candidate: Agent,
+): boolean {
+  if (!space || !origin) return false;
+  if (space instanceof GridInstance) {
+    const at = space.location(candidate);
+    if (!from || !at) return false;
+    if (includeSelf && at === from) return true;
+    return space.grid.neighbors(from as Cell).includes(at);
+  }
+  if (space instanceof NetworkInstance) {
+    if (includeSelf && candidate === origin) return true;
+    return space.graph.neighbors(origin).includes(candidate);
+  }
+  return isWithin(space, origin, candidate, 1);
+}
+
+export function isWithin(
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  candidate: Agent,
+  distance: number,
+): boolean {
+  if (!space || !origin) return false;
+  const d = space.distance(origin, candidate);
+  return d !== undefined && d <= distance;
+}
+
+/** Whether a candidate is in sight along a direction of the grid's neighbourhood; elsewhere, within. */
+export function isInLine(
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  from: Agent | undefined,
+  includeSelf: boolean,
+  candidate: Agent,
+  distance: number,
+): boolean {
+  if (!space || !origin) return false;
+  if (!(space instanceof GridInstance)) return isWithin(space, origin, candidate, distance);
+  const at = space.location(candidate);
+  if (!from || !at) return false;
+  return at === from ? includeSelf : space.grid.rays(from as Cell, distance).includes(at);
+}
+
+export function isHere(
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  from: Agent | undefined,
+  candidate: Agent,
+): boolean {
+  if (!space || !origin) return false;
+  if (space instanceof GridInstance) {
+    const at = space.location(candidate);
+    return at !== undefined && at === from;
+  }
+  if (space instanceof NetworkInstance) return candidate === origin;
+  return space.distance(origin, candidate) === 0;
+}
+
+export function isAvailable(candidate: Agent): boolean {
+  if (!(candidate instanceof HostCell)) return true;
+  return candidate.isAvailable || candidate.scape.space.multiOccupancy;
+}
+
+export function isAt(
+  space: SpaceInstance | undefined,
+  candidate: Agent,
+  x: number,
+  y: number,
+): boolean {
+  const at = locate(space, candidate);
+  return at instanceof LocatedAgent && at.x === x && at.y === y;
+}
+
 /** The members of an agent type's populations that an agent can see. */
-export function populationOf(type: AgentInfo, near: Agent, state: RunState): Agent[] {
+export function populationOf(type: AgentInfo, near: Agent, state: RunState): readonly Agent[] {
   if (!type.context) return [state.scape];
+  const instances = instancesOf(near, type.context, state);
+  if (instances.length === 1 && type.fills.length === 0) {
+    // One population: its members as they are (the caller only reads them).
+    return instances[0]!.populations.get(type.id)?.members ?? [];
+  }
   const found: Agent[] = [];
-  for (const scape of instancesOf(near, type.context, state)) {
+  for (const scape of instances) {
     if (type.fills.length > 0) {
       for (const space of type.fills) {
         const grid = scape.spaces.get(space.id);
@@ -390,6 +492,93 @@ export function populationOf(type: AgentInfo, near: Agent, state: RunState): Age
     }
   }
   return found;
+}
+
+/** Whether a selection's candidates come from a search around the origin on a grid. */
+export function searchesGrid(
+  exit: Exit,
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  from: Agent | undefined,
+): boolean {
+  return (
+    exit.generator !== 'population' &&
+    origin !== undefined &&
+    from !== undefined &&
+    space instanceof GridInstance
+  );
+}
+
+/**
+ * The candidates of a selection, before its tests: around the origin by the
+ * exit's generator, else the whole population of the agent type. The radius
+ * and range are worked out only where the search needs them.
+ */
+export function exitCandidates(
+  exit: Exit,
+  space: SpaceInstance | undefined,
+  origin: Agent | undefined,
+  from: Agent | undefined,
+  root: Agent,
+  state: RunState,
+  radius: (() => number) | undefined,
+  sight: (() => number) | undefined,
+  at?: () => readonly [number, number],
+): readonly Agent[] {
+  const { type, generator, includeSelf } = exit;
+  const cellsWanted = space instanceof GridInstance && (!type || space.info.fill === type);
+  const ofType = (agents: readonly Agent[]) =>
+    type ? agents.filter((agent) => (agent as Partial<Holder>).info === type) : agents;
+  /** The occupants of cells, of the type if one is named. */
+  const occupants = (cells: readonly Cell[]) => {
+    const found: Agent[] = [];
+    for (const at of cells) {
+      if (!(at instanceof HostCell)) continue;
+      for (const occupant of at.occupants) {
+        if (!type || (occupant as Partial<Holder>).info === type) found.push(occupant);
+      }
+    }
+    return found;
+  };
+  if (generator === 'population' || !origin) {
+    if (cellsWanted && at) {
+      // Only the cell at the coordinates can pass `location2D`, which is still tested.
+      const [x, y] = at();
+      const cell = (space as GridInstance).grid.at(x, y);
+      return cell ? [cell] : [];
+    }
+    if (cellsWanted) return (space as GridInstance).scape.members;
+    return type ? populationOf(type, origin ?? root, state) : [];
+  }
+  if (space instanceof GridInstance) {
+    if (!from) return [];
+    const cell = from as Cell;
+    let cells: readonly Cell[];
+    if (generator === 'here') cells = [cell];
+    else if (generator === 'neighbor') {
+      cells = includeSelf ? [...space.grid.neighbors(cell), cell] : space.grid.neighbors(cell);
+    } else if (generator === 'sight') {
+      const seen = space.grid.rays(cell, sight!());
+      cells = includeSelf ? [cell, ...seen] : seen;
+    } else {
+      cells = space.within(cell, radius!());
+    }
+    if (cellsWanted) return cells;
+    return occupants(cells);
+  }
+  if (space instanceof NetworkInstance) {
+    let nodes: readonly Agent[];
+    if (generator === 'here') nodes = [origin];
+    else if (generator === 'neighbor') {
+      nodes = includeSelf
+        ? [...space.graph.neighbors(origin), origin]
+        : space.graph.neighbors(origin);
+    } else {
+      nodes = space.graph.findWithin(origin, (sight ?? radius)!(), { includeSelf });
+    }
+    return ofType(nodes);
+  }
+  return type ? populationOf(type, origin, state) : [];
 }
 
 /** The compiled acts of an agent or of one of its styles. */
@@ -481,8 +670,26 @@ export class Behaviour {
     this.firstShape = firstShape;
   }
 
+  /**
+   * Root acts whose flows run as generated code (docs/codegen.md), by ID;
+   * the others are interpreted.
+   */
+  readonly generated = new Map<ActId, (agent: Agent, state: RunState) => void>();
+  /** Why root acts that were to be generated are interpreted instead, by ID. */
+  readonly interpretedBecause = new Map<ActId, string>();
+
+  /** Every act, by its path. */
+  get nodes(): ReadonlyMap<ActId, Node> {
+    return this.#nodes;
+  }
+
   /** Runs the flow of a root act for an agent. */
   run(rootId: ActId, agent: Agent, state: RunState): void {
+    const generated = this.generated.get(rootId);
+    if (generated) {
+      generated(agent, state);
+      return;
+    }
     const node = this.#nodes.get(rootId);
     if (!node) throw new Error(`Internal error: no act \`${rootId}\``);
     const frame = new Frame(state, undefined, rootId, agent, undefined, agent.random);
@@ -515,6 +722,25 @@ export class Behaviour {
     return style;
   }
 
+  /** The space a leave act's selection is made in. */
+  leaveSpace(node: Node): SpaceInfo | undefined {
+    const act = node.act as Extract<FlowAct, { kind: 'leave' }>;
+    const selection = this.#nodes.get(act.selected)!.act;
+    const spaceId = 'space' in selection ? selection.space : undefined;
+    return spaceId ? (this.index.owners.get(spaceId) as SpaceInfo) : undefined;
+  }
+
+  readonly #methodRunners = new Map<Node, MethodRunner | undefined>();
+
+  /** What runs a method act; undefined if it has no implementation. */
+  methodRunner(node: Node): MethodRunner | undefined {
+    if (!this.#methodRunners.has(node)) {
+      const implementation = this.methods.get(node.id);
+      this.#methodRunners.set(node, implementation && createMethod(implementation, node.id));
+    }
+    return this.#methodRunners.get(node);
+  }
+
   #listFor(map: Map<string, ActId[]>, key: string): ActId[] {
     let list = map.get(key);
     if (!list) map.set(key, (list = []));
@@ -543,13 +769,15 @@ export class Behaviour {
     return ordered;
   }
 
-  #isSpatial(node: Node): boolean {
+  /** Whether a query's function is a spatial term. */
+  isSpatial(node: Node): boolean {
     return (
       node.act.kind === 'query' && this.functions.get(node.act.function)?.impl.kind === 'spatial'
     );
   }
 
-  #termOf(node: Node): SpatialTerm | undefined {
+  /** The spatial term a query is, if it is one. */
+  termOf(node: Node): SpatialTerm | undefined {
     if (node.act.kind !== 'query') return undefined;
     const impl = this.functions.get(node.act.function)?.impl;
     return impl?.kind === 'spatial' ? impl.term : undefined;
@@ -579,7 +807,7 @@ export class Behaviour {
         if (!fed) continue;
         if (act.kind === 'query') {
           const direct = node.sources.every((source) => source === select);
-          if (!direct && !this.#isSpatial(node)) continue;
+          if (!direct && !this.isSpatial(node)) continue;
         }
         members.add(node);
         node.region = region;
@@ -714,15 +942,7 @@ export class Behaviour {
     } else if (act.function === 'original') {
       call = this.#original(act.inputs?.[0], act.selected, inputs[0]);
     } else {
-      const types = withConstants(
-        act.inputs ?? [],
-        inputs.map((input) => input.type),
-      );
-      const info: CallInfo = {
-        inputs: inputs.map((input, i) => ({ ...input.info, type: types[i] ?? input.type })),
-        optionsOf: (type) => this.index.optionsOf(type),
-      };
-      const compiled = entry.impl.compile(info);
+      const compiled = this.compiledCall(node);
       call = (frame) =>
         compiled(
           inputs.map((input) => input.get(frame)),
@@ -731,6 +951,41 @@ export class Behaviour {
     }
     this.#calls.set(node, call);
     return call;
+  }
+
+  readonly #compiled = new Map<Node, { info: CallInfo; call: Call }>();
+
+  /** What a value function is told of a query's or evaluate's call, and the function made for it. */
+  callInfo(node: Node): CallInfo {
+    return this.#compiledOf(node).info;
+  }
+
+  /** The function made for a query's or evaluate's call of a value function. */
+  compiledCall(node: Node): Call {
+    return this.#compiledOf(node).call;
+  }
+
+  #compiledOf(node: Node): { info: CallInfo; call: Call } {
+    let found = this.#compiled.get(node);
+    if (!found) {
+      const act = node.act as Extract<FlowAct, { kind: 'query' | 'evaluate' }>;
+      const entry = this.functions.get(act.function);
+      if (!entry || entry.impl.kind !== 'value') {
+        throw new Error(`Internal error: \`${act.function}\` is not a value function`);
+      }
+      const inputs = (act.inputs ?? []).map((input) => this.#input(input, act.selected));
+      const types = withConstants(
+        act.inputs ?? [],
+        inputs.map((input) => input.type),
+      );
+      const info: CallInfo = {
+        inputs: inputs.map((input, i) => ({ ...input.info, type: types[i] ?? input.type })),
+        optionsOf: (type) => this.index.optionsOf(type),
+      };
+      found = { info, call: entry.impl.compile(info) };
+      this.#compiled.set(node, found);
+    }
+    return found;
   }
 
   /** `original`: the value an attribute had when its agent started. */
@@ -831,7 +1086,7 @@ export class Behaviour {
             : (candidate, env) => sources.some((source) => source(candidate, env));
       switch (node.act.kind) {
         case 'query': {
-          if (this.#isSpatial(node)) {
+          if (this.isSpatial(node)) {
             predicate = reached;
           } else {
             const own = this.#queryOnCandidate(node);
@@ -860,7 +1115,7 @@ export class Behaviour {
 
   #queryOnCandidate(node: Node): CandidatePredicate {
     const act = node.act as Extract<FlowAct, { kind: 'query' }>;
-    const term = this.#termOf(node);
+    const term = this.termOf(node);
     if (term === undefined) {
       const call = this.#call(node);
       return (candidate, env) => call(env.frameFor(candidate)) === true;
@@ -907,7 +1162,7 @@ export class Behaviour {
     const upstream = this.#upstream(node, region);
     const terms = new Map<SpatialTerm, Node>();
     for (const member of upstream) {
-      const term = this.#termOf(member);
+      const term = this.termOf(member);
       if (term !== undefined && !terms.has(term)) terms.set(term, member);
     }
     const cardinality: Cardinality = terms.has('nearest')
@@ -923,36 +1178,34 @@ export class Behaviour {
     const includeSelf = terms.has('includeSelf');
     const locating = [...terms.keys()].some((term) => LOCATING_TERMS.has(term));
     const here = terms.has('here');
-    // Spatial filters upstream of the exit all hold; the other queries combine as their logic acts say.
-    const filters = [...upstream]
-      .filter((member) => {
-        const term = this.#termOf(member);
-        return term !== undefined && FILTER_TERMS.has(term);
-      })
-      .map((member) => this.#queryOnCandidate(member));
-    const logic = this.#logicOnCandidate(node, region);
-    const predicate: CandidatePredicate = (candidate, env) =>
-      filters.every((filter) => filter(candidate, env)) && (!logic || logic(candidate, env));
     const type =
       selectAct.agent !== undefined
         ? (this.index.owners.get(selectAct.agent) as AgentInfo)
         : undefined;
 
-    // How to find candidates: around the origin by a spatial filter, else the whole population.
-    const radiusOf = (term: SpatialTerm): ((frame: Frame) => number) | undefined => {
+    // A radius the search can use: one that does not depend on the candidate.
+    const fixedInput = (term: SpatialTerm): Input | undefined => {
       const termNode = terms.get(term);
       const input = termNode && (termNode.act as Extract<FlowAct, { kind: 'query' }>).inputs?.[0];
       const fixed =
         input !== undefined &&
         !('multiValue' in input) &&
         !('attribute' in input && (input.selected ?? select.id) === select.id);
-      if (!fixed) return undefined;
-      const getter = this.#input(input, select.id);
-      return (frame) => num(getter.get(frame));
+      return fixed ? input : undefined;
     };
-    const radius = radiusOf('within');
-    const sight = radiusOf('lineOfSight');
-    const generator: 'here' | 'neighbor' | 'sight' | 'within' | 'population' = terms.has('here')
+    const radius = fixedInput('within');
+    const sight = fixedInput('lineOfSight');
+    const atInputs = (terms.get('location2D')?.act as Extract<FlowAct, { kind: 'query' }>)?.inputs;
+    const plain = (input: Input | undefined): input is Input =>
+      input !== undefined &&
+      !('multiValue' in input) &&
+      !('evaluate' in input) &&
+      !('attribute' in input && (input.selected ?? select.id) === select.id);
+    const at =
+      atInputs && plain(atInputs[0]) && plain(atInputs[1])
+        ? ([atInputs[0], atInputs[1]] as const)
+        : undefined;
+    const generator: Generator = terms.has('here')
       ? 'here'
       : terms.has('neighbor')
         ? 'neighbor'
@@ -961,102 +1214,111 @@ export class Behaviour {
           : radius
             ? 'within'
             : 'population';
-
-    let score: ((candidate: Agent, env: Env) => number) | undefined;
-    if (cardinality === 'nearest') {
-      score = (candidate, env) =>
-        env.space && env.origin
-          ? (env.space.distance(env.origin, candidate) ?? Infinity)
-          : Infinity;
-    } else if (cardinality === 'minimize' || cardinality === 'maximize') {
-      const termNode = terms.get(cardinality)!;
-      const input = (termNode.act as Extract<FlowAct, { kind: 'query' }>).inputs?.[0];
-      const getter = input ? this.#input(input, select.id) : undefined;
-      const sign = cardinality === 'minimize' ? 1 : -1;
-      score = (candidate, env) => sign * num(getter?.get(env.frameFor(candidate)) ?? 0);
-    }
-
-    const candidates = (env: Env): readonly Agent[] => {
-      const { space, origin } = env;
-      const from = env.originLocation;
-      const cellsWanted = space instanceof GridInstance && (!type || space.info.fill === type);
-      const ofType = (agents: readonly Agent[]) =>
-        type ? agents.filter((agent) => isHolder(agent) && agent.info === type) : agents;
-      if (generator === 'population' || !origin) {
-        if (cellsWanted) return (space as GridInstance).scape.members;
-        return type ? populationOf(type, origin ?? env.frame.root.agent, env.frame.state) : [];
-      }
-      if (space instanceof GridInstance) {
-        if (!from) return [];
-        const cell = from as Cell;
-        let cells: readonly Cell[];
-        if (generator === 'here') cells = [cell];
-        else if (generator === 'neighbor') {
-          cells = includeSelf ? [...space.grid.neighbors(cell), cell] : space.grid.neighbors(cell);
-        } else if (generator === 'sight') {
-          const seen = space.grid.rays(cell, sight!(env.frame));
-          cells = includeSelf ? [cell, ...seen] : seen;
-        } else {
-          cells = space.grid.findWithin(cell, radius!(env.frame), {
-            metric: space.metric,
-            includeSelf: true,
-          });
-        }
-        if (cellsWanted) return cells;
-        return ofType(cells.flatMap((at) => (at instanceof HostCell ? at.occupants : [])));
-      }
-      if (space instanceof NetworkInstance) {
-        let nodes: readonly Agent[];
-        if (generator === 'here') nodes = [origin];
-        else if (generator === 'neighbor') {
-          nodes = includeSelf
-            ? [...space.graph.neighbors(origin), origin]
-            : space.graph.neighbors(origin);
-        } else {
-          nodes = space.graph.findWithin(origin, (sight ?? radius)!(env.frame), { includeSelf });
-        }
-        return ofType(nodes);
-      }
-      return type ? populationOf(type, origin, env.frame.state) : [];
-    };
+    // On a grid, the search around the origin finds only cells (or their
+    // occupants) that pass the generator's own term, so it need not be tested.
+    const generatorTerm: SpatialTerm | undefined =
+      generator === 'sight' ? 'lineOfSight' : generator === 'population' ? undefined : generator;
+    const generatorNode = generatorTerm && terms.get(generatorTerm);
+    const filters = [...upstream]
+      .filter((member) => {
+        const term = this.termOf(member);
+        return term !== undefined && FILTER_TERMS.has(term);
+      })
+      .map((member) => ({ node: member, implied: member === generatorNode }));
+    const score =
+      cardinality === 'minimize' || cardinality === 'maximize'
+        ? (terms.get(cardinality)!.act as Extract<FlowAct, { kind: 'query' }>).inputs?.[0]
+        : undefined;
 
     const exit: Exit = {
       node,
       region,
       upstream,
+      terms,
+      cardinality,
+      every,
       includeSelf,
+      locating,
+      here,
       toward: terms.has('toward'),
       away: terms.has('away'),
+      type,
+      generator,
+      radius,
+      sight,
+      at,
+      filters,
+      score,
       units: [],
-      choose: (env) => {
-        const found: Agent[] = [];
-        for (const candidate of candidates(env)) {
-          if (!candidate.alive) continue;
-          if (locating && !includeSelf && env.origin !== undefined) {
-            if (candidate === env.origin) continue;
-            if (!here && candidate === env.originLocation) continue;
-          }
-          if (predicate(candidate, env)) found.push(candidate);
+      choose: () => [],
+    };
+
+    // Spatial filters upstream of the exit all hold; the other queries combine as their logic acts say.
+    const filterTests = filters.map(({ node: member, implied }) => ({
+      test: this.#queryOnCandidate(member),
+      implied,
+    }));
+    const logic = this.#logicOnCandidate(node, region);
+    const radiusGetter = radius && this.#input(radius, select.id);
+    const sightGetter = sight && this.#input(sight, select.id);
+    const atGetters = at && [this.#input(at[0], select.id), this.#input(at[1], select.id)];
+
+    let scoreOf: ((candidate: Agent, env: Env) => number) | undefined;
+    if (cardinality === 'nearest') {
+      scoreOf = (candidate, env) =>
+        env.space && env.origin
+          ? (env.space.distance(env.origin, candidate) ?? Infinity)
+          : Infinity;
+    } else if (cardinality === 'minimize' || cardinality === 'maximize') {
+      const getter = score ? this.#input(score, select.id) : undefined;
+      const sign = cardinality === 'minimize' ? 1 : -1;
+      scoreOf = (candidate, env) => sign * num(getter?.get(env.frameFor(candidate)) ?? 0);
+    }
+
+    exit.choose = (env) => {
+      const found: Agent[] = [];
+      const onGrid = searchesGrid(exit, env.space, env.origin, env.originLocation);
+      const candidates = exitCandidates(
+        exit,
+        env.space,
+        env.origin,
+        env.originLocation,
+        env.frame.root.agent,
+        env.frame.state,
+        radiusGetter && (() => num(radiusGetter.get(env.frame))),
+        sightGetter && (() => num(sightGetter.get(env.frame))),
+        atGetters && (() => [num(atGetters[0]!.get(env.frame)), num(atGetters[1]!.get(env.frame))]),
+      );
+      for (const candidate of candidates) {
+        if (!candidate.alive) continue;
+        if (locating && !includeSelf && env.origin !== undefined) {
+          if (candidate === env.origin) continue;
+          if (!here && candidate === env.originLocation) continue;
         }
-        if (found.length === 0) return found;
-        if (score) {
-          let best = Infinity;
-          let ties: Agent[] = [];
-          for (const candidate of found) {
-            const value = score(candidate, env);
-            if (value < best) {
-              best = value;
-              ties = [candidate];
-            } else if (value === best) {
-              ties.push(candidate);
-            }
+        if (
+          filterTests.every(({ test, implied }) => (implied && onGrid) || test(candidate, env)) &&
+          (!logic || logic(candidate, env))
+        )
+          found.push(candidate);
+      }
+      if (found.length === 0) return found;
+      if (scoreOf) {
+        let best = Infinity;
+        let ties: Agent[] = [];
+        for (const candidate of found) {
+          const value = scoreOf(candidate, env);
+          if (value < best) {
+            best = value;
+            ties = [candidate];
+          } else if (value === best) {
+            ties.push(candidate);
           }
-          if (ties.length === 0) return ties;
-          return every ? ties : [env.frame.random.pick(ties)];
         }
-        if (every) return found;
-        return [env.frame.random.pick(found)];
-      },
+        if (ties.length === 0) return ties;
+        return every ? ties : [env.frame.random.pick(ties)];
+      }
+      if (every) return found;
+      return [env.frame.random.pick(found)];
     };
     return exit;
   }
@@ -1208,35 +1470,27 @@ export class Behaviour {
       case 'move':
         return (frame) => {
           const destination = frame.find(act.destination);
-          if (destination) move(frame.agentOf(act.selected), destination, frame.state);
+          if (destination) {
+            move(
+              frame.agentOf(act.selected),
+              destination.agent,
+              destination.exit?.toward ?? false,
+              destination.exit?.away ?? false,
+              frame.state,
+            );
+          }
           this.#emit(node, frame);
         };
       case 'leave': {
-        const selection = this.#nodes.get(act.selected)!.act;
-        const spaceId = 'space' in selection ? selection.space : undefined;
-        const space = spaceId ? (index.owners.get(spaceId) as SpaceInfo) : undefined;
+        const space = this.leaveSpace(node);
         return (frame) => {
-          const agent = frame.agentOf(act.selected);
-          const instance = space ? spaceAround(agent, space, frame.state) : undefined;
-          if (instance instanceof NetworkInstance) {
-            instance.scape.remove(agent);
-          } else if (agent instanceof CellOccupant && !(instance instanceof ContinuousInstance)) {
-            agent.leave();
-          }
-          frame.state.restructured();
+          leave(frame.agentOf(act.selected), space, frame.state);
           this.#emit(node, frame);
         };
       }
       case 'die':
         return (frame) => {
-          const agent = frame.agentOf(act.selected);
-          if (agent instanceof HostCell && !(agent instanceof CellOccupant)) {
-            throw new Error(`${describe(agent)} is a cell of a grid; cells cannot die`);
-          }
-          if (agent.alive && agent !== frame.state.scape) {
-            agent.die();
-            frame.state.restructured();
-          }
+          die(frame.agentOf(act.selected), frame.state);
           this.#emit(node, frame);
         };
       case 'connect':
@@ -1246,21 +1500,9 @@ export class Behaviour {
         const directed = act.kind === 'disconnect' ? true : (act.directed ?? true);
         return (frame) => {
           const agent = frame.agentOf(act.selected);
-          const instance = spaceAround(agent, network, frame.state);
-          if (instance instanceof NetworkInstance && agent.alive) {
-            const graph = instance.graph;
-            if (act.kind !== 'connect') graph.disconnectAll(agent);
-            if (act.kind !== 'disconnect') {
-              const other = frame.agentOf(act.destination);
-              if (other.alive) {
-                instance.enrol(agent);
-                instance.enrol(other);
-                graph.connect(agent, other);
-                if (graph.directed && !directed) graph.connect(other, agent);
-              }
-            }
-            frame.state.restructured();
-          }
+          link(act.kind, agent, network, directed, frame.state, () =>
+            frame.agentOf((act as Extract<FlowAct, { destination: ActId }>).destination),
+          );
           this.#emit(node, frame);
         };
       }
@@ -1271,11 +1513,10 @@ export class Behaviour {
           this.#emit(node, frame);
         };
       case 'method': {
-        const implementation = this.methods.get(node.id);
-        const runner = implementation && createMethod(implementation, node.id);
+        const runner = this.methodRunner(node);
         return (frame) => {
           const agent = act.selected !== undefined ? frame.agentOf(act.selected) : frame.root.agent;
-          runner?.(agent, frame);
+          runner?.(agent, frame.state, frame.random);
           this.#emit(node, frame);
         };
       }
@@ -1293,10 +1534,7 @@ export class Behaviour {
       node.role === 'control' &&
       !node.region &&
       node.targets.some((target) => target.role !== 'control');
-    const statementUnit = (target: Node): Unit => ({
-      topo: target.topo,
-      run: (frame) => target.fire(frame),
-    });
+    const statementUnit = (target: Node): Unit => ({ kind: 'fire', topo: target.topo, target });
     const exitOf = new Map<Node, Exit>();
     for (const node of ordered)
       for (const exit of node.region?.select === node ? node.region.exits : []) {
@@ -1339,14 +1577,7 @@ export class Behaviour {
       const after = gate.targets
         .filter((target) => target.role !== 'control')
         .sort((a, b) => a.topo - b.topo);
-      const unit: Unit = {
-        topo: gate.topo,
-        gate: true,
-        run: (frame) => {
-          if (!predicate(frame)) return;
-          for (const target of after) target.fire(frame);
-        },
-      };
+      const unit: Unit = { kind: 'gate', topo: gate.topo, gate, after, predicate };
       for (const feeder of logic ? [last] : feeders) unitsOf(feeder).push(unit);
     }
     for (const node of ordered) {
@@ -1360,17 +1591,74 @@ export class Behaviour {
 function runUnits(units: readonly Unit[], frame: Frame): void {
   let arrival: Frame | undefined;
   for (const unit of units) {
-    if (unit.gate) unit.run((arrival ??= frame.arrival()));
-    else unit.run(frame);
+    if (unit.kind === 'fire') unit.target.fire(frame);
+    else {
+      arrival ??= frame.arrival();
+      if (unit.predicate(arrival)) for (const target of unit.after) target.fire(arrival);
+    }
   }
 }
 
-/** Moves an agent to the agent or cell bound by a destination selection. */
-function move(mover: Agent, destination: Frame, state: RunState): void {
-  const target = destination.agent;
+/** Takes an agent out of the space its selection is made in (a leave act). */
+export function leave(agent: Agent, space: SpaceInfo | undefined, state: RunState): void {
+  const instance = space ? spaceAround(agent, space, state) : undefined;
+  if (instance instanceof NetworkInstance) {
+    instance.scape.remove(agent);
+  } else if (agent instanceof CellOccupant && !(instance instanceof ContinuousInstance)) {
+    agent.leave();
+  }
+  state.restructured();
+}
+
+/** Ends an agent (a die act). */
+export function die(agent: Agent, state: RunState): void {
+  if (agent instanceof HostCell && !(agent instanceof CellOccupant)) {
+    throw new Error(`${describe(agent)} is a cell of a grid; cells cannot die`);
+  }
+  if (agent.alive && agent !== state.scape) {
+    agent.die();
+    state.restructured();
+  }
+}
+
+/** Connects, replaces the links of, or disconnects an agent in a network. */
+export function link(
+  kind: 'connect' | 'replace' | 'disconnect',
+  agent: Agent,
+  network: SpaceInfo,
+  directed: boolean,
+  state: RunState,
+  destination: () => Agent,
+): void {
+  const instance = spaceAround(agent, network, state);
+  if (instance instanceof NetworkInstance && agent.alive) {
+    const graph = instance.graph;
+    if (kind !== 'connect') graph.disconnectAll(agent);
+    if (kind !== 'disconnect') {
+      const other = destination();
+      if (other.alive) {
+        instance.enrol(agent);
+        instance.enrol(other);
+        graph.connect(agent, other);
+        if (graph.directed && !directed) graph.connect(other, agent);
+      }
+    }
+    state.restructured();
+  }
+}
+
+/**
+ * Moves an agent to the agent or cell bound by a destination selection,
+ * toward or away from it if the exit that chose it says so.
+ */
+export function move(
+  mover: Agent,
+  target: Agent,
+  toward: boolean,
+  away: boolean,
+  state: RunState,
+): void {
   if (!mover.alive || !target.alive || !(mover instanceof CellOccupant)) return;
-  const toward = destination.exit?.toward ?? false;
-  const away = destination.exit?.away ?? false;
   if (mover instanceof InterpAgent && mover.info.continuous) {
     if (!(target instanceof LocatedAgent)) return;
     // One unit of distance per move, as a step on a grid is one cell.

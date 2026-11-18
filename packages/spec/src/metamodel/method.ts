@@ -5,8 +5,7 @@
 // model (the method's implementation), or a body held as text in the model,
 // which is evaluated only when `compileModel` is told to allow it (R21 in
 // docs/metamodel-review.md). Both see the same API.
-import { CellOccupant, type Agent } from '@metascape/engine';
-import type { Frame } from './flows';
+import { CellOccupant, type Agent, type Random } from '@metascape/engine';
 import type { Datum } from './functions';
 import { InterpScape, isHolder, type Holder, type RunState } from './runtime';
 
@@ -61,8 +60,8 @@ export type MethodImplementations = Readonly<
   Record<string, Readonly<Record<string, MethodImplementation>>>
 >;
 
-/** Runs a method for the agent bound by the act's selection. */
-export type MethodRunner = (agent: Agent, frame: Frame) => void;
+/** Runs a method for the agent bound by the act's selection, with the acting agent's random stream. */
+export type MethodRunner = (agent: Agent, state: RunState, random: Random) => void;
 
 /** Names a body cannot reach, so that it uses `random` and leaves the page alone. */
 const HIDDEN = [
@@ -138,14 +137,12 @@ export function compileMethodBody(body: string, actId: string): MethodImplementa
 
 /** Runs a method's implementation for the agent its flow binds. */
 export function createMethod(implementation: MethodImplementation, actId: string): MethodRunner {
-  return (agent, frame) => {
-    const state = frame.state;
+  return (agent, state, random) => {
     if (!isHolder(agent))
       throw new Error(`Method \`${actId}\` runs on an agent with no attributes`);
     // The scape the agent is in; the root scape is its own.
     const scapeHolder = agent instanceof InterpScape ? (agent.context ?? agent) : agent.context;
     if (!scapeHolder) throw new Error(`Method \`${actId}\` runs on an agent outside any scape`);
-    const random = frame.random;
     const api: MethodRandom = {
       unit: () => random.float(),
       int: (min, max) => random.int(min, max + 1),

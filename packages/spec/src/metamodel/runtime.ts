@@ -86,6 +86,8 @@ export class InterpCell extends HostCell implements Holder {
   readonly values: Datum[];
   originals?: Datum[] | undefined;
   derived?: Map<number, DerivedValue> | undefined;
+  /** The new value each diffusion has worked out for the cell, by the diffusion's number, until it is taken. */
+  diffusing: (number | undefined)[] | undefined;
 
   constructor(
     readonly info: AgentInfo,
@@ -145,6 +147,9 @@ export abstract class SpaceInstance implements Holder {
   abstract distance(a: Agent, b: Agent): number | undefined;
 }
 
+/** How many cells a grid keeps in its lists of cells within a radius. */
+const MAX_CACHED_CELLS = 1_000_000;
+
 /** A grid: a scape of cells. */
 export class GridInstance extends SpaceInstance {
   readonly metric: Metric;
@@ -168,6 +173,29 @@ export class GridInstance extends SpaceInstance {
 
   get grid(): Array2D<Cell> {
     return this.scape.space as Array2D<Cell>;
+  }
+
+  /** The cells within each radius of each cell, origin included, by radius then cell. */
+  readonly #within = new Map<number, (readonly Cell[] | undefined)[]>();
+  #cached = 0;
+
+  /**
+   * The cells within a distance of a cell by this grid's metric, the cell
+   * itself included, as `findWithin` orders them. Kept once worked out, up to
+   * a bound on how many are kept.
+   */
+  within(cell: Cell, radius: number): readonly Cell[] {
+    let byCell = this.#within.get(radius);
+    const index = cell.y * this.grid.width + cell.x;
+    const known = byCell?.[index];
+    if (known && this.scape.members[index] === cell) return known;
+    const found = this.grid.findWithin(cell, radius, { metric: this.metric, includeSelf: true });
+    if (this.#cached + found.length <= MAX_CACHED_CELLS) {
+      if (!byCell) this.#within.set(radius, (byCell = []));
+      byCell[index] = Object.freeze(found);
+      this.#cached += found.length;
+    }
+    return found;
   }
 
   get multiOccupant(): boolean {
@@ -358,6 +386,15 @@ export class RunState {
     this.version++;
   }
 
+  /**
+   * Whether a derived value is being worked out, so that reads must go
+   * through {@link read} to be recorded. When not, a value that is not
+   * derived can be read straight from its holder.
+   */
+  get tracking(): boolean {
+    return this.#tracker !== undefined;
+  }
+
   /** Notes that what is being derived looks at where agents are. */
   looked(): void {
     if (this.#tracker) this.#tracker.structure = true;
@@ -386,7 +423,7 @@ export class RunState {
     holder.values[attribute.index] =
       attribute.type === 'integer' && typeof value === 'number' ? Math.trunc(value) : value;
     this.version++;
-    if (holder.info.kind === 'space') return;
+    if (holder.info.kind === 'space' || !attribute.watched) return;
     for (const watch of this.behaviours.watchers(holder.info, attribute)) {
       this.trigger(`the watch of \`${attribute.ref}\``, () => watch(holder));
     }

@@ -21,6 +21,8 @@ export interface AttributeInfo {
   /** The value an agent starts with. */
   readonly initial: Datum;
   readonly owner: OwnerInfo;
+  /** Whether a watch act of its owner watches it, so that setting it runs acts (set once compiled). */
+  watched?: boolean;
 }
 
 interface OwnerBase {

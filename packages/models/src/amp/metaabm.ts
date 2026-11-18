@@ -9,6 +9,7 @@ import type { Model, Provenance } from '@metascape/engine';
 import {
   compileModel,
   parseModel,
+  type CompileOptions,
   type Curation,
   type MethodImplementations,
   type RunSpec,
@@ -31,17 +32,40 @@ export interface CatalogEntry {
   readonly methods?: MethodImplementations;
 }
 
+/** What a catalogue model written in the format was compiled from. */
+export interface FormatSource {
+  readonly model: FormatModel;
+  readonly options: CompileOptions;
+}
+
+type FormatModel = ReturnType<typeof parseModel>;
+
+const sources = new WeakMap<Model, FormatSource>();
+
+/**
+ * The format model and compile options a catalogue model was compiled from,
+ * if it was written in the format, so that it can be compiled again (the
+ * tests run each both interpreted and generated).
+ */
+export function formatSourceOf(model: Model): FormatSource | undefined {
+  return sources.get(model);
+}
+
 /** Compiles a translated `.metaabm` model, under the name the catalogue has always given it. */
 export function fromMetaabm(source: unknown, entry: CatalogEntry): Model {
-  const compiled = compileModel(parseModel(source), {
+  const model = parseModel(source);
+  const options: CompileOptions = {
     ...(entry.curation && { curation: entry.curation }),
     ...(entry.runSpecs && { runSpecs: entry.runSpecs }),
     ...(entry.methods && { methods: entry.methods }),
-  });
-  return {
+  };
+  const compiled = compileModel(model, options);
+  const result: Model = {
     ...compiled,
     name: entry.name,
     ...(entry.description !== undefined && { description: entry.description }),
     provenance: entry.provenance,
   };
+  sources.set(result, { model, options });
+  return result;
 }
