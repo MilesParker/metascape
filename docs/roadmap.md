@@ -145,7 +145,9 @@ Open for the owner:
   2026-11-18: both are resolved at load into a flat model, and a selection of a type does not find
   its subtypes, since for the science it must be plain when behaviour changes.
 - **Documentation lives in the model** (owner, 2026-11-18): model files stay JSON, with no
-  comments; documentation goes in a field of the element it documents, such as a `notes` field.
+  comments; documentation goes in the `description` of the element it documents (MetaABM's own
+  field; no separate `notes` field), including rationale, citations and departures from the
+  original.
   The `.metaabm` translation keeps every `description` (the files have no XML comments); the only
   text dropped is the boilerplate on the grid's dimensions array, which R3 removed. The format
   models written from coded ports do not yet carry the ports' explanations: of Civil Violence I's
