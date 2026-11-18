@@ -7,6 +7,7 @@
 import {
   CellOccupant,
   HostCell,
+  LatticeRanks,
   ListSpace,
   Scape,
   Singleton,
@@ -150,6 +151,9 @@ export abstract class SpaceInstance implements Holder {
 /** How many cells a grid keeps in its lists of cells within a radius. */
 const MAX_CACHED_CELLS = 1_000_000;
 
+/** The most offsets a grid's table of ranks may hold; larger grids search for `nearest` by scanning. */
+const MAX_RANK_OFFSETS = 4_000_000;
+
 /** A grid: a scape of cells. */
 export class GridInstance extends SpaceInstance {
   readonly metric: Metric;
@@ -196,6 +200,25 @@ export class GridInstance extends SpaceInstance {
       this.#cached += found.length;
     }
     return found;
+  }
+
+  #ranks: LatticeRanks | null | undefined;
+
+  /**
+   * The cells around any cell by rank of this grid's metric, reaching each
+   * cell once, for a search for the nearest. Made when first asked for;
+   * undefined if the table would be too large.
+   */
+  get ranks(): LatticeRanks | undefined {
+    if (this.#ranks === undefined) {
+      const { width, height, wrap } = this.grid;
+      const span = (n: number) => (wrap ? n : 2 * n - 1);
+      this.#ranks =
+        span(width) * span(height) <= MAX_RANK_OFFSETS
+          ? LatticeRanks.covering(width, height, wrap, this.metric)
+          : null;
+    }
+    return this.#ranks ?? undefined;
   }
 
   get multiOccupant(): boolean {

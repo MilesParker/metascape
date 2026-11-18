@@ -1,6 +1,6 @@
 # Generated execution of format models
 
-Status: 2026-11-18. `compileModel` turns a model's acts into JavaScript when the model is compiled
+Status: 2026-11-18 (`nearest` by rank added the same day). `compileModel` turns a model's acts into JavaScript when the model is compiled
 and runs that in place of the interpreter's closures. This is the default (owner's decision,
 2026-11-18); `execution: 'interpreted'` runs the interpreter instead. Every format model of the catalogue
 runs generated, with no act left to the interpreter, and gives the same run as the interpreter for
@@ -39,7 +39,8 @@ it:
 - **Selections** become a loop over the candidates (from the interpreter's own `exitCandidates`),
   the exit's tests as one expression in the interpreter's order and with its short cuts, then the
   choice (`R.pick`, or the ties of `nearest`, `minimize` and `maximize`) and the exit's flow for
-  each agent chosen.
+  each agent chosen. The nearest of a grid's cells is found by the interpreter's own search by
+  rank (`nearestCells`, below), with the tests as a function of the candidate.
 - **Calls of core functions** that are hot and simple (comparisons, arithmetic, Java's integer
   arithmetic, `random*`, `timeNow`, `java.lang.Math`) are written out by templates
   (`templates.ts`), keyed by function ID and used only when the function's implementation is the
@@ -179,6 +180,20 @@ Each gives the same run as before (checked against the fingerprint):
   grid keeps the cells within each radius of each cell, up to a million kept.
 - `location2D` with coordinates that do not depend on the candidate finds its cell of a grid
   directly instead of testing every cell (Civil Violence's release).
+- `nearest` among a grid's cells, chosen from the whole population, searches outward from the
+  origin by rank (`searchesRanks`, `nearestCells` in `flows.ts`) instead of testing every cell:
+  Civil Violence's released citizen, put back near the site of arrest, tested all 1,600 sites.
+  The ranks are the engine's `LatticeRanks`, made once per grid by its own metric and reaching
+  every cell once (on a torus, the shortest way round), so the first rank with a match holds
+  exactly the cells a scan finds nearest. Those are then put in the population's order before
+  the draw, as the scan had them, so the draw is the same and **runs do not change**. Ascape
+  chooses in rank order; that would have changed every run with ties for nothing, since runs
+  need not match Ascape's numbers. Checked against a fingerprint of every format model of the
+  catalogue (interpreted, three seeds, 60 periods; Civil Violence makes about 1,600 such
+  searches in a run): identical with and without the search. One case does differ: a test that
+  draws or changes something (a random function) is now tried only on cells as far as the
+  nearest match, so a model with one would run differently, still deterministically. No
+  catalogue model has one, and generation leaves such a selection to the interpreter.
 - A population with one instance is read as it is, not copied.
 - Setting an attribute that no watch watches does not look for watches.
 - The root scape's attributes (the parameters) are read from the root scape instance, rather than
@@ -194,21 +209,25 @@ seeds.
 
 | model                         | before | interpreted | generated | coded | before / coded | generated / coded |
 | ----------------------------- | -----: | ----------: | --------: | ----: | -------------: | ----------------: |
-| Civil Violence I              |  15.55 |        8.57 |      3.52 |  0.91 |             17 |               3.9 |
-| Sugarscape II-1               |   5.86 |        1.55 |      0.78 |  0.41 |             14 |               1.9 |
-| Emergence of Classes, Model 1 |   6.71 |        6.07 |      0.82 | 0.042 |            160 |                20 |
-| Heatbugs (AMP)                |   6.99 |        3.37 |      2.11 |  0.60 |             12 |               3.5 |
+| Civil Violence I              |  15.55 |        7.44 |      2.60 |  0.92 |             17 |               2.8 |
+| Sugarscape II-1               |   5.86 |        1.71 |      0.77 |  0.41 |             14 |               1.9 |
+| Emergence of Classes, Model 1 |   6.71 |        6.44 |      0.89 | 0.044 |            150 |                20 |
+| Heatbugs (AMP)                |   6.99 |        3.53 |      2.22 |  0.59 |             12 |               3.8 |
 
 The coded Heatbugs is Ascape's, not a port of AMP's model, so its ratio is only a rough guide.
 Classes' coded time is small enough to be noisy (0.04 to 0.07 ms between runs).
 
-Against the start, the format models now run 4.4 (Civil Violence), 7.6 (Sugarscape), 8.2
-(Classes) and 3.3 (Heatbugs) times faster. Generated code alone is 2 to 7 times faster than the
+Measured again after the search by rank for `nearest` (2026-11-18): Civil Violence I generated
+went from 3.52 to 2.60 ms per period, interpreted from 8.57 to 7.44. The other three do not use
+`nearest`; their differences from the first measurement are noise between runs.
+
+Against the start, the format models now run 6.0 (Civil Violence), 7.6 (Sugarscape), 7.6
+(Classes) and 3.2 (Heatbugs) times faster. Generated code alone is 1.6 to 7 times faster than the
 interpreter as it is now. The target, the coded ports' speed, is not reached: generated runs are
 about 2 to 4 times slower than the ports, and 20 times for Classes. In all four what remains is
 mostly the work the model itself asks for (see What remains), which the ports do with cleverer
 data structures than the format can state: Classes' port keeps counts where the model recounts its
-memories, and Civil Violence's searches by rings where the model scans every free cell.
+memories.
 
 ## Content-Security-Policy
 
@@ -222,11 +241,12 @@ itself could forbid it.
 ## What remains
 
 - **The searches the models ask for.** What is left between generated and coded is mostly the
-  models' own search work, the same in both modes: Civil Violence's released citizen looks at
-  every free cell for the nearest; each Classes choice recounts every memory (the pilot report
-  suggests per-bargainer counts); Heatbugs diffuses over every cell. A search for `nearest` by
-  rings around the origin on a grid, giving the ties in the population's order so the draw is the
-  same, would close most of Civil Violence's gap.
+  models' own search work, the same in both modes: each Classes choice recounts every memory (the
+  pilot report suggests per-bargainer counts); Heatbugs diffuses over every cell. In Civil
+  Violence, with the release now searched by rank, a profile of the generated run puts most of
+  what remains in the walk and vision selections' candidate lists: `exitCandidates` and the
+  closures it makes on every call take about a quarter of the run under `tsx` (whose `__name`
+  wrapping of closures is part of that).
 - **The rule loop.** Each agent's rule is still a call from the engine's scape iteration into the
   generated function; generating the loop over a scape's members as well would save a call and a
   `Map` lookup per agent.

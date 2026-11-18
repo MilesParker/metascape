@@ -696,24 +696,27 @@ describe('selections', () => {
 
   it('finds the nearest, and the neighbour with the greatest or least value', () => {
     const cellAttributes = { food: { type: 'boolean' }, heat: { type: 'real' } } as const;
-    const nearestFood = gridModel(
-      look(
-        {
-          closest: { kind: 'query', selected: 'target', function: 'nearest', targets: ['both'] },
-          hasFood: {
-            kind: 'query',
-            selected: 'target',
-            function: 'identity',
-            inputs: [{ attribute: 'cell.food' }],
-            targets: ['both'],
-          },
-          both: { kind: 'all', selected: 'target', targets: ['go'] },
+    const nearestActs = look(
+      {
+        closest: { kind: 'query', selected: 'target', function: 'nearest', targets: ['both'] },
+        hasFood: {
+          kind: 'query',
+          selected: 'target',
+          function: 'identity',
+          inputs: [{ attribute: 'cell.food' }],
+          targets: ['both'],
         },
-        ['closest', 'hasFood'],
-        moveThere,
-      ),
-      { width: 9, height: 9, periodic: false, cellAttributes },
+        both: { kind: 'all', selected: 'target', targets: ['go'] },
+      },
+      ['closest', 'hasFood'],
+      moveThere,
     );
+    const nearestFood = gridModel(nearestActs, {
+      width: 9,
+      height: 9,
+      periodic: false,
+      cellAttributes,
+    });
     let root = new RootScape(compileModel(nearestFood), { seed: 1 });
     const grid = gridOf(root);
     setValue(grid.at(8, 8)!, 'food', true);
@@ -721,6 +724,32 @@ describe('selections', () => {
     place(root, bugs(root)[0]!, 1, 1);
     root.iterate();
     expect([bugs(root)[0]!.hostCell!.x, bugs(root)[0]!.hostCell!.y]).toEqual([1, 3]);
+
+    // On a torus the search by rank goes the shortest way round, and chooses among ties only.
+    const torus = gridModel(nearestActs, {
+      width: 9,
+      height: 9,
+      periodic: true,
+      cellAttributes,
+    });
+    for (const execution of ['interpreted', 'generated'] as const) {
+      const chosen = new Set<string>();
+      for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        root = new RootScape(compileModel(torus, { execution }), { seed });
+        const cells = gridOf(root);
+        for (const [x, y] of [
+          [8, 0],
+          [0, 8],
+          [2, 0],
+          [4, 4],
+        ] as const)
+          setValue(cells.at(x, y)!, 'food', true);
+        place(root, bugs(root)[0]!, 0, 0);
+        root.iterate();
+        chosen.add(`${bugs(root)[0]!.hostCell!.x},${bugs(root)[0]!.hostCell!.y}`);
+      }
+      expect([...chosen].sort()).toEqual(['0,8', '8,0']);
+    }
 
     const extreme = (term: 'maximize' | 'minimize') =>
       gridModel(

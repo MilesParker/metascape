@@ -19,7 +19,9 @@ import {
   link,
   locate,
   move,
+  nearestCells,
   searchesGrid,
+  searchesRanks,
   spaceAround,
 } from '../flows';
 import type { Argument, Datum, SpatialTerm } from '../functions';
@@ -142,6 +144,8 @@ export const HELPERS = Object.freeze({
   isAvailable,
   isAt,
   searchesGrid,
+  searchesRanks,
+  nearestCells,
   exitCandidates,
   populationOf,
   spatialValue,

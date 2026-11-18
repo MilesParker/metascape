@@ -516,22 +516,36 @@ ${exits}}
       ? code`const ${onGrid} = H.searchesGrid(${e}, ${space}, ${origin}, ${from});
 `
       : code``;
-    const excluded =
+    const excluded = (skip: Code) =>
       exit.locating && !exit.includeSelf
         ? code`if (${origin} !== undefined) {
-  if (${candidate} === ${origin}) continue;
-${exit.here ? code`` : code`  if (${candidate} === ${from}) continue;\n`}}
+  if (${candidate} === ${origin}) ${skip};
+${exit.here ? code`` : code`  if (${candidate} === ${from}) ${skip};\n`}}
 `
         : code``;
     const choose = this.#choose(node, exit, scope, found, origin, space);
+    const scan = code`for (const ${candidate} of ${candidates}) {
+if (!${candidate}.alive) continue;
+${excluded(code`continue`)}if (${passes}) ${found}.push(${candidate});
+}
+`;
+    // The nearest of a grid's cells: searched outward by rank, as the interpreter's `choose`.
+    const search = exit.ranked
+      ? code`let ${found};
+if (H.searchesRanks(${e}, ${space}, ${from})) {
+${found} = H.nearestCells(${space}, ${from}, (${candidate}) => {
+if (!${candidate}.alive) return false;
+${excluded(code`return false`)}return ${passes};
+});
+} else {
+${found} = [];
+${scan}}
+`
+      : code`const ${found} = [];
+${scan}`;
     return code`{
 const ${from} = H.locate(${space}, ${origin});
-${gridTest}const ${found} = [];
-for (const ${candidate} of ${candidates}) {
-if (!${candidate}.alive) continue;
-${excluded}if (${passes}) ${found}.push(${candidate});
-}
-${choose}}
+${gridTest}${search}${choose}}
 `;
   }
 

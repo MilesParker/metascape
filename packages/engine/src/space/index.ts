@@ -11,6 +11,7 @@ export {
 export { Continuous2D, type Continuous2DOptions } from './continuous2d';
 export { diffusion, type DiffusionOptions } from './diffusion';
 export { Graph, type GraphOptions } from './graph';
+export { LatticeRanks, type LatticeRank, type LatticeRanksOptions } from './lattice-ranks';
 export { connectRandom, connectRing, connectSmallWorld } from './graph-generators';
 export { ListSpace, Singleton } from './list';
 export { wireSmallWorld, type SmallWorldOptions } from './small-world';

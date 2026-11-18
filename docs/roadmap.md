@@ -49,10 +49,11 @@ README.txt` says the `edu` code "is not clearly licensed to Bios" (another proje
 Each was worked around locally in the family that needed it; move into the engine when a
 second user appears.
 
-- **Ascape-exact neighbourhood search:** Euclidean distance ranks with strict bounds and random
-  choice within a rank (`brookings/civil-violence/vision.ts`, `ascape/bionland/lattice-space.ts`,
-  `brookings/anasazi/valley.ts`, `brookings/sugarscape/ascape-space.ts`). The engine's
-  `findWithin`/`findNearest` on a lattice use Chebyshev or Manhattan rings.
+- **Ascape-exact neighbourhood search:** done (2026-11-18). The engine's `LatticeRanks`
+  (`space/lattice-ranks.ts`) holds Ascape's rank table and searches by it; Civil Violence,
+  Bionland and Anasazi use it, each with its own order of offsets within a rank so their runs
+  are unchanged (Sugarscape had no copy). A format model's `nearest` on a grid searches by rank
+  too (`docs/codegen.md`).
 - **Ascape diffusion** (mean of neighbours, two-phase); the engine's `diffusion()` shares
   quantity out instead (`ascape/bionland/lattice-model.ts`, `brookings/sugarscape/ascape-space.ts`).
 - **Graphs with Ascape semantics:** breadth-first search over a `Graph`

@@ -214,6 +214,11 @@ export interface Exit {
   readonly filters: readonly { readonly node: Node; readonly implied: boolean }[];
   /** The input whose value `minimize` or `maximize` takes the extreme of. */
   readonly score: Input | undefined;
+  /**
+   * Whether the choice is the nearest of a population: on a grid, the cells
+   * are then searched outward from the origin by rank (see {@link nearestCells}).
+   */
+  readonly ranked: boolean;
   units: Unit[];
   choose: (env: Env) => Agent[];
 }
@@ -492,6 +497,50 @@ export function populationOf(type: AgentInfo, near: Agent, state: RunState): rea
     }
   }
   return found;
+}
+
+/**
+ * Whether a selection's nearest choice searches a grid outward from the
+ * origin, rank by rank, rather than testing every cell: when it chooses the
+ * nearest of a grid's cells and the origin is on the grid.
+ */
+export function searchesRanks(
+  exit: Exit,
+  space: SpaceInstance | undefined,
+  from: Agent | undefined,
+): space is GridInstance {
+  return (
+    exit.ranked &&
+    from !== undefined &&
+    space instanceof GridInstance &&
+    (!exit.type || space.info.fill === exit.type) &&
+    space.ranks !== undefined
+  );
+}
+
+/**
+ * The cells of the nearest rank around `from` that pass `test`, in the
+ * population's order; none if no cell passes. Every cell nearer than these
+ * fails the test and every cell farther is not tested, so for tests that
+ * draw nothing and change nothing, these are exactly the cells a scan of the
+ * whole population would find nearest, in the order it would find them.
+ */
+export function nearestCells(
+  space: GridInstance,
+  from: Agent,
+  test: (cell: Agent) => boolean,
+): Agent[] {
+  const ranks = space.ranks!;
+  const grid = space.grid;
+  const origin = from as Cell;
+  const width = grid.width;
+  for (let r = 0; r < ranks.ranks.length; r++) {
+    const matches = ranks.matchesInRank(grid, origin, test, r);
+    if (matches.length === 0) continue;
+    if (matches.length > 1) matches.sort((a, b) => a.y * width + a.x - (b.y * width + b.x));
+    return matches;
+  }
+  return [];
 }
 
 /** Whether a selection's candidates come from a search around the origin on a grid. */
@@ -1249,6 +1298,7 @@ export class Behaviour {
       at,
       filters,
       score,
+      ranked: cardinality === 'nearest' && generator === 'population' && at === undefined,
       units: [],
       choose: () => [],
     };
@@ -1276,30 +1326,36 @@ export class Behaviour {
     }
 
     exit.choose = (env) => {
-      const found: Agent[] = [];
       const onGrid = searchesGrid(exit, env.space, env.origin, env.originLocation);
-      const candidates = exitCandidates(
-        exit,
-        env.space,
-        env.origin,
-        env.originLocation,
-        env.frame.root.agent,
-        env.frame.state,
-        radiusGetter && (() => num(radiusGetter.get(env.frame))),
-        sightGetter && (() => num(sightGetter.get(env.frame))),
-        atGetters && (() => [num(atGetters[0]!.get(env.frame)), num(atGetters[1]!.get(env.frame))]),
-      );
-      for (const candidate of candidates) {
-        if (!candidate.alive) continue;
+      const passes = (candidate: Agent): boolean => {
+        if (!candidate.alive) return false;
         if (locating && !includeSelf && env.origin !== undefined) {
-          if (candidate === env.origin) continue;
-          if (!here && candidate === env.originLocation) continue;
+          if (candidate === env.origin) return false;
+          if (!here && candidate === env.originLocation) return false;
         }
-        if (
+        return (
           filterTests.every(({ test, implied }) => (implied && onGrid) || test(candidate, env)) &&
           (!logic || logic(candidate, env))
-        )
-          found.push(candidate);
+        );
+      };
+      let found: Agent[];
+      if (searchesRanks(exit, env.space, env.originLocation)) {
+        found = nearestCells(env.space, env.originLocation!, passes);
+      } else {
+        found = [];
+        const candidates = exitCandidates(
+          exit,
+          env.space,
+          env.origin,
+          env.originLocation,
+          env.frame.root.agent,
+          env.frame.state,
+          radiusGetter && (() => num(radiusGetter.get(env.frame))),
+          sightGetter && (() => num(sightGetter.get(env.frame))),
+          atGetters &&
+            (() => [num(atGetters[0]!.get(env.frame)), num(atGetters[1]!.get(env.frame))]),
+        );
+        for (const candidate of candidates) if (passes(candidate)) found.push(candidate);
       }
       if (found.length === 0) return found;
       if (scoreOf) {

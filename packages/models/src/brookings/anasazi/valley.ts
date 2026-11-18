@@ -18,6 +18,7 @@ import {
   CellOccupant,
   type Color,
   HostCell,
+  LatticeRanks,
   type Random,
   rgb,
   type RootScape,
@@ -571,34 +572,15 @@ export interface EventCounts {
   householdsDisbanded: number;
 }
 
-/** One relative coordinate rank of Ascape's `Array2DBase.relativeCoordinatesTemplate`. */
-interface Rank {
-  readonly distance: number;
-  readonly offsets: readonly (readonly [number, number])[];
-}
-
 /**
  * Ascape's search ranks for nearest-cell queries on a 2D lattice: every
  * offset with both components within 16, grouped by Euclidean distance and
- * ordered by it (135 ranks, 1089 offsets).
+ * ordered by it (135 ranks, 1089 offsets), offsets column by column.
  */
-const RANKS: readonly Rank[] = (() => {
-  const groups = new Map<number, [number, number][]>();
-  for (let dx = -16; dx <= 16; dx++) {
-    for (let dy = -16; dy <= 16; dy++) {
-      const d2 = dx * dx + dy * dy;
-      const group = groups.get(d2) ?? [];
-      group.push([dx, dy]);
-      groups.set(d2, group);
-    }
-  }
-  return [...groups.keys()]
-    .sort((a, b) => a - b)
-    .map((d2) => ({ distance: Math.sqrt(d2), offsets: groups.get(d2)! }));
-})();
+const RANKS = new LatticeRanks({ order: 'columns' });
 
 /** Number of search ranks; exported for tests. */
-export const RANK_COUNT = RANKS.length;
+export const RANK_COUNT = RANKS.ranks.length;
 
 /** `Array2D.MAX_RANK`: beyond this distance a failed rank search falls back to a full scan. */
 const MAX_RANK = 135;
@@ -784,14 +766,7 @@ export class LongHouseValley {
     includeOrigin: boolean,
     maxDistance: number,
   ): number {
-    const grid = this.grid;
-    for (let r = includeOrigin ? 0 : 1; r < RANKS.length && RANKS[r]!.distance < maxDistance; r++) {
-      for (const [dx, dy] of RANKS[r]!.offsets) {
-        const cell = grid.at(origin.x + dx, origin.y + dy);
-        if (cell && condition(cell)) return r;
-      }
-    }
-    return -1;
+    return RANKS.nearestRank(this.grid, origin, condition, includeOrigin, maxDistance);
   }
 
   /** A uniformly random cell of a rank meeting the condition (`findRandomMatchInRank`). */
@@ -800,14 +775,9 @@ export class LongHouseValley {
     condition: (location: Location) => boolean,
     rank: number,
   ): Location | null {
-    const grid = this.grid;
-    const matches: Location[] = [];
-    for (const [dx, dy] of RANKS[rank]!.offsets) {
-      const cell = grid.at(origin.x + dx, origin.y + dy);
-      if (cell && condition(cell)) matches.push(cell);
-    }
+    const matches = RANKS.matchesInRank(this.grid, origin, condition, rank);
     if (matches.length === 0) return null;
-    return matches.length === 1 ? matches[0]! : grid.random.pick(matches);
+    return matches.length === 1 ? matches[0]! : this.grid.random.pick(matches);
   }
 
   /** Whether a location has water this year (`Location.HAS_WATER`). */

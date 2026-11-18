@@ -7,7 +7,7 @@
 // Original: Copyright 1998-2007 The Brookings Institution, NuTech Solutions,Inc., Metascape LLC, and contributors.
 // All rights reserved. Used under the BSD license in LICENSES/ascape-license.txt.
 // This port: Copyright (c) 2026 Miles Parker and contributors, under EPL-2.0.
-import { type Array2D, HostCell, type Random } from '@metascape/engine';
+import { type Array2D, HostCell, LatticeRanks, type Random } from '@metascape/engine';
 
 /** Which Ascape lattice a Bionland step lives on. */
 export type LatticeKind = 'moore' | 'vonNeumann' | 'ring';
@@ -16,28 +16,7 @@ export type LatticeKind = 'moore' | 'vonNeumann' | 'ring';
  * Ascape's table of neighbour "ranks" (cells grouped by Euclidean distance)
  * only covers 29 ranks, out to distance sqrt(61). Searches never reach past it.
  */
-const MAX_RANK_DISTANCE_SQUARED = 61;
-
-interface Rank {
-  readonly distance: number;
-  readonly offsets: readonly (readonly [number, number])[];
-}
-
-const RANKS: readonly Rank[] = (() => {
-  const groups = new Map<number, [number, number][]>();
-  for (let dy = -7; dy <= 7; dy++) {
-    for (let dx = -7; dx <= 7; dx++) {
-      const d2 = dx * dx + dy * dy;
-      if (d2 === 0 || d2 > MAX_RANK_DISTANCE_SQUARED) continue;
-      const group = groups.get(d2) ?? [];
-      group.push([dx, dy]);
-      groups.set(d2, group);
-    }
-  }
-  return [...groups.keys()]
-    .sort((a, b) => a - b)
-    .map((d2) => ({ distance: Math.sqrt(d2), offsets: groups.get(d2) ?? [] }));
-})();
+const RANKS = new LatticeRanks({ reach: 7, maxDistance: Math.sqrt(61) });
 
 /** The shortest distance between two positions on a periodic axis of `bound` sites. */
 export function axisSpan(a: number, b: number, bound: number): number {
@@ -138,16 +117,7 @@ export function nearestMatch<C extends HostCell>(
     }
     return undefined;
   }
-  for (const rank of RANKS) {
-    if (!(rank.distance < vision)) break;
-    const matches: C[] = [];
-    for (const [dx, dy] of rank.offsets) {
-      const cell = grid.at(origin.x + dx, origin.y + dy) as C;
-      if (condition(cell)) matches.push(cell);
-    }
-    if (matches.length > 0) return random.pick(matches);
-  }
-  return undefined;
+  return RANKS.findNearest(grid, origin, condition, false, vision, random);
 }
 
 /** Ascape's tolerance for treating two data values as equal. */
