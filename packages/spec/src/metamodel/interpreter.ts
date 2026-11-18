@@ -110,9 +110,9 @@ export interface CompileOptions {
    */
   readonly allowMethodBodies?: boolean;
   /**
-   * How the model's acts run: `interpreted` by the interpreter's closures
-   * (the default), or `generated` as JavaScript made from the acts when the
-   * model is compiled (docs/codegen.md). Both give the same run for a seed;
+   * How the model's acts run: `generated` as JavaScript made from the acts
+   * when the model is compiled (the default, docs/codegen.md), or
+   * `interpreted` by the interpreter's closures. Both give the same run for a seed;
    * a root act that cannot be generated yet is interpreted, as is every act
    * if the page does not allow code to be made.
    */
@@ -133,7 +133,7 @@ export interface GenerationReport {
 
 const reports = new WeakMap<EngineModel, GenerationReport>();
 
-/** What generated execution made of a model compiled with `execution: 'generated'`. */
+/** What generated execution made of a model; undefined if it was compiled to be interpreted. */
 export function generationReport(model: EngineModel): GenerationReport | undefined {
   return reports.get(model);
 }
@@ -256,7 +256,7 @@ function compileChecked(
     indexConstants(library),
     methodsOf(index, options.methods ?? {}, options.allowMethodBodies ?? false),
   );
-  const report = options.execution === 'generated' ? generate(index) : undefined;
+  const report = (options.execution ?? 'generated') === 'generated' ? generate(index) : undefined;
   const keepsOriginals = actsUse(index, 'original');
   const parameters = engineParameters(index);
   const compiled: EngineModel = {

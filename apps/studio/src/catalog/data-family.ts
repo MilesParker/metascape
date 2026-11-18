@@ -75,7 +75,6 @@ export function compileExample(spec: typeof import('@metascape/spec'), key: stri
   return spec.compileModel(spec.examples[key]!, {
     ...(curation && { curation }),
     ...(runSpec && { runSpec }),
-    execution: 'generated',
   });
 }
 

@@ -59,8 +59,7 @@ export function fromMetaabm(source: unknown, entry: CatalogEntry): Model {
     ...(entry.runSpecs && { runSpecs: entry.runSpecs }),
     ...(entry.methods && { methods: entry.methods }),
   };
-  // Generated execution gives the same runs as the interpreter, faster (docs/codegen.md).
-  const compiled = compileModel(model, { ...options, execution: 'generated' });
+  const compiled = compileModel(model, options);
   const result: Model = {
     ...compiled,
     name: entry.name,

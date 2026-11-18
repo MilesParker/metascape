@@ -139,12 +139,11 @@ Open for the owner:
   removes, merged before checking (`docs/format-pilot/sugarscape.md`). Steps that are only settings
   become run specs or catalogue aliases.
 - **When a format version replaces the coded one,** as the AMP ports were replaced.
-- **Speed.** Format models in the catalogue and Studio run as generated JavaScript, with the same
+- **Speed.** Format models run as generated JavaScript by default, with the same
   runs as the interpreter (`docs/codegen.md`). They are now about 2 to 4 times slower per period than
   the ports (Sugarscape II-1, Civil Violence I, Heatbugs), and 20 times for Classes, against 12 to
   160 times before. What remains is mostly the models' own search work: a `nearest` search by rings
-  on a grid (Civil Violence), and counts kept instead of recounted memories (Classes). Still open:
-  whether `compileModel` should default to generated execution.
+  on a grid (Civil Violence), and counts kept instead of recounted memories (Classes).
 
 Gaps found, to fill when a model needs them (D4):
 

@@ -1,8 +1,8 @@
 # Generated execution of format models
 
-Status: 2026-11-18. `compileModel(model, { execution: 'generated' })` turns a model's acts into
-JavaScript when the model is compiled and runs that in place of the interpreter's closures. The
-catalogue and Studio compile their format models this way. Every format model of the catalogue
+Status: 2026-11-18. `compileModel` turns a model's acts into JavaScript when the model is compiled
+and runs that in place of the interpreter's closures. This is the default (owner's decision,
+2026-11-18); `execution: 'interpreted'` runs the interpreter instead. Every format model of the catalogue
 runs generated, with no act left to the interpreter, and gives the same run as the interpreter for
 every seed tested, period by period. The code is in `packages/spec/src/metamodel/codegen`.
 
@@ -127,6 +127,8 @@ position are already cheap, so they are not done.
 
 ## Correctness
 
+The whole test suite passes with either mode as the default.
+
 The oracle is identity: generated and interpreted runs of the same model and seed give the same
 statistics and the same state of every agent (values, place, whether it lives, links), period by
 period (`traceRun` in `metamodel/trace.ts`). Because every format model is then a test, the tests
@@ -229,5 +231,3 @@ itself could forbid it.
   generated function; generating the loop over a scape's members as well would save a call and a
   `Map` lookup per agent.
 - **Diffusion** is the interpreter's rule, not generated.
-- **Making `generated` the default** of `compileModel`. The catalogue and Studio use it; the default
-  stays `interpreted` for other callers until the owner decides.

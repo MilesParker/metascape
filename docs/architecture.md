@@ -113,9 +113,9 @@ agent types' scapes, so its rules execute once per period with no acting agent. 
 an initial rule of the root.
 
 `compileModel` makes those rules from the model's acts once, when the model is compiled, in one of
-two ways that give the same run: closures of the interpreter, or JavaScript generated from the acts
-and made with `new Function` (`execution: 'generated'`, `docs/codegen.md`), which the catalogue and
-Studio use. Both run on the engine like any other model.
+two ways that give the same run: JavaScript generated from the acts and made with `new Function`
+(the default, `docs/codegen.md`), or closures of the interpreter (`execution: 'interpreted'`), which
+also run any act the generator leaves. Both run on the engine like any other model.
 
 ## Outside the model
 
