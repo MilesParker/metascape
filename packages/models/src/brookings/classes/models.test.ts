@@ -10,23 +10,26 @@ import {
   MEDIUM,
   type Bargainer,
 } from './bargaining';
-import { family } from './index';
+import { classesModelOneFormat, family } from './index';
 
+/** The coded models; the format version of Model One has tests of its own. */
+const coded = family.models.filter((m) => m !== classesModelOneFormat);
 const make = (model: (typeof family.models)[number], seed: number | string = 1) =>
   new RootScape(model as never, { seed, parameters: { population: 60 } as never });
 const agents = (root: RootScape) => [...root.findScape<Bargainer>('agents')];
 
 describe('Emergence of Classes', () => {
-  it('has nine models with unique names and provenance', () => {
-    expect(family.models).toHaveLength(9);
-    expect(new Set(family.models.map((m) => m.name)).size).toBe(9);
+  it('has nine coded models and one in the model format, with unique names and provenance', () => {
+    expect(coded).toHaveLength(9);
+    expect(family.models).toContain(classesModelOneFormat);
+    expect(new Set(family.models.map((m) => m.name)).size).toBe(10);
     for (const m of family.models) {
       expect(m.provenance?.portedFrom).toContain('edu.brook.classes.');
       expect(m.provenance?.authors).toContain('Axtell');
     }
   });
 
-  for (const model of family.models) {
+  for (const model of coded) {
     describe(model.name, () => {
       it('runs 40 periods with valid memories', () => {
         const root = make(model);

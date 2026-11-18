@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 2,
+  "id": "classes",
+  "label": "Emergence of Classes: Model One",
+  "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. One population of identical agents.",
+  "language": "typescript",
+  "attributes": {
+    "population": {
+      "type": "integer",
+      "label": "Population",
+      "description": "Number of agents. In each period each agent starts an encounter with a chance of one half.",
+      "default": 100,
+      "min": 2,
+      "max": 2000
+    },
+    "minimumMemorySize": {
+      "type": "integer",
+      "label": "Minimum memory size",
+      "description": "Number of past encounters each agent remembers. Each agent's size is drawn between the minimum and maximum.",
+      "default": 20,
+      "min": 1,
+      "max": 1000
+    },
+    "maximumMemorySize": {
+      "type": "integer",
+      "label": "Maximum memory size",
+      "description": "Number of past encounters each agent remembers. Each agent's size is drawn between the minimum and maximum.",
+      "default": 100,
+      "min": 1,
+      "max": 1000
+    },
+    "randomStrategyProbability": {
+      "type": "real",
+      "label": "Random strategy probability",
+      "description": "Chance that an agent ignores its memory and demands a random share.",
+      "default": 0.1,
+      "min": 0,
+      "max": 1
+    },
+    "lowPayoff": {
+      "type": "real",
+      "label": "Low demand",
+      "description": "Share of the pie claimed by a low demand.",
+      "default": 0.3,
+      "min": 0,
+      "max": 1
+    },
+    "mediumPayoff": {
+      "type": "real",
+      "label": "Medium demand",
+      "description": "Share of the pie claimed by a medium demand.",
+      "default": 0.5,
+      "min": 0,
+      "max": 1
+    },
+    "highPayoff": {
+      "type": "real",
+      "label": "High demand",
+      "description": "Share of the pie claimed by a high demand.",
+      "default": 0.7,
+      "min": 0,
+      "max": 1
+    },
+    "highLowStart": {
+      "type": "boolean",
+      "label": "Remember only low and high demands at the start",
+      "description": "Each agent's first memories are low or high demands, never medium (the paper's figure 3)."
+    }
+  },
+  "acts": {
+    "build": {
+      "kind": "build",
+      "label": "Build",
+      "targets": ["createLow", "createMedium", "createHigh", "createBargainers"]
+    },
+    "createLow": {
+      "kind": "create",
+      "selected": "build",
+      "agent": "demand",
+      "targets": ["lowShare"]
+    },
+    "lowShare": {
+      "kind": "set",
+      "selected": "createLow",
+      "attribute": "demand.share",
+      "parameter": { "attribute": "lowPayoff" }
+    },
+    "createMedium": {
+      "kind": "create",
+      "selected": "build",
+      "agent": "demand",
+      "targets": ["mediumLevel"]
+    },
+    "mediumLevel": {
+      "kind": "set",
+      "selected": "createMedium",
+      "attribute": "demand.level",
+      "parameter": { "option": "demand.level.medium" },
+      "targets": ["mediumShare"]
+    },
+    "mediumShare": {
+      "kind": "set",
+      "selected": "createMedium",
+      "attribute": "demand.share",
+      "parameter": { "attribute": "mediumPayoff" }
+    },
+    "createHigh": {
+      "kind": "create",
+      "selected": "build",
+      "agent": "demand",
+      "targets": ["highLevel"]
+    },
+    "highLevel": {
+      "kind": "set",
+      "selected": "createHigh",
+      "attribute": "demand.level",
+      "parameter": { "option": "demand.level.high" },
+      "targets": ["highShare"]
+    },
+    "highShare": {
+      "kind": "set",
+      "selected": "createHigh",
+      "attribute": "demand.share",
+      "parameter": { "attribute": "highPayoff" }
+    },
+    "createBargainers": {
+      "kind": "create",
+      "selected": "build",
+      "agent": "bargainer",
+      "agentCount": { "attribute": "population" }
+    }
+  },
+  "agents": {
+    "demand": {
+      "kind": "agent",
+      "label": "Demand",
+      "pluralLabel": "Demands",
+      "description": "One of the three demands an agent can make, with what it would pay against the memory of the agent now choosing.",
+      "attributes": {
+        "level": {
+          "type": "state",
+          "label": "Level",
+          "options": {
+            "low": { "label": "Low" },
+            "medium": { "label": "Medium" },
+            "high": { "label": "High" }
+          }
+        },
+        "share": { "type": "real", "label": "Share" },
+        "compatible": {
+          "type": "integer",
+          "label": "Compatible memories",
+          "description": "How many of the choosing agent's remembered demands leave room for this one."
+        },
+        "payoff": {
+          "type": "real",
+          "label": "Expected payoff",
+          "derived": true,
+          "description": "The share times the remembered demands compatible with it."
+        }
+      },
+      "acts": {
+        "derivePayoff": {
+          "kind": "derive",
+          "attribute": "demand.payoff",
+          "targets": ["payoffValue"]
+        },
+        "payoffValue": {
+          "kind": "evaluate",
+          "selected": "derivePayoff",
+          "function": "mul",
+          "inputs": [{ "attribute": "demand.share" }, { "attribute": "demand.compatible" }]
+        }
+      }
+    },
+    "bargainer": {
+      "kind": "scape",
+      "label": "Bargainer",
+      "pluralLabel": "Bargainers",
+      "description": "An agent that remembers the demands of its last opponents, each memory an agent of its own, and demands what would have paid best against them.",
+      "attributes": {
+        "memorySize": { "type": "integer", "label": "Memory size" },
+        "demand": {
+          "type": "state",
+          "label": "Demand",
+          "description": "The demand made in the latest encounter.",
+          "gatherData": true,
+          "options": {
+            "low": { "label": "Low" },
+            "medium": { "label": "Medium" },
+            "high": { "label": "High" }
+          },
+          "defaultOption": "medium"
+        },
+        "share": { "type": "real", "label": "Share demanded" },
+        "heard": { "type": "real", "label": "Share the latest opponent demanded" },
+        "clock": { "type": "integer", "label": "Memories made" }
+      },
+      "agents": {
+        "memory": {
+          "kind": "agent",
+          "label": "Memory",
+          "pluralLabel": "Memories",
+          "description": "The share one past opponent demanded.",
+          "attributes": {
+            "share": { "type": "real", "label": "Share" },
+            "stamp": {
+              "type": "integer",
+              "label": "Stamp",
+              "description": "When it was made, by its owner's clock; 0 for the first memories."
+            }
+          }
+        }
+      },
+      "acts": {
+        "start": {
+          "kind": "initialize",
+          "label": "Start",
+          "targets": ["drawMemorySize", "drawFirstDemand"]
+        },
+        "drawMemorySize": {
+          "kind": "evaluate",
+          "selected": "start",
+          "function": "randomInRange",
+          "inputs": [{ "attribute": "minimumMemorySize" }, { "attribute": "maximumMemorySize" }],
+          "targets": ["setMemorySize"]
+        },
+        "setMemorySize": {
+          "kind": "set",
+          "selected": "start",
+          "attribute": "bargainer.memorySize",
+          "parameter": { "evaluate": "drawMemorySize" },
+          "targets": ["firstMemories"]
+        },
+        "firstMemories": {
+          "kind": "create",
+          "label": "First memories",
+          "selected": "start",
+          "agent": "bargainer.memory",
+          "agentCount": { "attribute": "bargainer.memorySize" },
+          "targets": ["firstRemembered"]
+        },
+        "firstRemembered": {
+          "kind": "select",
+          "label": "A demand at random",
+          "description": "Any demand, or with highLowStart only low or high.",
+          "selected": "start",
+          "agent": "demand",
+          "targets": ["anyStart", "notMedium"]
+        },
+        "anyStart": {
+          "kind": "query",
+          "selected": "firstRemembered",
+          "function": "not",
+          "inputs": [{ "attribute": "highLowStart" }],
+          "targets": ["startable"]
+        },
+        "notMedium": {
+          "kind": "query",
+          "selected": "firstRemembered",
+          "function": "different",
+          "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.medium" }],
+          "targets": ["startable"]
+        },
+        "startable": {
+          "kind": "any",
+          "selected": "firstRemembered",
+          "targets": ["firstShare"]
+        },
+        "firstShare": {
+          "kind": "set",
+          "selected": "firstMemories",
+          "attribute": "bargainer.memory.share",
+          "parameter": { "attribute": "demand.share", "selected": "firstRemembered" }
+        },
+        "drawFirstDemand": {
+          "kind": "evaluate",
+          "selected": "start",
+          "function": "randomState",
+          "inputs": [{ "attribute": "bargainer.demand" }],
+          "targets": ["setFirstDemand"]
+        },
+        "setFirstDemand": {
+          "kind": "set",
+          "selected": "start",
+          "attribute": "bargainer.demand",
+          "parameter": { "evaluate": "drawFirstDemand" }
+        },
+
+        "play": {
+          "kind": "rule",
+          "label": "Play other",
+          "description": "With a chance of one half, play a random other agent: both choose a demand, then each remembers the other's.",
+          "targets": ["coin"]
+        },
+        "coin": {
+          "kind": "query",
+          "selected": "play",
+          "function": "randomIs",
+          "targets": ["opponent"]
+        },
+        "opponent": {
+          "kind": "select",
+          "label": "Opponent",
+          "selected": "play",
+          "agent": "bargainer",
+          "targets": ["anyOther"]
+        },
+        "anyOther": {
+          "kind": "query",
+          "label": "Any other agent",
+          "description": "Minimizing a constant ties every candidate, and leaves out the agent choosing.",
+          "selected": "opponent",
+          "function": "minimize",
+          "inputs": [{ "constant": "zero" }],
+          "targets": ["chooseOwn"]
+        },
+        "chooseOwn": {
+          "kind": "cause",
+          "selected": "play",
+          "result": "chooseDemand",
+          "targets": ["chooseTheirs"]
+        },
+        "chooseTheirs": {
+          "kind": "cause",
+          "selected": "opponent",
+          "result": "chooseDemand",
+          "targets": ["hearTheirs"]
+        },
+        "hearTheirs": {
+          "kind": "set",
+          "selected": "play",
+          "attribute": "bargainer.heard",
+          "parameter": { "attribute": "bargainer.share", "selected": "opponent" },
+          "targets": ["hearOwn"]
+        },
+        "hearOwn": {
+          "kind": "set",
+          "selected": "opponent",
+          "attribute": "bargainer.heard",
+          "parameter": { "attribute": "bargainer.share", "selected": "play" },
+          "targets": ["rememberOwn"]
+        },
+        "rememberOwn": {
+          "kind": "cause",
+          "selected": "play",
+          "result": "remember",
+          "targets": ["rememberTheirs"]
+        },
+        "rememberTheirs": {
+          "kind": "cause",
+          "selected": "opponent",
+          "result": "remember"
+        },
+
+        "chooseDemand": {
+          "kind": "perform",
+          "label": "Choose a demand",
+          "description": "Count, for each demand, the memories it is compatible with; then take the demand with the best expected payoff, ties at random. With the random strategy probability nothing is counted, so every demand ties.",
+          "targets": ["clear", "drawHeed", "reply"]
+        },
+        "clear": {
+          "kind": "select",
+          "selected": "chooseDemand",
+          "agent": "demand",
+          "targets": ["clearEvery"]
+        },
+        "clearEvery": {
+          "kind": "query",
+          "selected": "clear",
+          "function": "all",
+          "targets": ["clearCompatible"]
+        },
+        "clearCompatible": {
+          "kind": "set",
+          "selected": "clear",
+          "attribute": "demand.compatible",
+          "parameter": { "constant": "zero" }
+        },
+        "drawHeed": {
+          "kind": "evaluate",
+          "selected": "chooseDemand",
+          "function": "randomUnit",
+          "targets": ["heed"]
+        },
+        "heed": {
+          "kind": "query",
+          "label": "Heeds memory",
+          "selected": "chooseDemand",
+          "function": "greater",
+          "inputs": [{ "evaluate": "drawHeed" }, { "attribute": "randomStrategyProbability" }],
+          "targets": ["weigh"]
+        },
+        "weigh": {
+          "kind": "select",
+          "selected": "chooseDemand",
+          "agent": "demand",
+          "targets": ["weighEvery"]
+        },
+        "weighEvery": {
+          "kind": "query",
+          "selected": "weigh",
+          "function": "all",
+          "targets": ["room"]
+        },
+        "room": {
+          "kind": "evaluate",
+          "label": "Room left",
+          "selected": "weigh",
+          "function": "sub",
+          "inputs": [{ "constant": "unit" }, { "attribute": "demand.share" }],
+          "targets": ["recall"]
+        },
+        "recall": {
+          "kind": "select",
+          "label": "Compatible memories",
+          "selected": "chooseDemand",
+          "agent": "bargainer.memory",
+          "targets": ["recallEvery", "fits"]
+        },
+        "recallEvery": {
+          "kind": "query",
+          "selected": "recall",
+          "function": "all",
+          "targets": ["recalled"]
+        },
+        "fits": {
+          "kind": "query",
+          "selected": "recall",
+          "function": "lesserorEqual",
+          "inputs": [{ "attribute": "bargainer.memory.share" }, { "evaluate": "room" }],
+          "targets": ["recalled"]
+        },
+        "recalled": {
+          "kind": "all",
+          "selected": "recall",
+          "targets": ["oneMoreCompatible"]
+        },
+        "oneMoreCompatible": {
+          "kind": "evaluate",
+          "selected": "weigh",
+          "function": "increment",
+          "inputs": [{ "attribute": "demand.compatible" }],
+          "targets": ["countCompatible"]
+        },
+        "countCompatible": {
+          "kind": "set",
+          "selected": "weigh",
+          "attribute": "demand.compatible",
+          "parameter": { "evaluate": "oneMoreCompatible" }
+        },
+        "reply": {
+          "kind": "select",
+          "label": "Best reply",
+          "selected": "chooseDemand",
+          "agent": "demand",
+          "targets": ["best"]
+        },
+        "best": {
+          "kind": "query",
+          "selected": "reply",
+          "function": "maximize",
+          "inputs": [{ "attribute": "demand.payoff" }],
+          "targets": ["adoptShare", "isLow", "isMedium", "isHigh"]
+        },
+        "adoptShare": {
+          "kind": "set",
+          "selected": "chooseDemand",
+          "attribute": "bargainer.share",
+          "parameter": { "attribute": "demand.share", "selected": "reply" }
+        },
+        "isLow": {
+          "kind": "query",
+          "selected": "reply",
+          "function": "identical",
+          "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.low" }],
+          "targets": ["demandLow"]
+        },
+        "demandLow": {
+          "kind": "set",
+          "selected": "chooseDemand",
+          "attribute": "bargainer.demand",
+          "parameter": { "option": "bargainer.demand.low" }
+        },
+        "isMedium": {
+          "kind": "query",
+          "selected": "reply",
+          "function": "identical",
+          "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.medium" }],
+          "targets": ["demandMedium"]
+        },
+        "demandMedium": {
+          "kind": "set",
+          "selected": "chooseDemand",
+          "attribute": "bargainer.demand",
+          "parameter": { "option": "bargainer.demand.medium" }
+        },
+        "isHigh": {
+          "kind": "query",
+          "selected": "reply",
+          "function": "identical",
+          "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.high" }],
+          "targets": ["demandHigh"]
+        },
+        "demandHigh": {
+          "kind": "set",
+          "selected": "chooseDemand",
+          "attribute": "bargainer.demand",
+          "parameter": { "option": "bargainer.demand.high" }
+        },
+
+        "remember": {
+          "kind": "perform",
+          "label": "Remember",
+          "description": "Forget the oldest memory and remember the share just heard.",
+          "targets": ["forget", "tick"]
+        },
+        "forget": {
+          "kind": "select",
+          "selected": "remember",
+          "agent": "bargainer.memory",
+          "targets": ["oldest"]
+        },
+        "oldest": {
+          "kind": "query",
+          "selected": "forget",
+          "function": "minimize",
+          "inputs": [{ "attribute": "bargainer.memory.stamp" }],
+          "targets": ["forgetOldest"]
+        },
+        "forgetOldest": { "kind": "die", "selected": "forget" },
+        "tick": {
+          "kind": "evaluate",
+          "selected": "remember",
+          "function": "increment",
+          "inputs": [{ "attribute": "bargainer.clock" }],
+          "targets": ["setClock"]
+        },
+        "setClock": {
+          "kind": "set",
+          "selected": "remember",
+          "attribute": "bargainer.clock",
+          "parameter": { "evaluate": "tick" },
+          "targets": ["note"]
+        },
+        "note": {
+          "kind": "create",
+          "selected": "remember",
+          "agent": "bargainer.memory",
+          "targets": ["noteShare"]
+        },
+        "noteShare": {
+          "kind": "set",
+          "selected": "note",
+          "attribute": "bargainer.memory.share",
+          "parameter": { "attribute": "bargainer.heard", "selected": "remember" },
+          "targets": ["noteStamp"]
+        },
+        "noteStamp": {
+          "kind": "set",
+          "selected": "note",
+          "attribute": "bargainer.memory.stamp",
+          "parameter": { "attribute": "bargainer.clock", "selected": "remember" }
+        }
+      }
+    }
+  }
+}
