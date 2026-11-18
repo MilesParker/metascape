@@ -130,6 +130,15 @@ position are already cheap, so they are not done.
 
 The whole test suite passes with either mode as the default.
 
+The rule (owner, 2026-11-18): a model must be deterministic, run for run from its seed, in each
+mode. The two modes need not give the same runs as each other. Identity is the test used below
+because it was free while generation mirrored the interpreter; it is not a constraint. Where a
+cheaper order of searching or drawing makes generated runs differ, the comparison becomes
+statistical, as the format pilot's comparisons with the coded ports were.
+
+What matters for speed is avoiding differences of order (O(n) where O(1) would do, a scan of every
+cell where a search outward would do), not constant factors against hand-written code.
+
 The oracle is identity: generated and interpreted runs of the same model and seed give the same
 statistics and the same state of every agent (values, place, whether it lives, links), period by
 period (`traceRun` in `metamodel/trace.ts`). Because every format model is then a test, the tests
