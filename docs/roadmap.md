@@ -110,10 +110,12 @@ they are converted. What follows from it, still to design:
   method API only, restricted to an allowlist of syntax, and re-emitted by Metascape, so the author's
   text is never run. D2's switch stays for anything else.
 - **Running loaded files.** A model file is data: the interpreter only reads it, and generated
-  execution (`docs/codegen.md`) puts none of its text into code. Runs should still be contained: a
-  Web Worker in a sandboxed iframe with no origin of its own and no network, stopped from outside on
-  a runaway loop. That worker would also be the one place a Content-Security-Policy need allow
-  `unsafe-eval` for generated code.
+  execution (`docs/codegen.md`) puts none of its text into code. So with models written only in the
+  format, and no method bodies run from files, no sandbox is needed for safety. Optional hardening,
+  not a prerequisite: a Web Worker in a sandboxed iframe with no origin of its own and no network
+  would contain a bug in the generator, let Studio stop a model that runs away (an endless cascade
+  of causes, a population that explodes), and keep the page responsive. It would also be the one
+  place a Content-Security-Policy need allow `unsafe-eval`, if Studio ever sets one.
 - **Reviewable files.** A pull request is only as good as its diff: a canonical serialization
   (stable key order and formatting), stable IDs, and small files (overlays for model chains, above).
 - **Checks on a pull request:** the checker, a run of some periods, the model's run tests (ATest),
