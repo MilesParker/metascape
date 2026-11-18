@@ -96,6 +96,28 @@ ports are gone, except SIR's.
   stocks, flows, auxiliary variables). Port it after the main metamodel (review item R10); until
   then SIR stays as code.
 
+## Models people share
+
+Owner direction, 2026-11-18: people define models only in the format, never in arbitrary
+TypeScript. Models should be easy to trade, and to offer to a shared library by pull request; a
+common metamodel is what makes that work. Coded models remain only as bundled, reviewed code, until
+they are converted. What follows from it, still to design:
+
+- **Fencing method acts.** Not yet decided. The options discussed: no methods in shared models, so a
+  model that needs new behaviour proposes a core library function to Metascape itself, reviewed as
+  code (D4); or methods written in a TypeScript subset that is parsed, type-checked against the
+  method API only, restricted to an allowlist of syntax, and re-emitted by Metascape, so the author's
+  text is never run. D2's switch stays for anything else.
+- **Running loaded files.** A model file is data and the interpreter only reads it, but runs should
+  still be contained: a Web Worker in a sandboxed iframe with no origin of its own and no network,
+  stopped from outside on a runaway loop.
+- **Reviewable files.** A pull request is only as good as its diff: a canonical serialization
+  (stable key order and formatting), stable IDs, and small files (overlays for model chains, above).
+- **Checks on a pull request:** the checker, a run of some periods, the model's run tests (ATest),
+  and its provenance and licence present.
+- **Authoring.** Hand-written JSON is slow and error-prone (the pilot generated its files with
+  scripts), so sharing needs the model editor.
+
 ## Moving the coded models into the format
 
 The owner wants every coded model (Ascape, Brookings, the introductory models) written as a format
