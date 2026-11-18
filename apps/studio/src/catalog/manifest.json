@@ -30,8 +30,11 @@
       "path": "book",
       "models": [
         "sugarscape-ii-1-immediate-growback",
+        "sugarscape-ii-1-immediate-growback-format",
         "sugarscape-ii-2-unit-growback",
+        "sugarscape-ii-2-unit-growback-format",
         "sugarscape-ii-3-carrying-capacity",
+        "sugarscape-ii-3-carrying-capacity-format",
         "sugarscape-ii-4-wealth-deciles",
         "sugarscape-ii-5-neighbor-networks",
         "sugarscape-ii-6-migration-from-a-corner",
@@ -82,6 +85,7 @@
       "models": [
         "civil-violence-model-i-cvmodel",
         "civil-violence-model-i",
+        "civil-violence-model-i-format",
         "civil-violence-model-i-run-1",
         "civil-violence-model-i-run-2",
         "civil-violence-model-i-runs-3-5-base",
@@ -134,6 +138,7 @@
       ],
       "models": [
         "emergence-of-classes-model-one",
+        "emergence-of-classes-model-one-format",
         "emergence-of-classes-figure-2",
         "emergence-of-classes-figure-3",
         "emergence-of-classes-model-two",
@@ -637,6 +642,31 @@
       }
     },
     {
+      "id": "sugarscape-ii-1-immediate-growback-format",
+      "name": "Sugarscape II-1: Immediate growback (format)",
+      "familyId": "brookings-sugarscape",
+      "summary": "Agents with random vision and metabolism move to the best sugar they can see on a two-peaked landscape, eat it and die when they run out; sugar grows back to…",
+      "description": "Agents with random vision and metabolism move to the best sugar they can see on a two-peaked landscape, eat it and die when they run out; sugar grows back to capacity at once.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 12,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_1",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-1-immediate-growback-format.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
       "id": "sugarscape-ii-2-unit-growback",
       "name": "Sugarscape II-2: Unit growback",
       "familyId": "brookings-sugarscape",
@@ -662,6 +692,31 @@
       }
     },
     {
+      "id": "sugarscape-ii-2-unit-growback-format",
+      "name": "Sugarscape II-2: Unit growback (format)",
+      "familyId": "brookings-sugarscape",
+      "summary": "As II-1, but sugar grows back one unit per period, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "description": "As II-1, but sugar grows back one unit per period, so agents gather on the peaks and the population falls to the carrying capacity of the landscape.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 12,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_2",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-2-unit-growback-format.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
       "id": "sugarscape-ii-3-carrying-capacity",
       "name": "Sugarscape II-3: Carrying capacity",
       "familyId": "brookings-sugarscape",
@@ -681,6 +736,31 @@
       "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_3",
       "thumb": {
         "file": "thumbs/sugarscape-ii-3-carrying-capacity.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "sugarscape-ii-3-carrying-capacity-format",
+      "name": "Sugarscape II-3: Carrying capacity (format)",
+      "familyId": "brookings-sugarscape",
+      "summary": "The II-2 model with a chart of the population, which settles at the carrying capacity of the sugar landscape.",
+      "description": "The II-2 model with a chart of the population, which settles at the carrying capacity of the sugar landscape.",
+      "tags": [
+        "resources",
+        "economics",
+        "demography"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 12,
+      "ruleCount": 5,
+      "authors": "Joshua M. Epstein and Robert Axtell",
+      "portedFrom": "Ascape 5.6.1, edu.brook.sugarscape.GAS_II_3",
+      "thumb": {
+        "file": "thumbs/sugarscape-ii-3-carrying-capacity-format.png",
         "width": 50,
         "height": 50,
         "pixelated": true
@@ -1334,6 +1414,29 @@
       }
     },
     {
+      "id": "civil-violence-model-i-format",
+      "name": "Civil Violence: Model I (format)",
+      "familyId": "brookings-civil-violence",
+      "summary": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and…",
+      "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view.",
+      "tags": [
+        "conflict"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 15,
+      "ruleCount": 6,
+      "authors": "Joshua M. Epstein",
+      "portedFrom": "Ascape 5.6.1, edu.brook.cv.paper.CVModelI",
+      "thumb": {
+        "file": "thumbs/civil-violence-model-i-format.png",
+        "width": 40,
+        "height": 40,
+        "pixelated": true
+      }
+    },
+    {
       "id": "civil-violence-model-i-run-1",
       "name": "Civil Violence: Model I, Run 1",
       "familyId": "brookings-civil-violence",
@@ -1725,6 +1828,30 @@
         "file": "thumbs/emergence-of-classes-model-one.png",
         "width": 192,
         "height": 166,
+        "pixelated": false
+      }
+    },
+    {
+      "id": "emergence-of-classes-model-one-format",
+      "name": "Emergence of Classes: Model One (format)",
+      "familyId": "brookings-classes",
+      "summary": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents.",
+      "description": "Agents repeatedly divide a pie by each demanding a low, medium or high share, and each demands whatever would have paid best against its memory of past opponents. One population of identical agents.",
+      "tags": [
+        "game theory",
+        "economics"
+      ],
+      "spaces": [
+        "charts"
+      ],
+      "parameterCount": 8,
+      "ruleCount": 1,
+      "authors": "Robert L. Axtell, Joshua M. Epstein and H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.classes.BargainingModelOne",
+      "thumb": {
+        "file": "thumbs/emergence-of-classes-model-one-format.png",
+        "width": 192,
+        "height": 119,
         "pixelated": false
       }
     },
