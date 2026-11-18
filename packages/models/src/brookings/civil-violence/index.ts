@@ -18,6 +18,7 @@ import {
   cvModelInterGroup,
   cvModelInterGroupRetr,
 } from './model-ii';
+import { cvModelIFormat } from './model-i-format';
 
 export {
   cvModel,
@@ -34,6 +35,7 @@ export {
   cvModelIIRun4aandb,
   cvModelInterGroup,
   cvModelInterGroupRetr,
+  cvModelIFormat,
 };
 
 /** The Civil Violence models, Model I first, then Model II. */
@@ -47,6 +49,7 @@ export const family = defineFamily({
   models: [
     cvModel,
     cvModelI,
+    cvModelIFormat,
     cvModelIRun1,
     cvModelIRun2,
     cvModelIRun3and4and5,

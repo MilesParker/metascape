@@ -12,6 +12,7 @@ import {
   cvModelIRun2,
   cvModelIRun1,
   cvModelI,
+  cvModelIFormat,
   family,
 } from './index';
 import { findNearest, forEachWithin } from './vision';
@@ -24,11 +25,11 @@ const make = (model: Model, seed: number | string = 1, parameters: Record<string
   });
 
 describe('family', () => {
-  it('lists 14 uniquely named models in the right collection', () => {
+  it('lists 15 uniquely named models in the right collection', () => {
     expect(family.id).toBe('brookings-civil-violence');
     expect(family.collection).toBe('Brookings Institution models (from Ascape)');
-    expect(family.models).toHaveLength(14);
-    expect(new Set(family.models.map((m) => m.name)).size).toBe(14);
+    expect(family.models).toHaveLength(15);
+    expect(new Set(family.models.map((m) => m.name)).size).toBe(15);
   });
 
   it('gives every model full provenance', () => {
@@ -40,7 +41,8 @@ describe('family', () => {
     }
   });
 
-  for (const model of family.models) {
+  // The format model has its own tests (model-i-format.test.ts): its parameters are named differently.
+  for (const model of family.models.filter((m) => m !== cvModelIFormat)) {
     describe(model.name, () => {
       it('runs 30 periods with views that only name recorded series', () => {
         const root = make(model);

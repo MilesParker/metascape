@@ -1,0 +1,1389 @@
+{
+  "schemaVersion": 2,
+  "id": "civilViolenceI",
+  "label": "Civil Violence: Model I",
+  "description": "Epstein's model of decentralized rebellion against a central authority: citizens turn active when their grievance outweighs their perceived risk of arrest, and cops jail active citizens in view.",
+  "language": "typescript",
+  "attributes": {
+    "initialPopulationDensity": {
+      "type": "real",
+      "label": "Initial population density",
+      "default": 0.7,
+      "description": "Citizens as a fraction of lattice sites.",
+      "min": 0,
+      "max": 1
+    },
+    "initialCopDensity": {
+      "type": "real",
+      "label": "Initial cop density",
+      "default": 0.04,
+      "description": "Cops as a fraction of lattice sites.",
+      "min": 0,
+      "max": 1
+    },
+    "copVision": {
+      "type": "real",
+      "label": "Cop vision",
+      "default": 1.7,
+      "description": "How far a cop sees an active citizen, in lattice units.",
+      "min": 0,
+      "max": 16
+    },
+    "citizenVision": {
+      "type": "real",
+      "label": "Citizen vision",
+      "default": 1.7,
+      "description": "How far a citizen sees cops and active citizens, in lattice units.",
+      "min": 0,
+      "max": 16
+    },
+    "legitimacy": {
+      "type": "real",
+      "label": "Legitimacy",
+      "default": 0.8,
+      "description": "Perceived legitimacy of the central authority; grievance is hardship times one minus legitimacy.",
+      "min": 0,
+      "max": 1
+    },
+    "activeThreshold": {
+      "type": "real",
+      "label": "Active threshold",
+      "default": 0.1,
+      "description": "A citizen turns active when grievance minus perceived risk exceeds this.",
+      "min": 0,
+      "max": 1
+    },
+    "jailTerm": {
+      "type": "integer",
+      "label": "Jail term",
+      "default": 15,
+      "description": "Maximum jail term in periods; each term is drawn uniformly from 0 to this. 2147483647 means never released.",
+      "min": 0,
+      "max": 2147483647
+    },
+    "citizensMove": {
+      "type": "boolean",
+      "label": "Citizens move",
+      "default": true,
+      "description": "Whether citizens walk; cops always do."
+    },
+    "legitimacyErosion": {
+      "type": "real",
+      "label": "Legitimacy erosion",
+      "default": 0,
+      "description": "How much legitimacy falls each time the interval comes round (Run 3: 0.01).",
+      "min": 0,
+      "max": 1
+    },
+    "erosionInterval": {
+      "type": "integer",
+      "label": "Erosion interval",
+      "default": 3,
+      "description": "Periods between falls in legitimacy.",
+      "min": 1,
+      "max": 1000
+    },
+    "legitimacyCutPeriod": {
+      "type": "integer",
+      "label": "Legitimacy cut period",
+      "default": 0,
+      "description": "The period at which legitimacy is set to the cut value; 0 for never (Run 4: 75).",
+      "min": 0,
+      "max": 100000
+    },
+    "legitimacyCut": {
+      "type": "real",
+      "label": "Legitimacy cut",
+      "default": 0.65,
+      "description": "The legitimacy set at the cut period.",
+      "min": 0,
+      "max": 1
+    },
+    "copDensityStep": {
+      "type": "real",
+      "label": "Cop density step",
+      "default": 0,
+      "description": "How far the cop density falls each period; cops above it are withdrawn (Run 5: 0.001).",
+      "min": 0,
+      "max": 1
+    }
+  },
+  "acts": {
+    "build": {
+      "kind": "build",
+      "label": "Build",
+      "targets": ["sites", "fillLattice"]
+    },
+    "sites": {
+      "kind": "evaluate",
+      "selected": "build",
+      "function": "mul",
+      "inputs": [
+        {
+          "attribute": "lattice.width"
+        },
+        {
+          "attribute": "lattice.height"
+        }
+      ],
+      "targets": ["citizensWanted", "copsWanted"]
+    },
+    "citizensWanted": {
+      "kind": "evaluate",
+      "selected": "build",
+      "function": "mul",
+      "inputs": [
+        {
+          "attribute": "initialPopulationDensity"
+        },
+        {
+          "evaluate": "sites"
+        }
+      ],
+      "targets": ["citizenCount"]
+    },
+    "citizenCount": {
+      "kind": "evaluate",
+      "selected": "build",
+      "function": "floor",
+      "inputs": [
+        {
+          "evaluate": "citizensWanted"
+        }
+      ],
+      "targets": ["createCitizens"]
+    },
+    "createCitizens": {
+      "kind": "create",
+      "label": "Create Citizens",
+      "selected": "build",
+      "agent": "citizen",
+      "agentCount": {
+        "evaluate": "citizenCount"
+      }
+    },
+    "copsWanted": {
+      "kind": "evaluate",
+      "selected": "build",
+      "function": "mul",
+      "inputs": [
+        {
+          "attribute": "initialCopDensity"
+        },
+        {
+          "evaluate": "sites"
+        }
+      ],
+      "targets": ["copCount"]
+    },
+    "copCount": {
+      "kind": "evaluate",
+      "selected": "build",
+      "function": "floor",
+      "inputs": [
+        {
+          "evaluate": "copsWanted"
+        }
+      ],
+      "targets": ["createCops"]
+    },
+    "createCops": {
+      "kind": "create",
+      "label": "Create Cops",
+      "selected": "build",
+      "agent": "cop",
+      "agentCount": {
+        "evaluate": "copCount"
+      }
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "label": "Fill Lattice",
+      "selected": "build",
+      "agents": ["citizen", "cop"],
+      "space": "lattice",
+      "fillAgent": "site"
+    },
+    "drift": {
+      "kind": "rule",
+      "label": "Change Legitimacy",
+      "targets": ["erodes", "now"]
+    },
+    "erodes": {
+      "kind": "evaluate",
+      "selected": "drift",
+      "function": "timeNow",
+      "targets": ["phase"]
+    },
+    "phase": {
+      "kind": "evaluate",
+      "selected": "drift",
+      "function": "mod",
+      "inputs": [
+        {
+          "evaluate": "erodes"
+        },
+        {
+          "attribute": "erosionInterval"
+        }
+      ],
+      "targets": ["erosionDue"]
+    },
+    "erosionDue": {
+      "kind": "query",
+      "selected": "drift",
+      "function": "equal",
+      "inputs": [
+        {
+          "evaluate": "phase"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["lowered"]
+    },
+    "lowered": {
+      "kind": "evaluate",
+      "selected": "drift",
+      "function": "sub",
+      "inputs": [
+        {
+          "attribute": "legitimacy"
+        },
+        {
+          "attribute": "legitimacyErosion"
+        }
+      ],
+      "targets": ["floored"]
+    },
+    "floored": {
+      "kind": "evaluate",
+      "selected": "drift",
+      "function": "max",
+      "inputs": [
+        {
+          "evaluate": "lowered"
+        },
+        {
+          "literal": 0,
+          "type": "real"
+        }
+      ],
+      "targets": ["setEroded"]
+    },
+    "setEroded": {
+      "kind": "set",
+      "selected": "drift",
+      "attribute": "legitimacy",
+      "parameter": {
+        "evaluate": "floored"
+      }
+    },
+    "now": {
+      "kind": "evaluate",
+      "selected": "drift",
+      "function": "timeNow",
+      "targets": ["cutEnabled"]
+    },
+    "cutEnabled": {
+      "kind": "query",
+      "selected": "drift",
+      "function": "greater",
+      "inputs": [
+        {
+          "attribute": "legitimacyCutPeriod"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["cutDue"]
+    },
+    "cutDue": {
+      "kind": "query",
+      "selected": "drift",
+      "function": "equal",
+      "inputs": [
+        {
+          "evaluate": "now"
+        },
+        {
+          "attribute": "legitimacyCutPeriod"
+        }
+      ],
+      "targets": ["setCut"]
+    },
+    "setCut": {
+      "kind": "set",
+      "selected": "drift",
+      "attribute": "legitimacy",
+      "parameter": {
+        "attribute": "legitimacyCut"
+      }
+    }
+  },
+  "agents": {
+    "site": {
+      "kind": "agent",
+      "label": "Site",
+      "pluralLabel": "Sites",
+      "acts": {},
+      "styles": {
+        "siteStyle": {
+          "kind": "2d",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "lattice",
+              "targets": ["paper"]
+            },
+            "paper": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.929,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.902,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.839,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fill"]
+            },
+            "fill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    },
+    "citizen": {
+      "kind": "agent",
+      "label": "Citizen",
+      "pluralLabel": "Citizens",
+      "attributes": {
+        "state": {
+          "type": "state",
+          "label": "State",
+          "options": {
+            "quiescent": {
+              "label": "Quiescent"
+            },
+            "active": {
+              "label": "Active"
+            },
+            "jailed": {
+              "label": "Jailed"
+            }
+          },
+          "defaultOption": "quiescent",
+          "gatherData": true
+        },
+        "hardship": {
+          "type": "real",
+          "label": "Hardship"
+        },
+        "riskAversion": {
+          "type": "real",
+          "label": "Risk aversion",
+          "gatherData": true
+        },
+        "grievance": {
+          "type": "real",
+          "label": "Grievance",
+          "gatherData": true,
+          "derived": true,
+          "default": 0
+        },
+        "jailTermsLeft": {
+          "type": "integer",
+          "label": "Jail periods left"
+        },
+        "homeX": {
+          "type": "integer",
+          "label": "Home column"
+        },
+        "homeY": {
+          "type": "integer",
+          "label": "Home row"
+        },
+        "copsSeen": {
+          "type": "integer",
+          "label": "Cops in view"
+        },
+        "activeSeen": {
+          "type": "integer",
+          "label": "Active citizens in view"
+        }
+      },
+      "acts": {
+        "place": {
+          "kind": "initialize",
+          "label": "Place",
+          "space": "lattice",
+          "targets": ["startSite", "drawHardship", "drawRisk"]
+        },
+        "startSite": {
+          "kind": "select",
+          "selected": "place",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["startFree"]
+        },
+        "startFree": {
+          "kind": "query",
+          "selected": "startSite",
+          "function": "available",
+          "targets": ["startGo"]
+        },
+        "startGo": {
+          "kind": "move",
+          "selected": "place",
+          "destination": "startSite"
+        },
+        "drawHardship": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "randomUnit",
+          "targets": ["setHardship"]
+        },
+        "setHardship": {
+          "kind": "set",
+          "selected": "place",
+          "attribute": "citizen.hardship",
+          "parameter": {
+            "evaluate": "drawHardship"
+          }
+        },
+        "drawRisk": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "randomUnit",
+          "targets": ["setRisk"]
+        },
+        "setRisk": {
+          "kind": "set",
+          "selected": "place",
+          "attribute": "citizen.riskAversion",
+          "parameter": {
+            "evaluate": "drawRisk"
+          }
+        },
+        "grievanceOf": {
+          "kind": "derive",
+          "label": "Grievance",
+          "attribute": "citizen.grievance",
+          "targets": ["illegitimacy"]
+        },
+        "illegitimacy": {
+          "kind": "evaluate",
+          "selected": "grievanceOf",
+          "function": "sub",
+          "inputs": [
+            {
+              "literal": 1,
+              "type": "real"
+            },
+            {
+              "attribute": "legitimacy"
+            }
+          ],
+          "targets": ["hardshipShare"]
+        },
+        "hardshipShare": {
+          "kind": "evaluate",
+          "selected": "grievanceOf",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "citizen.hardship"
+            },
+            {
+              "evaluate": "illegitimacy"
+            }
+          ],
+          "targets": ["aboveThreshold"]
+        },
+        "aboveThreshold": {
+          "kind": "evaluate",
+          "selected": "grievanceOf",
+          "function": "sub",
+          "inputs": [
+            {
+              "literal": 1,
+              "type": "real"
+            },
+            {
+              "attribute": "activeThreshold"
+            }
+          ],
+          "targets": ["grievanceValue"]
+        },
+        "grievanceValue": {
+          "kind": "evaluate",
+          "selected": "grievanceOf",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "hardshipShare"
+            },
+            {
+              "evaluate": "aboveThreshold"
+            }
+          ]
+        },
+        "walk": {
+          "kind": "rule",
+          "label": "Random Walk",
+          "space": "lattice",
+          "targets": ["walkFree"]
+        },
+        "walkFree": {
+          "kind": "query",
+          "selected": "walk",
+          "function": "different",
+          "inputs": [
+            {
+              "attribute": "citizen.state"
+            },
+            {
+              "option": "citizen.state.jailed"
+            }
+          ],
+          "targets": ["walkAllowed"]
+        },
+        "walkAllowed": {
+          "kind": "query",
+          "selected": "walk",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "citizensMove"
+            }
+          ],
+          "targets": ["stepSite"]
+        },
+        "stepSite": {
+          "kind": "select",
+          "selected": "walk",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["stepAdjacent"]
+        },
+        "stepAdjacent": {
+          "kind": "query",
+          "selected": "stepSite",
+          "function": "neighbor",
+          "targets": ["stepGo"]
+        },
+        "stepGo": {
+          "kind": "move",
+          "selected": "walk",
+          "destination": "stepSite"
+        },
+        "release": {
+          "kind": "rule",
+          "label": "Check Jail",
+          "space": "lattice",
+          "targets": ["serving"]
+        },
+        "serving": {
+          "kind": "query",
+          "selected": "release",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "citizen.state"
+            },
+            {
+              "option": "citizen.state.jailed"
+            }
+          ],
+          "targets": ["tick", "termOver"]
+        },
+        "tick": {
+          "kind": "evaluate",
+          "selected": "release",
+          "function": "decrement",
+          "inputs": [
+            {
+              "attribute": "citizen.jailTermsLeft"
+            }
+          ],
+          "targets": ["setTicked"]
+        },
+        "setTicked": {
+          "kind": "set",
+          "selected": "release",
+          "attribute": "citizen.jailTermsLeft",
+          "parameter": {
+            "evaluate": "tick"
+          }
+        },
+        "termOver": {
+          "kind": "query",
+          "selected": "release",
+          "function": "lesserorEqual",
+          "inputs": [
+            {
+              "attribute": "citizen.jailTermsLeft"
+            },
+            {
+              "literal": 0
+            }
+          ],
+          "targets": ["setFree", "homeSite"]
+        },
+        "setFree": {
+          "kind": "set",
+          "selected": "release",
+          "attribute": "citizen.state",
+          "parameter": {
+            "option": "citizen.state.quiescent"
+          }
+        },
+        "homeSite": {
+          "kind": "select",
+          "selected": "release",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["atHome"]
+        },
+        "atHome": {
+          "kind": "query",
+          "selected": "homeSite",
+          "function": "location2D",
+          "inputs": [
+            {
+              "attribute": "citizen.homeX",
+              "selected": "release"
+            },
+            {
+              "attribute": "citizen.homeY",
+              "selected": "release"
+            }
+          ],
+          "targets": ["nearHome"]
+        },
+        "nearHome": {
+          "kind": "select",
+          "selected": "homeSite",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["nearFree", "nearest", "orHome"]
+        },
+        "nearFree": {
+          "kind": "query",
+          "selected": "nearHome",
+          "function": "available",
+          "targets": ["nearGroup"]
+        },
+        "nearest": {
+          "kind": "query",
+          "selected": "nearHome",
+          "function": "nearest",
+          "targets": ["nearGroup"]
+        },
+        "orHome": {
+          "kind": "query",
+          "selected": "nearHome",
+          "function": "includeSelf",
+          "targets": ["nearGroup"]
+        },
+        "nearGroup": {
+          "kind": "all",
+          "selected": "nearHome",
+          "targets": ["backGo"]
+        },
+        "backGo": {
+          "kind": "move",
+          "selected": "release",
+          "destination": "nearHome"
+        },
+        "decide": {
+          "kind": "rule",
+          "label": "Decide State",
+          "space": "lattice",
+          "targets": ["notInJail"]
+        },
+        "notInJail": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "different",
+          "inputs": [
+            {
+              "attribute": "citizen.state"
+            },
+            {
+              "option": "citizen.state.jailed"
+            }
+          ],
+          "targets": ["clearCops", "clearActive", "copsInView", "activeInView", "activePlusOne"]
+        },
+        "clearCops": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.copsSeen",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearActive": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.activeSeen",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "copsInView": {
+          "kind": "select",
+          "selected": "decide",
+          "agent": "cop",
+          "space": "lattice",
+          "targets": ["copRange", "copEvery"]
+        },
+        "copRange": {
+          "kind": "query",
+          "selected": "copsInView",
+          "function": "within",
+          "inputs": [
+            {
+              "attribute": "citizenVision",
+              "selected": "decide"
+            }
+          ],
+          "targets": ["copGroup"]
+        },
+        "copEvery": {
+          "kind": "query",
+          "selected": "copsInView",
+          "function": "all",
+          "targets": ["copGroup"]
+        },
+        "copGroup": {
+          "kind": "all",
+          "selected": "copsInView",
+          "targets": ["oneMoreCop"]
+        },
+        "oneMoreCop": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "citizen.copsSeen"
+            }
+          ],
+          "targets": ["setCops"]
+        },
+        "setCops": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.copsSeen",
+          "parameter": {
+            "evaluate": "oneMoreCop"
+          }
+        },
+        "activeInView": {
+          "kind": "select",
+          "selected": "decide",
+          "agent": "citizen",
+          "space": "lattice",
+          "targets": ["activeRange", "activeEvery", "isActive"]
+        },
+        "activeRange": {
+          "kind": "query",
+          "selected": "activeInView",
+          "function": "within",
+          "inputs": [
+            {
+              "attribute": "citizenVision",
+              "selected": "decide"
+            }
+          ],
+          "targets": ["activeGroup"]
+        },
+        "activeEvery": {
+          "kind": "query",
+          "selected": "activeInView",
+          "function": "all",
+          "targets": ["activeGroup"]
+        },
+        "isActive": {
+          "kind": "query",
+          "selected": "activeInView",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "citizen.state"
+            },
+            {
+              "option": "citizen.state.active"
+            }
+          ],
+          "targets": ["activeGroup"]
+        },
+        "activeGroup": {
+          "kind": "all",
+          "selected": "activeInView",
+          "targets": ["oneMoreActive"]
+        },
+        "oneMoreActive": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "citizen.activeSeen"
+            }
+          ],
+          "targets": ["setActiveSeen"]
+        },
+        "setActiveSeen": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.activeSeen",
+          "parameter": {
+            "evaluate": "oneMoreActive"
+          }
+        },
+        "activePlusOne": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "citizen.activeSeen"
+            }
+          ],
+          "targets": ["copsPerActive"]
+        },
+        "copsPerActive": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "citizen.copsSeen"
+            },
+            {
+              "evaluate": "activePlusOne"
+            }
+          ],
+          "targets": ["exponent"]
+        },
+        "exponent": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "copsPerActive"
+            },
+            {
+              "literal": -2.302585092994046,
+              "type": "real"
+            }
+          ],
+          "targets": ["unarrested"]
+        },
+        "unarrested": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "exponent"
+            }
+          ],
+          "targets": ["arrestProbability"]
+        },
+        "arrestProbability": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "sub",
+          "inputs": [
+            {
+              "literal": 1,
+              "type": "real"
+            },
+            {
+              "evaluate": "unarrested"
+            }
+          ],
+          "targets": ["perceivedRisk"]
+        },
+        "perceivedRisk": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "arrestProbability"
+            },
+            {
+              "attribute": "citizen.riskAversion"
+            }
+          ],
+          "targets": ["netGrievance"]
+        },
+        "netGrievance": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "sub",
+          "inputs": [
+            {
+              "attribute": "citizen.grievance"
+            },
+            {
+              "evaluate": "perceivedRisk"
+            }
+          ],
+          "targets": ["rebels"]
+        },
+        "rebels": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "greater",
+          "inputs": [
+            {
+              "evaluate": "netGrievance"
+            },
+            {
+              "attribute": "activeThreshold"
+            }
+          ],
+          "targets": ["goActive", "stays"]
+        },
+        "stays": {
+          "kind": "none",
+          "selected": "decide",
+          "targets": ["goQuiet"]
+        },
+        "goActive": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.state",
+          "parameter": {
+            "option": "citizen.state.active"
+          }
+        },
+        "goQuiet": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "citizen.state",
+          "parameter": {
+            "option": "citizen.state.quiescent"
+          }
+        }
+      },
+      "styles": {
+        "citizenStyle": {
+          "kind": "2d",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "lattice",
+              "targets": ["rebelling"]
+            },
+            "rebelling": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "citizen.state"
+                },
+                {
+                  "option": "citizen.state.active"
+                }
+              ],
+              "targets": ["red", "quiet"]
+            },
+            "quiet": {
+              "kind": "none",
+              "selected": "look",
+              "targets": ["blue"]
+            },
+            "red": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRed",
+              "targets": ["redOval"]
+            },
+            "redOval": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "shapeOval",
+              "targets": ["redFill"]
+            },
+            "redFill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "blue": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorBlue",
+              "targets": ["blueOval"]
+            },
+            "blueOval": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "shapeOval",
+              "targets": ["blueFill"]
+            },
+            "blueFill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    },
+    "cop": {
+      "kind": "agent",
+      "label": "Cop",
+      "pluralLabel": "Cops",
+      "attributes": {
+        "rank": {
+          "type": "real",
+          "label": "Rank"
+        }
+      },
+      "acts": {
+        "place": {
+          "kind": "initialize",
+          "label": "Place",
+          "space": "lattice",
+          "targets": ["startSite", "drawRank"]
+        },
+        "startSite": {
+          "kind": "select",
+          "selected": "place",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["startFree"]
+        },
+        "startFree": {
+          "kind": "query",
+          "selected": "startSite",
+          "function": "available",
+          "targets": ["startGo"]
+        },
+        "startGo": {
+          "kind": "move",
+          "selected": "place",
+          "destination": "startSite"
+        },
+        "drawRank": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "randomUnit",
+          "targets": ["setRank"]
+        },
+        "setRank": {
+          "kind": "set",
+          "selected": "place",
+          "attribute": "cop.rank",
+          "parameter": {
+            "evaluate": "drawRank"
+          }
+        },
+        "patrol": {
+          "kind": "rule",
+          "label": "Patrol",
+          "space": "lattice",
+          "targets": ["target"]
+        },
+        "target": {
+          "kind": "select",
+          "selected": "patrol",
+          "agent": "citizen",
+          "space": "lattice",
+          "targets": ["inReach", "closest", "rebelling"]
+        },
+        "inReach": {
+          "kind": "query",
+          "selected": "target",
+          "function": "within",
+          "inputs": [
+            {
+              "attribute": "copVision",
+              "selected": "patrol"
+            }
+          ],
+          "targets": ["candidate"]
+        },
+        "closest": {
+          "kind": "query",
+          "selected": "target",
+          "function": "nearest",
+          "targets": ["candidate"]
+        },
+        "rebelling": {
+          "kind": "query",
+          "selected": "target",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "citizen.state"
+            },
+            {
+              "option": "citizen.state.active"
+            }
+          ],
+          "targets": ["candidate"]
+        },
+        "candidate": {
+          "kind": "all",
+          "selected": "target",
+          "targets": ["arrestSite"]
+        },
+        "arrestSite": {
+          "kind": "select",
+          "selected": "target",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["arrestHere"]
+        },
+        "arrestHere": {
+          "kind": "query",
+          "selected": "arrestSite",
+          "function": "here",
+          "targets": ["jail", "drawTerm", "homeX", "homeY", "removed", "takePlace"]
+        },
+        "jail": {
+          "kind": "set",
+          "selected": "target",
+          "attribute": "citizen.state",
+          "parameter": {
+            "option": "citizen.state.jailed"
+          }
+        },
+        "drawTerm": {
+          "kind": "evaluate",
+          "selected": "patrol",
+          "function": "randomInRange",
+          "inputs": [
+            {
+              "literal": 0
+            },
+            {
+              "attribute": "jailTerm"
+            }
+          ],
+          "targets": ["setTerm"]
+        },
+        "setTerm": {
+          "kind": "set",
+          "selected": "target",
+          "attribute": "citizen.jailTermsLeft",
+          "parameter": {
+            "evaluate": "drawTerm"
+          }
+        },
+        "homeX": {
+          "kind": "evaluate",
+          "selected": "arrestSite",
+          "function": "locationX",
+          "targets": ["setHomeX"]
+        },
+        "setHomeX": {
+          "kind": "set",
+          "selected": "target",
+          "attribute": "citizen.homeX",
+          "parameter": {
+            "evaluate": "homeX"
+          }
+        },
+        "homeY": {
+          "kind": "evaluate",
+          "selected": "arrestSite",
+          "function": "locationY",
+          "targets": ["setHomeY"]
+        },
+        "setHomeY": {
+          "kind": "set",
+          "selected": "target",
+          "attribute": "citizen.homeY",
+          "parameter": {
+            "evaluate": "homeY"
+          }
+        },
+        "removed": {
+          "kind": "leave",
+          "selected": "target"
+        },
+        "takePlace": {
+          "kind": "move",
+          "selected": "patrol",
+          "destination": "arrestSite"
+        },
+        "wander": {
+          "kind": "rule",
+          "label": "Random Walk",
+          "space": "lattice",
+          "targets": ["stepSite"]
+        },
+        "stepSite": {
+          "kind": "select",
+          "selected": "wander",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["stepAdjacent"]
+        },
+        "stepAdjacent": {
+          "kind": "query",
+          "selected": "stepSite",
+          "function": "neighbor",
+          "targets": ["stepGo"]
+        },
+        "stepGo": {
+          "kind": "move",
+          "selected": "wander",
+          "destination": "stepSite"
+        },
+        "withdraw": {
+          "kind": "rule",
+          "label": "Withdraw",
+          "space": "lattice",
+          "targets": ["scaledRank"]
+        },
+        "scaledRank": {
+          "kind": "evaluate",
+          "selected": "withdraw",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cop.rank"
+            },
+            {
+              "attribute": "initialCopDensity"
+            }
+          ],
+          "targets": ["now"]
+        },
+        "now": {
+          "kind": "evaluate",
+          "selected": "withdraw",
+          "function": "timeNow",
+          "targets": ["cut"]
+        },
+        "cut": {
+          "kind": "evaluate",
+          "selected": "withdraw",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "copDensityStep"
+            },
+            {
+              "evaluate": "now"
+            }
+          ],
+          "targets": ["remaining"]
+        },
+        "remaining": {
+          "kind": "evaluate",
+          "selected": "withdraw",
+          "function": "sub",
+          "inputs": [
+            {
+              "attribute": "initialCopDensity"
+            },
+            {
+              "evaluate": "cut"
+            }
+          ],
+          "targets": ["surplus"]
+        },
+        "surplus": {
+          "kind": "query",
+          "selected": "withdraw",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "scaledRank"
+            },
+            {
+              "evaluate": "remaining"
+            }
+          ],
+          "targets": ["retire"]
+        },
+        "retire": {
+          "kind": "die",
+          "selected": "withdraw"
+        }
+      },
+      "styles": {
+        "copStyle": {
+          "kind": "2d",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "lattice",
+              "targets": ["black"]
+            },
+            "black": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorBlack",
+              "targets": ["blackOval"]
+            },
+            "blackOval": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "shapeOval",
+              "targets": ["blackFill"]
+            },
+            "blackFill": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "lattice": {
+      "kind": "grid",
+      "label": "Lattice",
+      "neighborhood": "euclidean",
+      "borderRule": "periodic",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "default": 40,
+          "min": 5,
+          "max": 200
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "default": 40,
+          "min": 5,
+          "max": 200
+        }
+      }
+    }
+  }
+}

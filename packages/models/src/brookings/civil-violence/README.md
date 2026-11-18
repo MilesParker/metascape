@@ -18,6 +18,9 @@ The legacy implementation is by Miles Parker, The Brookings Institution. Licence
 - `vision.ts`: Ascape's rank-based lattice search (`countWithin`, `findNearest`).
 - `core.ts`: parameters, the shared builder (rules, data, views) and model factories.
 - `model-i.ts`, `model-ii.ts`: one exported model per legacy class.
+- `CivilViolenceI.model.json`, `model-i-format.ts`: Model I again, written in the model format, with Runs 1 to
+  5 as run specs of the one model (pilot; see `docs/format-pilot/civil-violence.md`). It sits beside the coded
+  `cvModelI` as "Civil Violence: Model I (format)".
 
 ## Legacy classes
 
