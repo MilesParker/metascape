@@ -136,14 +136,22 @@ stands.
 
 Open for the owner:
 
-- **Building one model on another.** Sugarscape II-2 is 96% II-1, and II-3 is II-2 renamed. Without
-  reuse, Sugarscape's 23 models and Bionland's 21 steps would be about 40,000 lines of JSON. The
-  pilot recommends an overlay: a model names a base and holds what it adds, replaces (by path) or
-  removes, merged before checking (`docs/format-pilot/sugarscape.md`). Steps that are only settings
-  become run specs or catalogue aliases. The same idea applies to agent types (a `person` holding
-  the placement and walk that Civil Violence's citizen and cop now each repeat). Owner,
-  2026-11-18: both are resolved at load into a flat model, and a selection of a type does not find
-  its subtypes, since for the science it must be plain when behaviour changes.
+- **Building one model on another: built** (2026-11-18, `packages/spec/src/metamodel/resolve.ts`,
+  described in `packages/spec/README.md`). Both are resolved at load into a flat model that the
+  checker and runtime never see unresolved, and a selection of a type does not find its subtypes
+  (owner decision: for the science it must be plain when behaviour changes).
+  - **Overlays**: a model file names a base by `extends` and holds what it adds, replaces
+    (by path) or removes. Sugarscape II-2 is now an overlay of II-1 (54 lines against 1,014) and II-3
+    of II-2 (7 lines); the resolved models are the files they replaced, byte for byte, so each seed
+    runs as before. Without it, Sugarscape's 23 models and Bionland's 21 steps would be about
+    40,000 lines of JSON. Steps that are only settings still become run specs or catalogue aliases.
+  - **Agent types that extend others**: Civil Violence I has an abstract `person` with the
+    placement and walk that citizen and cop each repeated (the two types lose 13 acts between them,
+    `person` holds 8, and the file is 20 lines shorter); each seed runs as before. Limits found: an act's targets are its own,
+    so a type that adds work to an inherited `initialize` or rule replaces that act (the citizen's
+    `place`), and an inherited rule runs where the parent has it unless the child sets
+    `execution.rules` (the cop does, to run patrol before walk). Still open: an inherited element
+    cannot be removed; there is no JSON Schema for the file forms; Studio shows the flat model.
 - **Documentation lives in the model** (owner, 2026-11-18): model files stay JSON, with no
   comments; documentation goes in the `description` of the element it documents (MetaABM's own
   field; no separate `notes` field), including rationale, citations and departures from the
@@ -175,8 +183,9 @@ Gaps found, to fill when a model needs them (D4):
 - a root attribute changed by a `set` is not shown with the parameters in Studio;
 - colouring cells by a value (Civil Violence's grievance view), and placing a nested scape in a
   continuous space at computed coordinates (Classes' simplex view);
-- `fromMetaabm` (in `packages/models/src/amp/metaabm.ts`) compiles any format model; move it out
-  of `amp/` under a neutral name.
+- `fromMetaabm` (now in `packages/models/src/format-model.ts`, out of `amp/`) compiles any format
+  model, and resolves overlays given the files of their bases (`bases`); the function keeps its
+  misleading name, since renaming it touches every family's `index.ts`.
 
 Writing the JSON by hand is slow and error-prone: both Civil Violence and Sugarscape were written
 by throwaway scripts that generated the files. This is a cost of the whole effort until a model

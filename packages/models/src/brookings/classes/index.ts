@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import { type Curation, type RunSpec } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
-import { fromMetaabm as fromFormat } from '../../amp/metaabm';
+import { fromMetaabm as fromFormat } from '../../format-model';
 import modelOneSource from './ClassesModelOne.model.json';
 import {
   classesFigure2,

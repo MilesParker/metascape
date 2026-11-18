@@ -10,7 +10,7 @@ import zero from '@metascape/spec/examples/escape/params/EpiZeroTransmission.run
 import regional from '@metascape/spec/examples/escape/params/EpidemicRegional.run.json';
 import { parseRunSpec, type Curation, type RunSpec } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
-import { AMP_COPYRIGHT, fromMetaabm } from '../metaabm';
+import { AMP_COPYRIGHT, fromMetaabm } from '../../format-model';
 
 const DESCRIPTION =
   'A simple model of epidemic dynamics. Individual agents have different disease states: susceptible, exposed, infectious (symptomatic or asymptomatic) and then an outcome of recovered or dead. Agents can transmit infection to their immediate neighbors.';

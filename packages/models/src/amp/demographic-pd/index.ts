@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import source from '@metascape/spec/examples/escape/DemographicPrisoner_sDilemma.model.json';
 import { defineFamily } from '../../catalog';
-import { AMP_COPYRIGHT, fromMetaabm } from '../metaabm';
+import { AMP_COPYRIGHT, fromMetaabm } from '../../format-model';
 
 export const demographicPd = fromMetaabm(source, {
   name: "Demographic Prisoner's Dilemma (AMP)",

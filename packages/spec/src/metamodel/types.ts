@@ -702,6 +702,11 @@ export const ROOT_ACT_KINDS = [
 
 /** A problem found in a model, with the path of the offending part. */
 export interface Diagnostic {
+  /**
+   * The model file the problem is in, by its model ID, when it is not the model
+   * checked: a problem in an overlay is reported against the overlay.
+   */
+  file?: string | undefined;
   /** For example `agents.bug.acts.nearbySpace.targets[0]`. */
   path: string;
   /**

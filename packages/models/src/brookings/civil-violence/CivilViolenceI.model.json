@@ -382,8 +382,71 @@
         }
       }
     },
+    "person": {
+      "kind": "agent",
+      "label": "Person",
+      "description": "Not an agent of the model: a type that others extend. It holds what citizens and cops share, the placement on a random free site and the random walk, and each extends it with `extends: \"person\"`. The types are made flat when the model is loaded, so citizen and cop each have their own copies of these acts and nothing in the running model relates them. A selection of `person` would find no citizens and no cops (and `person` is not in the model at all, being abstract).",
+      "abstract": true,
+      "acts": {
+        "place": {
+          "kind": "initialize",
+          "label": "Place",
+          "description": "Setup: the agent moves to a random free site. A type that extends this one replaces `place` to say what else it sets up, since an act's targets are its own.",
+          "space": "lattice",
+          "targets": ["startSite"]
+        },
+        "startSite": {
+          "kind": "select",
+          "description": "A free site, chosen at random.",
+          "selected": "place",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["startFree"]
+        },
+        "startFree": {
+          "kind": "query",
+          "selected": "startSite",
+          "function": "available",
+          "targets": ["startGo"]
+        },
+        "startGo": {
+          "kind": "move",
+          "description": "Moves to that site.",
+          "selected": "place",
+          "destination": "startSite"
+        },
+        "walk": {
+          "kind": "rule",
+          "label": "Random Walk",
+          "description": "Tries one random neighbouring site and moves there if it is free; otherwise the agent stays (Ascape's random walk). Citizens replace this rule to add their conditions; cops use it as it is.",
+          "space": "lattice",
+          "targets": ["stepSite"]
+        },
+        "stepSite": {
+          "kind": "select",
+          "description": "One neighbouring site, chosen at random. Only one is tried.",
+          "selected": "walk",
+          "agent": "site",
+          "space": "lattice",
+          "targets": ["stepAdjacent"]
+        },
+        "stepAdjacent": {
+          "kind": "query",
+          "selected": "stepSite",
+          "function": "neighbor",
+          "targets": ["stepGo"]
+        },
+        "stepGo": {
+          "kind": "move",
+          "description": "Moves to that site. A move onto a site that is taken does nothing, so the agent stays, which is Ascape's behaviour without a separate test for a free site.",
+          "selected": "walk",
+          "destination": "stepSite"
+        }
+      }
+    },
     "citizen": {
       "kind": "agent",
+      "extends": "person",
       "label": "Citizen",
       "description": "A person with a fixed hardship and risk aversion, quiescent, active or jailed. Its rules run in this order: walk (unless jailed), check jail, decide state.",
       "pluralLabel": "Citizens",
@@ -458,26 +521,6 @@
           "description": "Setup: the citizen moves to a random free site and draws its hardship and risk aversion, each uniform from 0 to 1. The legacy citizen was placed by an initial rule that moves it to a random location.",
           "space": "lattice",
           "targets": ["startSite", "drawHardship", "drawRisk"]
-        },
-        "startSite": {
-          "kind": "select",
-          "description": "A free site, chosen at random.",
-          "selected": "place",
-          "agent": "site",
-          "space": "lattice",
-          "targets": ["startFree"]
-        },
-        "startFree": {
-          "kind": "query",
-          "selected": "startSite",
-          "function": "available",
-          "targets": ["startGo"]
-        },
-        "startGo": {
-          "kind": "move",
-          "description": "Moves to that site.",
-          "selected": "place",
-          "destination": "startSite"
         },
         "drawHardship": {
           "kind": "evaluate",
@@ -574,7 +617,7 @@
         "walk": {
           "kind": "rule",
           "label": "Random Walk",
-          "description": "Unless the citizen is jailed or citizens are set not to move, tries one random neighbouring site and moves there if it is free; otherwise it stays (Ascape's random walk).",
+          "description": "Unless the citizen is jailed or citizens are set not to move, tries one random neighbouring site and moves there if it is free; otherwise it stays (Ascape's random walk). Replaces the person's `walk`: the same walk (`stepSite`, inherited), behind two conditions.",
           "space": "lattice",
           "targets": ["walkFree"]
         },
@@ -604,26 +647,6 @@
             }
           ],
           "targets": ["stepSite"]
-        },
-        "stepSite": {
-          "kind": "select",
-          "description": "One neighbouring site, chosen at random. Only one is tried.",
-          "selected": "walk",
-          "agent": "site",
-          "space": "lattice",
-          "targets": ["stepAdjacent"]
-        },
-        "stepAdjacent": {
-          "kind": "query",
-          "selected": "stepSite",
-          "function": "neighbor",
-          "targets": ["stepGo"]
-        },
-        "stepGo": {
-          "kind": "move",
-          "description": "Moves to that site. A move onto a site that is taken does nothing, so the citizen stays, which is Ascape's behaviour without a separate test for a free site.",
-          "selected": "walk",
-          "destination": "stepSite"
         },
         "release": {
           "kind": "rule",
@@ -1115,8 +1138,9 @@
     },
     "cop": {
       "kind": "agent",
+      "extends": "person",
       "label": "Cop",
-      "description": "Jails the nearest active citizen in view, takes its site, and walks.",
+      "description": "Jails the nearest active citizen in view, takes its site, and walks. Cops walk whether citizens do or not, so they use the person's `walk` as it is; their rules run in the order patrol, walk, withdraw.",
       "pluralLabel": "Cops",
       "attributes": {
         "rank": {
@@ -1132,26 +1156,6 @@
           "description": "Setup: the cop moves to a random free site and draws its rank.",
           "space": "lattice",
           "targets": ["startSite", "drawRank"]
-        },
-        "startSite": {
-          "kind": "select",
-          "description": "A free site, chosen at random.",
-          "selected": "place",
-          "agent": "site",
-          "space": "lattice",
-          "targets": ["startFree"]
-        },
-        "startFree": {
-          "kind": "query",
-          "selected": "startSite",
-          "function": "available",
-          "targets": ["startGo"]
-        },
-        "startGo": {
-          "kind": "move",
-          "description": "Moves to that site.",
-          "selected": "place",
-          "destination": "startSite"
         },
         "drawRank": {
           "kind": "evaluate",
@@ -1308,33 +1312,6 @@
           "selected": "patrol",
           "destination": "arrestSite"
         },
-        "wander": {
-          "kind": "rule",
-          "label": "Random Walk",
-          "description": "Tries one random neighbouring site and moves there if it is free; otherwise the cop stays. Cops always walk, whether citizens do or not.",
-          "space": "lattice",
-          "targets": ["stepSite"]
-        },
-        "stepSite": {
-          "kind": "select",
-          "description": "One neighbouring site, chosen at random. Only one is tried.",
-          "selected": "wander",
-          "agent": "site",
-          "space": "lattice",
-          "targets": ["stepAdjacent"]
-        },
-        "stepAdjacent": {
-          "kind": "query",
-          "selected": "stepSite",
-          "function": "neighbor",
-          "targets": ["stepGo"]
-        },
-        "stepGo": {
-          "kind": "move",
-          "description": "Moves to that site. A move onto a taken site does nothing, so the cop stays.",
-          "selected": "wander",
-          "destination": "stepSite"
-        },
         "withdraw": {
           "kind": "rule",
           "label": "Withdraw",
@@ -1443,6 +1420,9 @@
             }
           }
         }
+      },
+      "execution": {
+        "rules": ["patrol", "walk", "withdraw"]
       }
     }
   },

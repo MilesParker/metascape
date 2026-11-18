@@ -7,7 +7,7 @@ import { exampleMethods } from '@metascape/spec/examples/escape/methods';
 import type { Provenance } from '@metascape/engine';
 import type { Chart, Curation } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
-import { AMP_COPYRIGHT, fromMetaabm } from '../metaabm';
+import { AMP_COPYRIGHT, fromMetaabm } from '../../format-model';
 
 const provenance = (file: string): Provenance => ({
   authors: 'Steven F. Railsback, Steven L. Lytinen and Volker Grimm',

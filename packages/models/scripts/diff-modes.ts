@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { compileModel, generationReport, traceRun } from '@metascape/spec';
 import { catalog } from '../src';
-import { formatSourceOf } from '../src/amp/metaabm';
+import { formatSourceOf } from '../src/format-model';
 const [match = '', periods = '5', dump] = process.argv.slice(2);
 for (const family of catalog)
   for (const model of family.models) {

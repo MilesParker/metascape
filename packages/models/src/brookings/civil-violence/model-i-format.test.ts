@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import { type Model, RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
+import { formatSourceOf } from '../../format-model';
 import { cvModelI, cvModelIFormat } from './index';
 
 const FORMAT_SMALL = { 'lattice.width': 20, 'lattice.height': 20 };
@@ -24,6 +25,27 @@ describe('Civil Violence Model I, written in the model format', () => {
       'Run 4',
       'Run 5',
     ]);
+  });
+
+  it('gives citizens and cops the placement and walk of an abstract `person`, made flat at load', () => {
+    const flat = formatSourceOf(cvModelIFormat as Model)!.model;
+    // `person` is only there to be extended: it is not a type of the model, and no one extends it at run time.
+    expect(Object.keys(flat.agents!)).toEqual(['site', 'citizen', 'cop']);
+    const acts = (agent: string) =>
+      Object.keys((flat.agents![agent] as { acts: Record<string, unknown> }).acts);
+    for (const agent of ['citizen', 'cop']) {
+      expect(acts(agent)).toEqual(
+        expect.arrayContaining(['place', 'startSite', 'startFree', 'startGo', 'walk', 'stepSite']),
+      );
+      expect(flat.agents![agent]).not.toHaveProperty('extends');
+    }
+    // The cop's walk is the person's as it is; the citizen's is behind its own two conditions.
+    const walk = (agent: string) =>
+      (flat.agents![agent] as { acts: Record<string, { targets: string[] }> }).acts['walk']!
+        .targets;
+    expect(walk('cop')).toEqual(['stepSite']);
+    expect(walk('citizen')).toEqual(['walkFree']);
+    expect(cvModelIFormat.runs).toBeDefined();
   });
 
   it('runs, charts only recorded series, and is deterministic per seed', () => {

@@ -3,7 +3,7 @@
 // Civil Violence Model I (Epstein 2002) written in the model format, beside the coded port in
 // `model-i.ts`: the model is `CivilViolenceI.model.json`, and Runs 1 to 5 of the paper are run specs.
 import { parseRunSpec, type Curation, type RunSpec } from '@metascape/spec';
-import { fromMetaabm } from '../../amp/metaabm';
+import { fromMetaabm } from '../../format-model';
 import source from './CivilViolenceI.model.json';
 
 const model = 'civilViolenceI';

@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 //
-// The Eclipse AMP example models, from their MetaABM originals. Each model is
-// the translation of its `.metaabm` file (packages/spec/examples/escape), run
-// by the model format's interpreter, with what the catalogue adds to it: the
-// name it knows it by, its description and provenance, what to look at (a
-// curation) and the run specs AMP gave it.
+// Catalogue models written in the model format (`@metascape/spec`), whether
+// translated from AMP's `.metaabm` files (packages/spec/examples/escape) or
+// written as format models first. Each is run by the format's interpreter (or
+// as generated code), with what the catalogue adds to it: the name it knows it
+// by, its description and provenance, what to look at (a curation) and its
+// run specs. A model file may be an overlay of another, or have agent types
+// that extend others; it is resolved into one flat model first.
 import type { Model, Provenance } from '@metascape/engine';
 import {
   compileModel,
-  parseModel,
+  resolveModel,
+  type Model as FormatModel,
   type CompileOptions,
   type Curation,
   type MethodImplementations,
@@ -30,6 +33,11 @@ export interface CatalogEntry {
   readonly runSpecs?: readonly RunSpec[];
   /** The implementations of the model's method acts, ported by hand (R21). */
   readonly methods?: MethodImplementations;
+  /**
+   * The files of the models the source builds on, if it is an overlay (or one
+   * of its bases is), found by their `id`. Give every file of the chain.
+   */
+  readonly bases?: readonly unknown[];
 }
 
 /** What a catalogue model written in the format was compiled from. */
@@ -37,8 +45,6 @@ export interface FormatSource {
   readonly model: FormatModel;
   readonly options: CompileOptions;
 }
-
-type FormatModel = ReturnType<typeof parseModel>;
 
 const sources = new WeakMap<Model, FormatSource>();
 
@@ -51,9 +57,13 @@ export function formatSourceOf(model: Model): FormatSource | undefined {
   return sources.get(model);
 }
 
-/** Compiles a translated `.metaabm` model, under the name the catalogue has always given it. */
+/**
+ * Compiles a model file written in the format (an overlay is resolved against
+ * `entry.bases` first), under the name the catalogue gives it. The name is
+ * historical: it serves every format model, whatever its origin.
+ */
 export function fromMetaabm(source: unknown, entry: CatalogEntry): Model {
-  const model = parseModel(source);
+  const model = resolveModel(source, { bases: entry.bases ?? [] });
   const options: CompileOptions = {
     ...(entry.curation && { curation: entry.curation }),
     ...(entry.runSpecs && { runSpecs: entry.runSpecs }),

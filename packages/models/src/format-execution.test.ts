@@ -6,7 +6,7 @@
 import { compileModel, generationReport, traceRun } from '@metascape/spec';
 import { describe, expect, it } from 'vitest';
 import { catalog } from '.';
-import { formatSourceOf } from './amp/metaabm';
+import { formatSourceOf } from './format-model';
 
 const formatModels = catalog
   .flatMap((family) => family.models)

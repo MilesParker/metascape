@@ -138,3 +138,7 @@ this family: `@xmldom/xmldom` is not installed, so `tsc -p packages/spec` and th
 the Studio catalogue manifest test fails until `UPDATE_CATALOG=1` regenerates `apps/studio/src/catalog/manifest.json`
 and its pictures, which has to wait until the three pilots' models are all in (it would otherwise be rewritten by each);
 and three tests time out at five seconds under load (Sugarscape's format test among them, and two in `packages/spec`).
+
+## Since: a `person` type (2026-11-18)
+
+Citizen and cop no longer repeat the placement and the walk: both extend an abstract `person` that holds them (`extends` on an agent, resolved at load into flat types; `packages/spec/README.md`). The resolved model runs identically per seed to the file it replaced. The citizen replaces `person`'s `place` (to add its draws) and `walk` (to put two conditions before the step); the cop uses `walk` as it is and sets `execution.rules` so that it runs after `patrol`, as the cop's own `wander` did.

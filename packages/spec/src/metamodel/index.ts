@@ -44,5 +44,6 @@ export {
   parseLibrary,
   parseModel,
 } from './schema';
+export { isOverlay, resolveModel, type OverlayFile, type ResolveOptions } from './resolve';
 export { traceRun } from './trace';
 export * from './types';

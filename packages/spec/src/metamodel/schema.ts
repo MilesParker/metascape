@@ -373,7 +373,9 @@ export class ModelFormatError extends Error {
   constructor(readonly diagnostics: readonly Diagnostic[]) {
     super(
       `The model has ${diagnostics.length} problem${diagnostics.length === 1 ? '' : 's'}:\n` +
-        diagnostics.map((d) => `  ${d.path || '(model)'}: ${d.message}`).join('\n'),
+        diagnostics
+          .map((d) => `  ${d.file ? `${d.file}: ` : ''}${d.path || '(model)'}: ${d.message}`)
+          .join('\n'),
     );
   }
 }
@@ -401,6 +403,16 @@ function structuralDiagnostics(error: z.ZodError): Diagnostic[] {
  * problem. This checks shape only; `checkModel` checks meaning.
  */
 export function parseModel(input: unknown): Model {
+  if (typeof input === 'object' && input !== null && 'extends' in input) {
+    throw new ModelFormatError([
+      {
+        path: 'extends',
+        severity: 'error',
+        message:
+          'This model file builds on another model; resolve it first, with `resolveModel` and the files of its bases',
+      },
+    ]);
+  }
   const result = modelSchema.safeParse(input);
   if (result.success) return result.data;
   throw new ModelFormatError(structuralDiagnostics(result.error));

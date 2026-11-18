@@ -83,7 +83,7 @@ the same as II-2 (tested). In a run-spec world, II-3 is a second name for II-2.
    the coded port records `population`, `sugar.mean`. Anything that reads series by name (the
    `Multiple*` batch designs) works on the coded models only.
 9. **Name of `fromMetaabm`.** It is misleading here: there is no `.metaabm` original. I kept it as
-   asked (it lives in `amp/metaabm.ts`, shared by the three pilots); a rename such as `fromModel`
+   asked (it lived in `amp/metaabm.ts`, now `format-model.ts`, shared by the pilots); a rename such as `fromModel`
    is for whoever lands last.
 
 Left as it was: Ascape's tie tolerance (1e-10) and Java `float` arithmetic (irrelevant to integers
@@ -131,7 +131,14 @@ would be a copy-paste of 930 lines and an edit of 30.
 
 ## Ways to build one model on another
 
-None is built. How the originals did it: **Ascape** by Java subclassing (`GAS_II_2.createScape` calls
+**Built since** (2026-11-18): option 1, as overlays resolved at load; see `packages/spec/README.md`
+("Building one model on another") and `docs/roadmap.md`. II-2 is now a 54-line overlay of II-1 and
+II-3 a 7-line overlay of II-2, and the resolved models are the old files byte for byte. The paths
+are keys joined by dots (`agents.sugarCell.acts.growBack`), with `add`, `replace` and `remove`
+sections (so that a misspelt path is an error), as the first option suggested. What follows is the
+comparison as it was written, before the build. Not built: option 2.
+
+None was built when this was written. How the originals did it: **Ascape** by Java subclassing (`GAS_II_2.createScape` calls
 `super`, then `getRules().setSelected(rule, false)` and `addRule(...)`; `GAS_II_3` only overrides
 `createViews`). **MetaABM** had no model inheritance at all: `SAgent` and `SContext` have no
 `extends`; the only reuse is `library` (functions), `IModelExtension`, groups of acts (R5, whose

@@ -3,7 +3,10 @@ import { type Model, RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import { capacityAt, MAX_SUGAR, SUGAR_PEAKS } from './cells';
 import { gasII1, gasII2, gasII3 } from './chapter-2';
+import { formatSourceOf } from '../../format-model';
 import { gasII1Format, gasII2Format, gasII3Format } from './format';
+
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /*
  * The format versions of II-1, II-2 and II-3 against the coded ports. The runs are not the same
@@ -136,6 +139,34 @@ describe('the format versions of II-1 to II-3', () => {
     expect(run(gasII2Format, 4)).not.toBe(run(gasII2Format, 5));
     // II-3 has II-2's rules, so with a seed it is the same run.
     expect(run(gasII3Format, 4)).toBe(run(gasII2Format, 4));
+  });
+
+  it('are overlays: II-2 differs from II-1 by its growback rule, and II-3 from II-2 by its name', () => {
+    const flat = (model: Model) => formatSourceOf(model)!.model;
+    const cellActs = (model: Model) =>
+      (flat(model).agents!['sugarCell'] as { acts: Record<string, unknown> }).acts;
+    expect(Object.keys(cellActs(gasII1Format)).slice(-2)).toEqual(['growBack', 'toCapacityAtOnce']);
+    expect(Object.keys(cellActs(gasII2Format)).slice(-4)).toEqual([
+      'growBack',
+      'oneMore',
+      'notMore',
+      'grown',
+    ]);
+    // Everything but the growback acts and the root's name is II-1 as written.
+    const rest = (model: Model) => {
+      const { id, label, description, ...others } = clone(flat(model));
+      void [id, label, description];
+      const cell = others.agents!['sugarCell'] as { acts: Record<string, unknown> };
+      for (const act of ['growBack', 'toCapacityAtOnce', 'oneMore', 'notMore', 'grown']) {
+        delete cell.acts[act];
+      }
+      return others;
+    };
+    expect(rest(gasII2Format)).toEqual(rest(gasII1Format));
+    const { id: id2, label: label2, description: description2, ...same2 } = flat(gasII2Format);
+    const { id: id3, label: label3, description: description3, ...same3 } = flat(gasII3Format);
+    expect([id3, label3, description3]).not.toEqual([id2, label2, description2]);
+    expect(same3).toEqual(same2);
   });
 
   it('II-1 keeps the statistics of the coded port', () => {
