@@ -271,6 +271,15 @@ export const coreLibrary: Library = {
             distance: { type: 'numeric', label: 'Distance' },
           },
         },
+        lineOfSight: {
+          kind: 'genericLogical',
+          label: 'Line Of Sight',
+          description:
+            'Represents the locations that can be seen from the source agent along each direction of the grid\'s neighborhood (the four lattice directions of a von Neumann grid, the eight of a Moore grid), up to the distance specified by the input value, with wrapping at the edges of a periodic grid. Used with "include self" and "maximize", it finds the best location in sight. Not in the original library: added for Sugarscape vision (Epstein and Axtell, 1996). In a space that is not a grid it means the same as "within".',
+          inputs: {
+            distance: { type: 'numeric', label: 'Distance' },
+          },
+        },
         neighbor: {
           kind: 'genericLogical',
           label: 'Neighbor',
@@ -301,6 +310,20 @@ export const coreLibrary: Library = {
           description:
             'The distance between the source agent and an agent represented by this selection. If more than one agent is represented by the other functions in the selection, this function will the distance to an arbitrary (randomly selected) agent as defined by those other functions.',
           output: { type: 'real', label: 'Distance Between Agents' },
+        },
+        locationX: {
+          kind: 'genericFunction',
+          label: 'Location X',
+          description:
+            "The first coordinate of the location the source agent is at in the selection's space: its cell's column in a grid. Not in the original library: added to give grid cells a landscape defined by their position.",
+          output: { type: 'integer', label: 'X' },
+        },
+        locationY: {
+          kind: 'genericFunction',
+          label: 'Location Y',
+          description:
+            "The second coordinate of the location the source agent is at in the selection's space: its cell's row in a grid. Not in the original library.",
+          output: { type: 'integer', label: 'Y' },
         },
         away: {
           kind: 'genericLogical',

@@ -88,11 +88,14 @@ export type SpatialTerm =
   | 'nearest'
   | 'toward'
   | 'within'
+  | 'lineOfSight'
   | 'neighbor'
   | 'includeSelf'
   | 'here'
   | 'available'
   | 'distance'
+  | 'locationX'
+  | 'locationY'
   | 'away'
   | 'minimize'
   | 'maximize'
@@ -357,11 +360,14 @@ export const coreFunctions: Readonly<Record<string, FunctionImplementation>> = {
   nearest: spatial('nearest'),
   toward: spatial('toward'),
   within: spatial('within'),
+  lineOfSight: spatial('lineOfSight'),
   neighbor: spatial('neighbor'),
   includeSelf: spatial('includeSelf'),
   here: spatial('here'),
   available: spatial('available'),
   distance: spatial('distance'),
+  locationX: spatial('locationX'),
+  locationY: spatial('locationY'),
   away: spatial('away'),
   minimize: spatial('minimize'),
   maximize: spatial('maximize'),

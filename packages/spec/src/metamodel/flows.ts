@@ -198,6 +198,7 @@ const LOGIC_KINDS: ReadonlySet<string> = new Set(['all', 'any', 'none']);
 const FILTER_TERMS: ReadonlySet<SpatialTerm> = new Set([
   'neighbor',
   'within',
+  'lineOfSight',
   'here',
   'available',
   'location2D',
@@ -205,6 +206,7 @@ const FILTER_TERMS: ReadonlySet<SpatialTerm> = new Set([
 const LOCATING_TERMS: ReadonlySet<SpatialTerm> = new Set([
   'neighbor',
   'within',
+  'lineOfSight',
   'nearest',
   'minimize',
   'maximize',
@@ -338,6 +340,17 @@ export class Env {
     if (!space || !origin) return false;
     const d = space.distance(origin, candidate);
     return d !== undefined && d <= distance;
+  }
+
+  /** Whether a candidate is in sight along a direction of the grid's neighbourhood; elsewhere, within. */
+  isInLine(candidate: Agent, distance: number): boolean {
+    const { space, origin } = this;
+    if (!space || !origin) return false;
+    if (!(space instanceof GridInstance)) return this.isWithin(candidate, distance);
+    const from = this.originLocation as Cell | undefined;
+    const at = space.location(candidate);
+    if (!from || !at) return false;
+    return at === from ? this.includeSelf : space.grid.rays(from, distance).includes(at);
   }
 
   isHere(candidate: Agent): boolean {
@@ -769,6 +782,16 @@ export class Behaviour {
       case 'within':
         return (frame) =>
           envOf(frame).isWithin(frame.agentOf(selection.id), num(inputs[0]?.get(frame)));
+      case 'lineOfSight':
+        return (frame) =>
+          envOf(frame).isInLine(frame.agentOf(selection.id), num(inputs[0]?.get(frame)));
+      case 'locationX':
+      case 'locationY':
+        return (frame) => {
+          const { space } = envOf(frame);
+          const at = locate(space, frame.agentOf(selection.id));
+          return at instanceof LocatedAgent ? (term === 'locationX' ? at.x : at.y) : 0;
+        };
       case 'location2D':
         return (frame) =>
           envOf(frame).isAt(
@@ -849,6 +872,9 @@ export class Behaviour {
       case 'within':
         return (candidate, env) =>
           env.isWithin(candidate, num(inputs[0]?.get(env.frameFor(candidate))));
+      case 'lineOfSight':
+        return (candidate, env) =>
+          env.isInLine(candidate, num(inputs[0]?.get(env.frameFor(candidate))));
       case 'here':
         return (candidate, env) => env.isHere(candidate);
       case 'available':
@@ -913,26 +939,28 @@ export class Behaviour {
         : undefined;
 
     // How to find candidates: around the origin by a spatial filter, else the whole population.
-    let radius: ((frame: Frame) => number) | undefined;
-    const withinNode = terms.get('within');
-    if (withinNode) {
-      const input = (withinNode.act as Extract<FlowAct, { kind: 'query' }>).inputs?.[0];
+    const radiusOf = (term: SpatialTerm): ((frame: Frame) => number) | undefined => {
+      const termNode = terms.get(term);
+      const input = termNode && (termNode.act as Extract<FlowAct, { kind: 'query' }>).inputs?.[0];
       const fixed =
         input !== undefined &&
         !('multiValue' in input) &&
         !('attribute' in input && (input.selected ?? select.id) === select.id);
-      if (fixed) {
-        const getter = this.#input(input, select.id);
-        radius = (frame) => num(getter.get(frame));
-      }
-    }
-    const generator: 'here' | 'neighbor' | 'within' | 'population' = terms.has('here')
+      if (!fixed) return undefined;
+      const getter = this.#input(input, select.id);
+      return (frame) => num(getter.get(frame));
+    };
+    const radius = radiusOf('within');
+    const sight = radiusOf('lineOfSight');
+    const generator: 'here' | 'neighbor' | 'sight' | 'within' | 'population' = terms.has('here')
       ? 'here'
       : terms.has('neighbor')
         ? 'neighbor'
-        : radius
-          ? 'within'
-          : 'population';
+        : sight
+          ? 'sight'
+          : radius
+            ? 'within'
+            : 'population';
 
     let score: ((candidate: Agent, env: Env) => number) | undefined;
     if (cardinality === 'nearest') {
@@ -965,6 +993,9 @@ export class Behaviour {
         if (generator === 'here') cells = [cell];
         else if (generator === 'neighbor') {
           cells = includeSelf ? [...space.grid.neighbors(cell), cell] : space.grid.neighbors(cell);
+        } else if (generator === 'sight') {
+          const seen = space.grid.rays(cell, sight!(env.frame));
+          cells = includeSelf ? [cell, ...seen] : seen;
         } else {
           cells = space.grid.findWithin(cell, radius!(env.frame), {
             metric: space.metric,
@@ -982,7 +1013,7 @@ export class Behaviour {
             ? [...space.graph.neighbors(origin), origin]
             : space.graph.neighbors(origin);
         } else {
-          nodes = space.graph.findWithin(origin, radius!(env.frame), { includeSelf });
+          nodes = space.graph.findWithin(origin, (sight ?? radius)!(env.frame), { includeSelf });
         }
         return ofType(nodes);
       }
