@@ -144,13 +144,13 @@ Open for the owner:
   the placement and walk that Civil Violence's citizen and cop now each repeat). Owner,
   2026-11-18: both are resolved at load into a flat model, and a selection of a type does not find
   its subtypes, since for the science it must be plain when behaviour changes.
-- **YAML as the file syntax** (owner's idea, 2026-11-18): the same metamodel and checker, written
-  as YAML instead of JSON, for comments, less noise and readable diffs. YAML's own reuse (anchors,
-  and the `<<` merge key, which YAML 1.2 dropped) works only within one file and merges only the top
-  level of a mapping, so overlays still need the format's own `extends`. Anchors would also leave no
-  trace in the model that something is shared or replaced, so they are probably best refused in
-  model files (which also removes alias bombs). Needs: YAML 1.2 core schema (no `no` read as
-  `false`), a canonical writer for the editor that keeps comments.
+- **Documentation lives in the model** (owner, 2026-11-18): model files stay JSON, with no
+  comments; documentation goes in a field of the element it documents, such as a `notes` field.
+  The `.metaabm` translation keeps every `description` (the files have no XML comments); the only
+  text dropped is the boilerplate on the grid's dimensions array, which R3 removed. The format
+  models written from coded ports do not yet carry the ports' explanations: of Civil Violence I's
+  131 acts and Sugarscape II-1's 78, none has a description, and Classes Model One documents 5 of 66. Converting a coded model must carry the comments of the port and of the legacy Java into the
+  model, and the three pilot models need it done after the fact.
 - **When a format version replaces the coded one,** as the AMP ports were replaced.
 - **Speed.** Format models run as generated JavaScript by default, with the same
   runs as the interpreter (`docs/codegen.md`). They are now about 2 to 4 times slower per period than
