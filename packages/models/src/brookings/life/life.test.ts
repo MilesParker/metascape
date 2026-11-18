@@ -21,8 +21,11 @@ const place = (root: RootScape, cells: [number, number][]) => {
 };
 
 describe('Conway life family', () => {
-  it('lists three models', () => {
-    expect(family.models).toHaveLength(3);
+  it('lists the three coded models, each followed by its format version', () => {
+    expect(family.models).toHaveLength(6);
+    for (let i = 0; i < 6; i += 2) {
+      expect(family.models[i + 1]!.name).toBe(`${family.models[i]!.name} (format)`);
+    }
   });
 
   for (const model of [conwayLife, conwayLifeSmallWorld, smallConwayLife] as Model[]) {

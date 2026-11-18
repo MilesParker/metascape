@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 2,
+  "id": "conwayLife",
+  "label": "Conway's Life: ConwayLife",
+  "description": "An implementation of John Conway's Life (Gardner, M. (1970). Mathematical Games: The fantastic combinations of John Conway's new solitaire game \"life\". Scientific American, 223(4), 120-123), from Ascape 5.6.1 edu.brook.life.ConwayLife. In this classic cellular automaton, very simple life and death rules create interesting and dynamic patterns that seem quite life-like. The legacy class was written to show a few aspects of Ascape: how a simple cellular automaton can be built with little specification and programming; how rules keep an agent's behaviours apart from its class, and make them selectable and dispatchable across collections at run time; and how synchronous updating is achieved with Ascape's \"execute, then update\" rule. The difference between synchronous and asynchronous updating should not be overlooked: the legacy class also defines an asynchronous rule, unused, as an example of what not to do, since cells would then read neighbours that have already changed. Here the synchronous update is two rules, Count and Update, in that order. Departures from the legacy model: the legacy initial density and the lattice size are properties of the class, here parameters; the live count in the chart is added.",
+  "language": "typescript",
+  "attributes": {
+    "initialAliveDensity": {
+      "type": "real",
+      "label": "Initial alive density",
+      "description": "The portion of cells that are alive when the model starts (the legacy static initialAliveDensity, a float, default 0.1; here a parameter).",
+      "default": 0.1,
+      "min": 0,
+      "max": 1
+    }
+  },
+  "acts": {
+    "build": {
+      "kind": "build",
+      "label": "Build",
+      "description": "Builds the lattice, one cell in every site.",
+      "targets": ["fillLattice"]
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "label": "Fill lattice",
+      "selected": "build",
+      "agents": [],
+      "space": "world",
+      "fillAgent": "cell"
+    }
+  },
+  "agents": {
+    "cell": {
+      "kind": "agent",
+      "label": "Cell",
+      "pluralLabel": "Cells",
+      "description": "A site of the lattice (the legacy LifeCell, which defines the state of a cell within the automaton): alive or dead. Alive cells are drawn white and dead cells black, as in the legacy cells.",
+      "attributes": {
+        "on": {
+          "type": "boolean",
+          "label": "Alive",
+          "gatherData": true,
+          "description": "Whether the cell is alive (the legacy LifeCell.alive; its collector is commented out in the legacy model, and the count of live cells is added here for the chart)."
+        },
+        "live": {
+          "type": "integer",
+          "label": "Live neighbours",
+          "description": "The live neighbours the cell counted in the latest Count rule."
+        }
+      },
+      "acts": {
+        "seed": {
+          "kind": "initialize",
+          "label": "Seed",
+          "space": "world",
+          "description": "The legacy LifeCell.initialize: the cell starts alive with the probability of the initial alive density (a draw of a float below the density). Every other cell starts dead.",
+          "targets": ["draw"]
+        },
+        "draw": {
+          "kind": "evaluate",
+          "selected": "seed",
+          "function": "randomUnit",
+          "targets": ["drawnAlive"]
+        },
+        "drawnAlive": {
+          "kind": "query",
+          "selected": "seed",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "draw"
+            },
+            {
+              "attribute": "initialAliveDensity"
+            }
+          ],
+          "targets": ["setAlive"]
+        },
+        "setAlive": {
+          "kind": "set",
+          "selected": "seed",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "true"
+          }
+        },
+        "count": {
+          "kind": "rule",
+          "label": "Count",
+          "space": "world",
+          "description": "First half of the legacy synchronous rule (the execute of ExecuteThenUpdate, in which a cell reads its neighbours): each cell counts its live neighbours (the legacy countNeighbors with the IS_ALIVE conditional) and keeps the count. No cell changes state here, so the count does not depend on the order cells run in. ",
+          "targets": ["clearCount", "neighbors"]
+        },
+        "clearCount": {
+          "kind": "set",
+          "selected": "count",
+          "attribute": "cell.live",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "neighbors": {
+          "kind": "select",
+          "selected": "count",
+          "agent": "cell",
+          "space": "world",
+          "description": "Every neighbouring cell (the eight of a Moore neighbourhood; fewer at an edge that does not wrap) that is alive: each adds one to the count.",
+          "targets": ["neighbor", "everyNeighbor", "neighborAlive"]
+        },
+        "neighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "neighbor",
+          "targets": ["liveNeighbors"]
+        },
+        "everyNeighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "all",
+          "targets": ["liveNeighbors"]
+        },
+        "neighborAlive": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "cell.on"
+            }
+          ],
+          "targets": ["liveNeighbors"]
+        },
+        "liveNeighbors": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["oneMore"]
+        },
+        "oneMore": {
+          "kind": "evaluate",
+          "selected": "count",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            }
+          ],
+          "targets": ["setCount"]
+        },
+        "setCount": {
+          "kind": "set",
+          "selected": "count",
+          "attribute": "cell.live",
+          "parameter": {
+            "evaluate": "oneMore"
+          }
+        },
+        "update": {
+          "kind": "rule",
+          "label": "Update",
+          "space": "world",
+          "description": "Second half of the legacy synchronous rule (its update): every cell takes its next state at once, after all have counted. The Life rule (legacy calculateNextAlive): a live cell with fewer than two or more than three live neighbours dies; a dead cell with exactly three comes alive; otherwise nothing changes. Written as: alive with three, or alive with two if it was alive already.",
+          "targets": ["three", "alive", "two"]
+        },
+        "three": {
+          "kind": "query",
+          "selected": "update",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            },
+            {
+              "literal": 3
+            }
+          ],
+          "targets": ["lives", "dies"]
+        },
+        "alive": {
+          "kind": "query",
+          "selected": "update",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "cell.on"
+            }
+          ],
+          "targets": ["survives"]
+        },
+        "two": {
+          "kind": "query",
+          "selected": "update",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            },
+            {
+              "literal": 2
+            }
+          ],
+          "targets": ["survives"]
+        },
+        "survives": {
+          "kind": "all",
+          "selected": "update",
+          "targets": ["lives", "dies"]
+        },
+        "lives": {
+          "kind": "any",
+          "selected": "update",
+          "targets": ["setOn"]
+        },
+        "dies": {
+          "kind": "none",
+          "selected": "update",
+          "targets": ["setOff"]
+        },
+        "setOn": {
+          "kind": "set",
+          "selected": "update",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "true"
+          }
+        },
+        "setOff": {
+          "kind": "set",
+          "selected": "update",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "false"
+          }
+        }
+      },
+      "execution": {
+        "randomOrder": false
+      },
+      "styles": {
+        "cellStyle": {
+          "kind": "2d",
+          "label": "Cell Style",
+          "description": "How a cell is drawn: alive or dead, filling its site.",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "world",
+              "targets": ["isAlive"]
+            },
+            "isAlive": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "cell.on"
+                }
+              ],
+              "targets": ["aliveColor", "isDead"]
+            },
+            "isDead": {
+              "kind": "none",
+              "selected": "look",
+              "targets": ["deadColor"]
+            },
+            "aliveColor": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillAlive"]
+            },
+            "fillAlive": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "deadColor": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillDead"]
+            },
+            "fillDead": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "world": {
+      "kind": "grid",
+      "label": "Lattice",
+      "description": "A 51 by 51 lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus (the legacy ConwayLife uses Array2DMoore, which is periodic by default).",
+      "borderRule": "periodic",
+      "neighborhood": "moore",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "description": "Number of columns (the legacy bean property width).",
+          "default": 51,
+          "min": 3,
+          "max": 400
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "description": "Number of rows (the legacy bean property height).",
+          "default": 51,
+          "min": 3,
+          "max": 400
+        }
+      }
+    }
+  }
+}
