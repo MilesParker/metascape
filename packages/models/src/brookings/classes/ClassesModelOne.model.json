@@ -71,22 +71,26 @@
     "build": {
       "kind": "build",
       "label": "Build",
+      "description": "Creates the three demands, with their shares taken from the payoff parameters, and then the bargainers.",
       "targets": ["createLow", "createMedium", "createHigh", "createBargainers"]
     },
     "createLow": {
       "kind": "create",
+      "description": "The low demand: one agent whose share is the low payoff.",
       "selected": "build",
       "agent": "demand",
       "targets": ["lowShare"]
     },
     "lowShare": {
       "kind": "set",
+      "description": "The low demand's share is the low payoff.",
       "selected": "createLow",
       "attribute": "demand.share",
       "parameter": { "attribute": "lowPayoff" }
     },
     "createMedium": {
       "kind": "create",
+      "description": "The medium demand: one agent whose level is medium and whose share is the medium payoff.",
       "selected": "build",
       "agent": "demand",
       "targets": ["mediumLevel"]
@@ -106,6 +110,7 @@
     },
     "createHigh": {
       "kind": "create",
+      "description": "The high demand: one agent whose level is high and whose share is the high payoff. The coded port's high payoff is 1 minus the low one but is not updated if the low one changes; here the three are independent parameters.",
       "selected": "build",
       "agent": "demand",
       "targets": ["highLevel"]
@@ -125,6 +130,7 @@
     },
     "createBargainers": {
       "kind": "create",
+      "description": "Creates the population of bargainers. Each draws its memory size and fills its memory in its Start act.",
       "selected": "build",
       "agent": "bargainer",
       "agentCount": { "attribute": "population" }
@@ -140,13 +146,18 @@
         "level": {
           "type": "state",
           "label": "Level",
+          "description": "Which of the three demands this agent stands for. The demands are agents so that the best reply can be found by maximizing a value over them; there is no function that chooses the best of three evaluates.",
           "options": {
             "low": { "label": "Low" },
             "medium": { "label": "Medium" },
             "high": { "label": "High" }
           }
         },
-        "share": { "type": "real", "label": "Share" },
+        "share": {
+          "type": "real",
+          "label": "Share",
+          "description": "The share of the pie this demand claims: the low, medium or high payoff parameter."
+        },
         "compatible": {
           "type": "integer",
           "label": "Compatible memories",
@@ -162,6 +173,7 @@
       "acts": {
         "derivePayoff": {
           "kind": "derive",
+          "description": "What this demand would pay against the memories of the bargainer now choosing: its share times the number of memories it is compatible with. The coded port's three estimates are the same at the payoffs the figures use: the low payoff times all memories, the medium payoff times the medium and low memories, and the high payoff times the low memories. It computes them in 32-bit floats; payoffs here are doubles.",
           "attribute": "demand.payoff",
           "targets": ["payoffValue"]
         },
@@ -177,9 +189,13 @@
       "kind": "scape",
       "label": "Bargainer",
       "pluralLabel": "Bargainers",
-      "description": "An agent that remembers the demands of its last opponents, each memory an agent of its own, and demands what would have paid best against them.",
+      "description": "An agent that remembers the demands of its last opponents, each memory an agent of its own, and demands what would have paid best against them. From the bargaining model of Axtell, Epstein and Young (2001), 'The emergence of classes in a multi-agent bargaining model', in Social Dynamics, Durlauf and Young (eds.), MIT Press. The coded port draws each bargainer as a point in a triangle by the proportions of low, medium and high demands in its memory (a simplex view). A nested scape cannot stand in a continuous space, so this model has the charts only.",
       "attributes": {
-        "memorySize": { "type": "integer", "label": "Memory size" },
+        "memorySize": {
+          "type": "integer",
+          "label": "Memory size",
+          "description": "How many past opponents' demands the bargainer remembers. Drawn between the minimum and maximum memory size when it is created, and fixed after."
+        },
         "demand": {
           "type": "state",
           "label": "Demand",
@@ -192,9 +208,21 @@
           },
           "defaultOption": "medium"
         },
-        "share": { "type": "real", "label": "Share demanded" },
-        "heard": { "type": "real", "label": "Share the latest opponent demanded" },
-        "clock": { "type": "integer", "label": "Memories made" }
+        "share": {
+          "type": "real",
+          "label": "Share demanded",
+          "description": "The share demanded in the latest encounter. It goes with the demand state, since a state cannot be set from another attribute's state; both are set from the chosen demand."
+        },
+        "heard": {
+          "type": "real",
+          "label": "Share the latest opponent demanded",
+          "description": "The share the latest opponent demanded, set just before the bargainer remembers it. An act sees only its own agent, so the opponent's share is passed in through this attribute."
+        },
+        "clock": {
+          "type": "integer",
+          "label": "Memories made",
+          "description": "Counts the memories made. Each new memory is stamped with it, so the oldest can be found."
+        }
       },
       "agents": {
         "memory": {
@@ -203,7 +231,11 @@
           "pluralLabel": "Memories",
           "description": "The share one past opponent demanded.",
           "attributes": {
-            "share": { "type": "real", "label": "Share" },
+            "share": {
+              "type": "real",
+              "label": "Share",
+              "description": "The share one past opponent demanded. The coded port keeps the demand as low, medium or high; here the memory holds the share, and a demand is compatible with it when the two shares sum to at most 1."
+            },
             "stamp": {
               "type": "integer",
               "label": "Stamp",
@@ -216,10 +248,12 @@
         "start": {
           "kind": "initialize",
           "label": "Start",
+          "description": "Setup of each bargainer: draw a memory size, fill the memory with that many memories, each taking the share of a randomly chosen demand, and draw a first demand at random (the legacy initialize).",
           "targets": ["drawMemorySize", "drawFirstDemand"]
         },
         "drawMemorySize": {
           "kind": "evaluate",
+          "description": "The memory size, drawn between the minimum and maximum memory size, both included.",
           "selected": "start",
           "function": "randomInRange",
           "inputs": [{ "attribute": "minimumMemorySize" }, { "attribute": "maximumMemorySize" }],
@@ -235,6 +269,7 @@
         "firstMemories": {
           "kind": "create",
           "label": "First memories",
+          "description": "As many memories as the memory size. The first memories are stamped 0.",
           "selected": "start",
           "agent": "bargainer.memory",
           "agentCount": { "attribute": "bargainer.memorySize" },
@@ -250,6 +285,7 @@
         },
         "anyStart": {
           "kind": "query",
+          "description": "Without highLowStart, every demand may be remembered.",
           "selected": "firstRemembered",
           "function": "not",
           "inputs": [{ "attribute": "highLowStart" }],
@@ -257,6 +293,7 @@
         },
         "notMedium": {
           "kind": "query",
+          "description": "With highLowStart, only the low and high demands may be remembered (the paper's figure 3).",
           "selected": "firstRemembered",
           "function": "different",
           "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.medium" }],
@@ -264,6 +301,7 @@
         },
         "startable": {
           "kind": "any",
+          "description": "A demand qualifies if either condition holds.",
           "selected": "firstRemembered",
           "targets": ["firstShare"]
         },
@@ -275,6 +313,7 @@
         },
         "drawFirstDemand": {
           "kind": "evaluate",
+          "description": "Before it has played, the bargainer's latest demand is one of the three at random, as the legacy initialize draws lastStrategy.",
           "selected": "start",
           "function": "randomState",
           "inputs": [{ "attribute": "bargainer.demand" }],
@@ -295,6 +334,7 @@
         },
         "coin": {
           "kind": "query",
+          "description": "A fair coin: with a chance of one half the bargainer starts an encounter this period. Ascape draws exactly population / 2 agents each period, with replacement (REPEATED_DRAW with agentsPerIteration), and the format has no such setting. Here the number of encounters per period is binomial with the same mean, and no agent starts two. The comparison with the coded port shows no difference.",
           "selected": "play",
           "function": "randomIs",
           "targets": ["opponent"]
@@ -302,6 +342,7 @@
         "opponent": {
           "kind": "select",
           "label": "Opponent",
+          "description": "The other bargainer to play.",
           "selected": "play",
           "agent": "bargainer",
           "targets": ["anyOther"]
@@ -317,18 +358,21 @@
         },
         "chooseOwn": {
           "kind": "cause",
+          "description": "The bargainer chooses its demand, by performing Choose a demand on itself.",
           "selected": "play",
           "result": "chooseDemand",
           "targets": ["chooseTheirs"]
         },
         "chooseTheirs": {
           "kind": "cause",
+          "description": "The opponent chooses its demand by the same act, performed on it. Both choose before either remembers.",
           "selected": "opponent",
           "result": "chooseDemand",
           "targets": ["hearTheirs"]
         },
         "hearTheirs": {
           "kind": "set",
+          "description": "The bargainer is told the share the opponent demanded.",
           "selected": "play",
           "attribute": "bargainer.heard",
           "parameter": { "attribute": "bargainer.share", "selected": "opponent" },
@@ -336,6 +380,7 @@
         },
         "hearOwn": {
           "kind": "set",
+          "description": "The opponent is told the share this bargainer demanded.",
           "selected": "opponent",
           "attribute": "bargainer.heard",
           "parameter": { "attribute": "bargainer.share", "selected": "play" },
@@ -343,12 +388,14 @@
         },
         "rememberOwn": {
           "kind": "cause",
+          "description": "The bargainer remembers the opponent's share.",
           "selected": "play",
           "result": "remember",
           "targets": ["rememberTheirs"]
         },
         "rememberTheirs": {
           "kind": "cause",
+          "description": "The opponent remembers this bargainer's share. Performing Remember on each keeps the logic in one place.",
           "selected": "opponent",
           "result": "remember"
         },
@@ -361,6 +408,7 @@
         },
         "clear": {
           "kind": "select",
+          "description": "Starts each demand's count of compatible memories at zero, since the count is scratch state reset before each choice.",
           "selected": "chooseDemand",
           "agent": "demand",
           "targets": ["clearEvery"]
@@ -379,6 +427,7 @@
         },
         "drawHeed": {
           "kind": "evaluate",
+          "description": "A random number from 0 to 1, to compare with the random strategy probability.",
           "selected": "chooseDemand",
           "function": "randomUnit",
           "targets": ["heed"]
@@ -386,6 +435,7 @@
         "heed": {
           "kind": "query",
           "label": "Heeds memory",
+          "description": "True when the draw is above the random strategy probability: the bargainer then follows its memory. Otherwise nothing is counted, every demand ties and the pick is uniform (the legacy playSide: calculate the next strategy if a random float is above the probability, else a random strategy).",
           "selected": "chooseDemand",
           "function": "greater",
           "inputs": [{ "evaluate": "drawHeed" }, { "attribute": "randomStrategyProbability" }],
@@ -393,6 +443,7 @@
         },
         "weigh": {
           "kind": "select",
+          "description": "Each of the three demands in turn, weighed against the bargainer's memories.",
           "selected": "chooseDemand",
           "agent": "demand",
           "targets": ["weighEvery"]
@@ -406,6 +457,7 @@
         "room": {
           "kind": "evaluate",
           "label": "Room left",
+          "description": "What the demand leaves of the pie: 1 minus its share.",
           "selected": "weigh",
           "function": "sub",
           "inputs": [{ "constant": "unit" }, { "attribute": "demand.share" }],
@@ -414,6 +466,7 @@
         "recall": {
           "kind": "select",
           "label": "Compatible memories",
+          "description": "The bargainer's own memories whose share fits in what the demand leaves. A selection from the bargainer finds only its own memories, since the search runs in the scape around the selection.",
           "selected": "chooseDemand",
           "agent": "bargainer.memory",
           "targets": ["recallEvery", "fits"]
@@ -426,6 +479,7 @@
         },
         "fits": {
           "kind": "query",
+          "description": "A remembered share fits when it is at most the room left. This is the paper's rule that two demands are compatible when they sum to at most 1; the coded port hard-codes the result for the payoffs the figures use.",
           "selected": "recall",
           "function": "lesserorEqual",
           "inputs": [{ "attribute": "bargainer.memory.share" }, { "evaluate": "room" }],
@@ -438,6 +492,7 @@
         },
         "oneMoreCompatible": {
           "kind": "evaluate",
+          "description": "Counts one compatible memory for the demand: this act runs once for each memory that fits.",
           "selected": "weigh",
           "function": "increment",
           "inputs": [{ "attribute": "demand.compatible" }],
@@ -452,12 +507,14 @@
         "reply": {
           "kind": "select",
           "label": "Best reply",
+          "description": "The best reply: the demand with the highest expected payoff, ties at random as the coded port breaks them.",
           "selected": "chooseDemand",
           "agent": "demand",
           "targets": ["best"]
         },
         "best": {
           "kind": "query",
+          "description": "Takes the demand that maximizes the expected payoff.",
           "selected": "reply",
           "function": "maximize",
           "inputs": [{ "attribute": "demand.payoff" }],
@@ -465,12 +522,14 @@
         },
         "adoptShare": {
           "kind": "set",
+          "description": "The bargainer's share becomes the chosen demand's share.",
           "selected": "chooseDemand",
           "attribute": "bargainer.share",
           "parameter": { "attribute": "demand.share", "selected": "reply" }
         },
         "isLow": {
           "kind": "query",
+          "description": "True if the chosen demand is the low one. The chosen level is turned into the bargainer's demand state by three query and set pairs, since states are typed per attribute and cannot be copied.",
           "selected": "reply",
           "function": "identical",
           "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.low" }],
@@ -478,12 +537,14 @@
         },
         "demandLow": {
           "kind": "set",
+          "description": "The bargainer's demand is low.",
           "selected": "chooseDemand",
           "attribute": "bargainer.demand",
           "parameter": { "option": "bargainer.demand.low" }
         },
         "isMedium": {
           "kind": "query",
+          "description": "True if the chosen demand is the medium one.",
           "selected": "reply",
           "function": "identical",
           "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.medium" }],
@@ -491,12 +552,14 @@
         },
         "demandMedium": {
           "kind": "set",
+          "description": "The bargainer's demand is medium.",
           "selected": "chooseDemand",
           "attribute": "bargainer.demand",
           "parameter": { "option": "bargainer.demand.medium" }
         },
         "isHigh": {
           "kind": "query",
+          "description": "True if the chosen demand is the high one.",
           "selected": "reply",
           "function": "identical",
           "inputs": [{ "attribute": "demand.level" }, { "option": "demand.level.high" }],
@@ -504,6 +567,7 @@
         },
         "demandHigh": {
           "kind": "set",
+          "description": "The bargainer's demand is high.",
           "selected": "chooseDemand",
           "attribute": "bargainer.demand",
           "parameter": { "option": "bargainer.demand.high" }
@@ -517,20 +581,27 @@
         },
         "forget": {
           "kind": "select",
+          "description": "The memory to forget.",
           "selected": "remember",
           "agent": "bargainer.memory",
           "targets": ["oldest"]
         },
         "oldest": {
           "kind": "query",
+          "description": "The memory with the smallest stamp, the oldest. Together with Note it replaces the legacy ring buffer: forget the oldest, note the new.",
           "selected": "forget",
           "function": "minimize",
           "inputs": [{ "attribute": "bargainer.memory.stamp" }],
           "targets": ["forgetOldest"]
         },
-        "forgetOldest": { "kind": "die", "selected": "forget" },
+        "forgetOldest": {
+          "kind": "die",
+          "description": "Forgets that memory.",
+          "selected": "forget"
+        },
         "tick": {
           "kind": "evaluate",
+          "description": "Advances the bargainer's clock by one.",
           "selected": "remember",
           "function": "increment",
           "inputs": [{ "attribute": "bargainer.clock" }],
@@ -545,6 +616,7 @@
         },
         "note": {
           "kind": "create",
+          "description": "Creates a memory for the share just heard, stamped with the clock.",
           "selected": "remember",
           "agent": "bargainer.memory",
           "targets": ["noteShare"]

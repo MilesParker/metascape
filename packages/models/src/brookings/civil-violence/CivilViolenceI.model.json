@@ -112,6 +112,7 @@
     "build": {
       "kind": "build",
       "label": "Build",
+      "description": "Sets up the world: the number of citizens and cops from the initial densities, then a lattice of sites for them to stand on.",
       "targets": ["sites", "fillLattice"]
     },
     "sites": {
@@ -144,6 +145,7 @@
     },
     "citizenCount": {
       "kind": "evaluate",
+      "description": "How many citizens to create: initial population density times the number of sites (width times height), rounded down, as the coded port truncates.",
       "selected": "build",
       "function": "floor",
       "inputs": [
@@ -156,6 +158,7 @@
     "createCitizens": {
       "kind": "create",
       "label": "Create Citizens",
+      "description": "Creates the citizens. Each places itself and draws its hardship and risk aversion in its Place act.",
       "selected": "build",
       "agent": "citizen",
       "agentCount": {
@@ -178,6 +181,7 @@
     },
     "copCount": {
       "kind": "evaluate",
+      "description": "How many cops to create: initial cop density times the number of sites, rounded down.",
       "selected": "build",
       "function": "floor",
       "inputs": [
@@ -190,6 +194,7 @@
     "createCops": {
       "kind": "create",
       "label": "Create Cops",
+      "description": "Creates the cops. Each places itself in its Place act.",
       "selected": "build",
       "agent": "cop",
       "agentCount": {
@@ -199,6 +204,7 @@
     "fillLattice": {
       "kind": "buildGrid",
       "label": "Fill Lattice",
+      "description": "Fills the lattice with a site in every cell, for the citizens and cops to stand on. Unlike the original, the lattice size is a parameter.",
       "selected": "build",
       "agents": ["citizen", "cop"],
       "space": "lattice",
@@ -207,6 +213,7 @@
     "drift": {
       "kind": "rule",
       "label": "Change Legitimacy",
+      "description": "Changes legitimacy during a run, for Runs 3 and 4: it falls by the legitimacy erosion every erosion interval, and is set to the legitimacy cut at the cut period. Both are inert at their defaults. The legacy Run 3 and Run 4 classes did this in their own scapeIterated; a run spec only sets values at the start, so here it is a rule of the model that acts on parameters.",
       "targets": ["erodes", "now"]
     },
     "erodes": {
@@ -231,6 +238,7 @@
     },
     "erosionDue": {
       "kind": "query",
+      "description": "True every erosion interval periods: the period number modulo the interval is zero. Run 3 uses 3.",
       "selected": "drift",
       "function": "equal",
       "inputs": [
@@ -274,6 +282,7 @@
     },
     "setEroded": {
       "kind": "set",
+      "description": "Lowers legitimacy by the erosion, but not below zero, as Run 3 did (if legitimacy - 0.01 > 0 then subtract 0.01, else 0).",
       "selected": "drift",
       "attribute": "legitimacy",
       "parameter": {
@@ -288,6 +297,7 @@
     },
     "cutEnabled": {
       "kind": "query",
+      "description": "A legitimacy cut period of 0 means never.",
       "selected": "drift",
       "function": "greater",
       "inputs": [
@@ -302,6 +312,7 @@
     },
     "cutDue": {
       "kind": "query",
+      "description": "True at the legitimacy cut period (Run 4 cuts after period 75).",
       "selected": "drift",
       "function": "equal",
       "inputs": [
@@ -316,6 +327,7 @@
     },
     "setCut": {
       "kind": "set",
+      "description": "Sets legitimacy to the legitimacy cut value (Run 4: 0.65).",
       "selected": "drift",
       "attribute": "legitimacy",
       "parameter": {
@@ -327,14 +339,17 @@
     "site": {
       "kind": "agent",
       "label": "Site",
+      "description": "A cell of the lattice. A site holds at most one agent, citizen or cop, as in the legacy single lattice.",
       "pluralLabel": "Sites",
       "acts": {},
       "styles": {
         "siteStyle": {
           "kind": "2d",
+          "description": "Paper-coloured cells (RGB 237, 230, 214), the background of the original's views.",
           "acts": {
             "look": {
               "kind": "rule",
+              "description": "Fills the site with the background colour.",
               "space": "lattice",
               "targets": ["paper"]
             },
@@ -370,11 +385,13 @@
     "citizen": {
       "kind": "agent",
       "label": "Citizen",
+      "description": "A person with a fixed hardship and risk aversion, quiescent, active or jailed. Its rules run in this order: walk (unless jailed), check jail, decide state.",
       "pluralLabel": "Citizens",
       "attributes": {
         "state": {
           "type": "state",
           "label": "State",
+          "description": "Quiescent (the default), active (rebelling) or jailed. A jailed citizen is off the lattice.",
           "options": {
             "quiescent": {
               "label": "Quiescent"
@@ -391,50 +408,60 @@
         },
         "hardship": {
           "type": "real",
-          "label": "Hardship"
+          "label": "Hardship",
+          "description": "Perceived hardship, drawn uniformly from 0 to 1 when the citizen is created and fixed after that."
         },
         "riskAversion": {
           "type": "real",
           "label": "Risk aversion",
+          "description": "How strongly the citizen weighs the chance of arrest, drawn uniformly from 0 to 1 when the citizen is created and fixed after that.",
           "gatherData": true
         },
         "grievance": {
           "type": "real",
           "label": "Grievance",
+          "description": "Hardship times (1 - legitimacy) times (1 - active threshold), read from the current legitimacy and threshold. The legacy code's earlier version, left in a comment, had only the first two factors.",
           "gatherData": true,
           "derived": true,
           "default": 0
         },
         "jailTermsLeft": {
           "type": "integer",
-          "label": "Jail periods left"
+          "label": "Jail periods left",
+          "description": "Periods of the jail term still to serve, drawn at arrest and counted down while jailed."
         },
         "homeX": {
           "type": "integer",
-          "label": "Home column"
+          "label": "Home column",
+          "description": "Column of the site where the citizen was arrested, where release looks for a place. Attributes cannot hold a cell, so the coordinates are kept (the coded port keeps the cell)."
         },
         "homeY": {
           "type": "integer",
-          "label": "Home row"
+          "label": "Home row",
+          "description": "Row of the site where the citizen was arrested; see Home column."
         },
         "copsSeen": {
           "type": "integer",
-          "label": "Cops in view"
+          "label": "Cops in view",
+          "description": "Cops within citizen vision, counted afresh each time the citizen decides its state."
         },
         "activeSeen": {
           "type": "integer",
-          "label": "Active citizens in view"
+          "label": "Active citizens in view",
+          "description": "Other active citizens within citizen vision, counted afresh each time the citizen decides its state."
         }
       },
       "acts": {
         "place": {
           "kind": "initialize",
           "label": "Place",
+          "description": "Setup: the citizen moves to a random free site and draws its hardship and risk aversion, each uniform from 0 to 1. The legacy citizen was placed by an initial rule that moves it to a random location.",
           "space": "lattice",
           "targets": ["startSite", "drawHardship", "drawRisk"]
         },
         "startSite": {
           "kind": "select",
+          "description": "A free site, chosen at random.",
           "selected": "place",
           "agent": "site",
           "space": "lattice",
@@ -448,6 +475,7 @@
         },
         "startGo": {
           "kind": "move",
+          "description": "Moves to that site.",
           "selected": "place",
           "destination": "startSite"
         },
@@ -482,6 +510,7 @@
         "grievanceOf": {
           "kind": "derive",
           "label": "Grievance",
+          "description": "Computes grievance when it is read: hardship times (1 - legitimacy) times (1 - active threshold), so it follows legitimacy and the threshold as they change.",
           "attribute": "citizen.grievance",
           "targets": ["illegitimacy"]
         },
@@ -545,11 +574,13 @@
         "walk": {
           "kind": "rule",
           "label": "Random Walk",
+          "description": "Unless the citizen is jailed or citizens are set not to move, tries one random neighbouring site and moves there if it is free; otherwise it stays (Ascape's random walk).",
           "space": "lattice",
           "targets": ["walkFree"]
         },
         "walkFree": {
           "kind": "query",
+          "description": "Jailed citizens do not walk.",
           "selected": "walk",
           "function": "different",
           "inputs": [
@@ -564,6 +595,7 @@
         },
         "walkAllowed": {
           "kind": "query",
+          "description": "Whether citizens walk at all; Run 1 turns it off.",
           "selected": "walk",
           "function": "identity",
           "inputs": [
@@ -575,6 +607,7 @@
         },
         "stepSite": {
           "kind": "select",
+          "description": "One neighbouring site, chosen at random. Only one is tried.",
           "selected": "walk",
           "agent": "site",
           "space": "lattice",
@@ -588,17 +621,20 @@
         },
         "stepGo": {
           "kind": "move",
+          "description": "Moves to that site. A move onto a site that is taken does nothing, so the citizen stays, which is Ascape's behaviour without a separate test for a free site.",
           "selected": "walk",
           "destination": "stepSite"
         },
         "release": {
           "kind": "rule",
           "label": "Check Jail",
+          "description": "A jailed citizen serves one period of its term. When none is left it becomes quiescent and moves to the free site nearest to where it was arrested. The original searched within 16 sites and, finding none, moved to a random free site; neither the limit nor the fallback is carried over.",
           "space": "lattice",
           "targets": ["serving"]
         },
         "serving": {
           "kind": "query",
+          "description": "Only jailed citizens serve a term.",
           "selected": "release",
           "function": "equal",
           "inputs": [
@@ -613,6 +649,7 @@
         },
         "tick": {
           "kind": "evaluate",
+          "description": "The jail term left, less one.",
           "selected": "release",
           "function": "decrement",
           "inputs": [
@@ -632,6 +669,7 @@
         },
         "termOver": {
           "kind": "query",
+          "description": "True when no periods of the term are left.",
           "selected": "release",
           "function": "lesserorEqual",
           "inputs": [
@@ -646,6 +684,7 @@
         },
         "setFree": {
           "kind": "set",
+          "description": "Back to quiescent.",
           "selected": "release",
           "attribute": "citizen.state",
           "parameter": {
@@ -654,6 +693,7 @@
         },
         "homeSite": {
           "kind": "select",
+          "description": "The site where the citizen was arrested, found from the coordinates it kept.",
           "selected": "release",
           "agent": "site",
           "space": "lattice",
@@ -677,6 +717,7 @@
         },
         "nearHome": {
           "kind": "select",
+          "description": "The free site nearest to the arrest site, which counts itself if it is free.",
           "selected": "homeSite",
           "agent": "site",
           "space": "lattice",
@@ -707,17 +748,20 @@
         },
         "backGo": {
           "kind": "move",
+          "description": "Moves the released citizen back onto the lattice at that site.",
           "selected": "release",
           "destination": "nearHome"
         },
         "decide": {
           "kind": "rule",
           "label": "Decide State",
+          "description": "Epstein's rule for a citizen that is not jailed: count the cops and active citizens in view, estimate the chance of arrest from them, and be active if grievance less the risk of arrest (that chance times risk aversion) is above the active threshold, quiescent otherwise. From Epstein (2002), 'Modeling civil violence: An agent-based computational approach', PNAS 99(suppl. 3), 7243-7250.",
           "space": "lattice",
           "targets": ["notInJail"]
         },
         "notInJail": {
           "kind": "query",
+          "description": "Jailed citizens do not decide.",
           "selected": "decide",
           "function": "different",
           "inputs": [
@@ -732,6 +776,7 @@
         },
         "clearCops": {
           "kind": "set",
+          "description": "Starts the count of cops in view at zero.",
           "selected": "decide",
           "attribute": "citizen.copsSeen",
           "parameter": {
@@ -740,6 +785,7 @@
         },
         "clearActive": {
           "kind": "set",
+          "description": "Starts the count of active citizens in view at zero.",
           "selected": "decide",
           "attribute": "citizen.activeSeen",
           "parameter": {
@@ -748,6 +794,7 @@
         },
         "copsInView": {
           "kind": "select",
+          "description": "Every cop within citizen vision (inclusive), as the legacy count of cops within the vision radius.",
           "selected": "decide",
           "agent": "cop",
           "space": "lattice",
@@ -778,6 +825,7 @@
         },
         "oneMoreCop": {
           "kind": "evaluate",
+          "description": "Counts one cop for each cop in view: this act runs once per cop selected.",
           "selected": "decide",
           "function": "increment",
           "inputs": [
@@ -797,6 +845,7 @@
         },
         "activeInView": {
           "kind": "select",
+          "description": "Every other active citizen within citizen vision (inclusive).",
           "selected": "decide",
           "agent": "citizen",
           "space": "lattice",
@@ -841,6 +890,7 @@
         },
         "oneMoreActive": {
           "kind": "evaluate",
+          "description": "Counts one active citizen for each in view: this act runs once per citizen selected.",
           "selected": "decide",
           "function": "increment",
           "inputs": [
@@ -860,6 +910,7 @@
         },
         "activePlusOne": {
           "kind": "evaluate",
+          "description": "Active citizens in view, plus one for the citizen itself, as if it were active. The legacy comment on k: one cop and only this citizen active gives a ratio of 1.",
           "selected": "decide",
           "function": "increment",
           "inputs": [
@@ -911,6 +962,7 @@
         },
         "arrestProbability": {
           "kind": "evaluate",
+          "description": "The estimated probability of arrest, 1 - exp(-k * floor(cops / (active + 1))), with k = -ln 0.1 (2.3026), set so that one cop in view and only this citizen active gives 0.9. As in the legacy code (two Java ints) the quotient is an integer division and truncates, so the estimate is zero unless the cops in view number at least the active citizens plus one. It ends a chain of evaluates that starts at Active plus one.",
           "selected": "decide",
           "function": "sub",
           "inputs": [
@@ -940,6 +992,7 @@
         },
         "netGrievance": {
           "kind": "evaluate",
+          "description": "Grievance minus the perceived risk, which is the arrest probability times risk aversion.",
           "selected": "decide",
           "function": "sub",
           "inputs": [
@@ -954,6 +1007,7 @@
         },
         "rebels": {
           "kind": "query",
+          "description": "Decides the state: a net grievance above the active threshold (strictly) makes the citizen active.",
           "selected": "decide",
           "function": "greater",
           "inputs": [
@@ -968,11 +1022,13 @@
         },
         "stays": {
           "kind": "none",
+          "description": "Otherwise.",
           "selected": "decide",
           "targets": ["goQuiet"]
         },
         "goActive": {
           "kind": "set",
+          "description": "Becomes active.",
           "selected": "decide",
           "attribute": "citizen.state",
           "parameter": {
@@ -981,6 +1037,7 @@
         },
         "goQuiet": {
           "kind": "set",
+          "description": "Becomes quiescent.",
           "selected": "decide",
           "attribute": "citizen.state",
           "parameter": {
@@ -991,9 +1048,11 @@
       "styles": {
         "citizenStyle": {
           "kind": "2d",
+          "description": "Round marks: red for an active citizen, blue for any other, as in the original's agent view. The original's second view, colouring each site by the grievance of the citizen on it, and its legend, are not expressed.",
           "acts": {
             "look": {
               "kind": "rule",
+              "description": "Draws an active citizen as a red circle and any other as a blue circle.",
               "space": "lattice",
               "targets": ["rebelling"]
             },
@@ -1057,22 +1116,26 @@
     "cop": {
       "kind": "agent",
       "label": "Cop",
+      "description": "Jails the nearest active citizen in view, takes its site, and walks.",
       "pluralLabel": "Cops",
       "attributes": {
         "rank": {
           "type": "real",
-          "label": "Rank"
+          "label": "Rank",
+          "description": "A fixed draw from 0 to 1, used only by Withdraw to let the cop count fall in Run 5. The original has no such attribute."
         }
       },
       "acts": {
         "place": {
           "kind": "initialize",
           "label": "Place",
+          "description": "Setup: the cop moves to a random free site and draws its rank.",
           "space": "lattice",
           "targets": ["startSite", "drawRank"]
         },
         "startSite": {
           "kind": "select",
+          "description": "A free site, chosen at random.",
           "selected": "place",
           "agent": "site",
           "space": "lattice",
@@ -1086,6 +1149,7 @@
         },
         "startGo": {
           "kind": "move",
+          "description": "Moves to that site.",
           "selected": "place",
           "destination": "startSite"
         },
@@ -1106,11 +1170,13 @@
         "patrol": {
           "kind": "rule",
           "label": "Patrol",
+          "description": "Arrests the nearest active citizen within cop vision, if there is one: the citizen is jailed and removed from the lattice, and the cop moves into its site (the legacy Cop.patrol).",
           "space": "lattice",
           "targets": ["target"]
         },
         "target": {
           "kind": "select",
+          "description": "The active citizen to arrest: the nearest active one within cop vision.",
           "selected": "patrol",
           "agent": "citizen",
           "space": "lattice",
@@ -1118,6 +1184,7 @@
         },
         "inReach": {
           "kind": "query",
+          "description": "Within cop vision. This is inclusive; the coded port and Ascape's search for the nearest are strict (below vision), so the two differ only for a target exactly at the vision, vision 7 for example.",
           "selected": "target",
           "function": "within",
           "inputs": [
@@ -1136,6 +1203,7 @@
         },
         "rebelling": {
           "kind": "query",
+          "description": "Only active citizens are candidates.",
           "selected": "target",
           "function": "equal",
           "inputs": [
@@ -1155,6 +1223,7 @@
         },
         "arrestSite": {
           "kind": "select",
+          "description": "The site the target stands on, found before the citizen leaves it so the cop can move there afterwards.",
           "selected": "target",
           "agent": "site",
           "space": "lattice",
@@ -1168,6 +1237,7 @@
         },
         "jail": {
           "kind": "set",
+          "description": "The target becomes jailed.",
           "selected": "target",
           "attribute": "citizen.state",
           "parameter": {
@@ -1176,6 +1246,7 @@
         },
         "drawTerm": {
           "kind": "evaluate",
+          "description": "The target's jail term, drawn uniformly from 0 to the jail term, both ends included. At the jail term 2147483647 the original sets the term to that value and draws nothing; this draw is made anyway, which in a run of a few hundred periods all but never releases a citizen.",
           "selected": "patrol",
           "function": "randomInRange",
           "inputs": [
@@ -1198,6 +1269,7 @@
         },
         "homeX": {
           "kind": "evaluate",
+          "description": "Column of the arrest site, kept so that release can find the place again.",
           "selected": "arrestSite",
           "function": "locationX",
           "targets": ["setHomeX"]
@@ -1212,6 +1284,7 @@
         },
         "homeY": {
           "kind": "evaluate",
+          "description": "Row of the arrest site, kept so that release can find the place again.",
           "selected": "arrestSite",
           "function": "locationY",
           "targets": ["setHomeY"]
@@ -1226,21 +1299,25 @@
         },
         "removed": {
           "kind": "leave",
+          "description": "The jailed citizen leaves the lattice.",
           "selected": "target"
         },
         "takePlace": {
           "kind": "move",
+          "description": "The cop moves into the arrest site, which the citizen has left.",
           "selected": "patrol",
           "destination": "arrestSite"
         },
         "wander": {
           "kind": "rule",
           "label": "Random Walk",
+          "description": "Tries one random neighbouring site and moves there if it is free; otherwise the cop stays. Cops always walk, whether citizens do or not.",
           "space": "lattice",
           "targets": ["stepSite"]
         },
         "stepSite": {
           "kind": "select",
+          "description": "One neighbouring site, chosen at random. Only one is tried.",
           "selected": "wander",
           "agent": "site",
           "space": "lattice",
@@ -1254,17 +1331,20 @@
         },
         "stepGo": {
           "kind": "move",
+          "description": "Moves to that site. A move onto a taken site does nothing, so the cop stays.",
           "selected": "wander",
           "destination": "stepSite"
         },
         "withdraw": {
           "kind": "rule",
           "label": "Withdraw",
+          "description": "Run 5 only: lets the number of cops fall with the target cop density. The original corrected the count to the target, rounded down, after each period's data sample, killing random cops or adding new ones. Here each cop has a fixed rank and retires when its rank times the initial cop density is at or above the density now, so the count is binomial around the target and not equal to it, and no cop is ever added. The run starts at its 6% target directly; the coded run shows 7.4% for one period first. With a step of 0, the default, no cop is withdrawn.",
           "space": "lattice",
           "targets": ["scaledRank"]
         },
         "scaledRank": {
           "kind": "evaluate",
+          "description": "The cop's rank times the initial cop density.",
           "selected": "withdraw",
           "function": "mul",
           "inputs": [
@@ -1299,6 +1379,7 @@
         },
         "remaining": {
           "kind": "evaluate",
+          "description": "The cop density now: the initial cop density less the step times the period.",
           "selected": "withdraw",
           "function": "sub",
           "inputs": [
@@ -1313,6 +1394,7 @@
         },
         "surplus": {
           "kind": "query",
+          "description": "True when the cop's scaled rank is at or above the density now, so there are more cops than the density allows.",
           "selected": "withdraw",
           "function": "greaterorEqual",
           "inputs": [
@@ -1327,15 +1409,18 @@
         },
         "retire": {
           "kind": "die",
+          "description": "The cop is withdrawn.",
           "selected": "withdraw"
         }
       },
       "styles": {
         "copStyle": {
           "kind": "2d",
+          "description": "Black circles, as in the original's agent view.",
           "acts": {
             "look": {
               "kind": "rule",
+              "description": "Draws a cop as a black circle.",
               "space": "lattice",
               "targets": ["black"]
             },
@@ -1365,6 +1450,7 @@
     "lattice": {
       "kind": "grid",
       "label": "Lattice",
+      "description": "The cells the citizens and cops stand on, 40 by 40 by default. Edges wrap, so the lattice is a torus. Distance is Euclidean, as in Ascape's vision search. The legacy size was fixed at 40 by 40.",
       "neighborhood": "euclidean",
       "borderRule": "periodic",
       "dimensions": ["width", "height"],
@@ -1372,6 +1458,7 @@
         "width": {
           "type": "integer",
           "label": "Width",
+          "description": "Number of columns (legacy: fixed at 40).",
           "default": 40,
           "min": 5,
           "max": 200
@@ -1379,6 +1466,7 @@
         "height": {
           "type": "integer",
           "label": "Height",
+          "description": "Number of rows (legacy: fixed at 40).",
           "default": 40,
           "min": 5,
           "max": 200
