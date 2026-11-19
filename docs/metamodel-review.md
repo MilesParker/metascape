@@ -231,7 +231,11 @@ generators define that, so it is left for later and the structure keeps the door
 
 **R6. Border rules.** _Decided:_ strict and bouncy are Repast distinctions and are dropped. A
 border rule is `periodic` or `sticky`; the translation maps `STRICT` and `BOUNCY` to `sticky` with a
-note.
+note. Extension (2026-11-18): MetaABM fixes a space's border rule, but Ascape's coded models make it
+a parameter (Life's Wrap sets the lattice's `periodic`). So `borderRule` may instead be
+`{ attribute }`, naming one of the space's own state attributes whose options are border rules
+(`periodic`, `sticky`), read when the space is built, as its sizes are. The border stays the space's
+own setting rather than something the acts work around.
 
 **R7. Unused metaclasses.** _Decided:_ geography, value layers, shaped and loaded agents, and
 build geography stay in the format so the translation is complete; the checker says "not supported

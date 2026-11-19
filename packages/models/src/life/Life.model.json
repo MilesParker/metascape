@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "life",
   "label": "Game of Life",
-  "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The lattice is a torus; the start is a random soup or a known pattern in the middle. Departures from the coded model this was written from: the coded model's Wrap parameter, which makes the edges of the lattice kill, is not carried, since a lattice's edge rule is fixed in the format model, and a selection of neighbours cannot be narrowed by their coordinates (see ConwayLifeSmallWorld in the Conway's Life models, which has hard edges); the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
+  "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The lattice is a torus unless its Edges parameter stops it at the edges; the start is a random soup or a known pattern in the middle. Departures from the coded model this was written from: its Wrap parameter, a true or false, is the lattice's Edges choice (Wrap or Stop), since a border rule is the space's own setting; the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
   "language": "typescript",
   "attributes": {
     "density": {
@@ -1206,8 +1206,10 @@
     "world": {
       "kind": "grid",
       "label": "Lattice",
-      "description": "A lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus.",
-      "borderRule": "periodic",
+      "description": "A lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus unless the Edges parameter stops it there.",
+      "borderRule": {
+        "attribute": "edges"
+      },
       "neighborhood": "moore",
       "dimensions": ["width", "height"],
       "attributes": {
@@ -1226,6 +1228,20 @@
           "default": 60,
           "min": 3,
           "max": 400
+        },
+        "edges": {
+          "type": "state",
+          "label": "Edges",
+          "description": "The lattice's border rule: joined at the edges into a torus, or stopping there, so that cells beyond the edge count as dead and gliders crash. The coded model's Wrap parameter, a true or false, is this choice here, since a border rule is a space's own setting.",
+          "options": {
+            "periodic": {
+              "label": "Wrap"
+            },
+            "sticky": {
+              "label": "Stop"
+            }
+          },
+          "defaultOption": "periodic"
         }
       }
     }

@@ -12,7 +12,7 @@ model (`format-execution.test.ts`).
 | Conway's Life: ConwayLife                      | converted                               |   31 |        349 | 12 seeds, 60 periods                                      |
 | Conway's Life: ConwayLifeSmallWorld            | converted at the legacy defaults, see 2 |   31 |        349 | 12 seeds, 60 periods                                      |
 | Conway's Life: SmallConwayLife                 | converted, with its first-step quirk    |   33 |        378 | 12 seeds, 60 periods (periods 1 to 5 show the quirk)      |
-| Game of Life (introductory)                    | converted without Wrap, see 3           |  104 |      1,233 | 12 seeds, 60 periods                                      |
+| Game of Life (introductory)                    | converted, see 3                        |  104 |      1,233 | 12 seeds, 60 periods                                      |
 | Diffusion: AB                                  | converted                               |   41 |        540 | 16 seeds, 400 periods on 10 by 10                         |
 | Diffusion: ABC                                 | converted, see 4                        |   99 |      1,344 | 16 seeds, 200 periods, overall and by half of the lattice |
 | Diffusion: ABCDEF, Big ABCDEF, Big ABCDEF (BW) | converted, see 4 and 5                  |  195 |      2,622 | 16 seeds, 200 and 100 periods, overall and by half        |
@@ -40,10 +40,11 @@ that effect is small at ABC's payoffs.
    list of gaps (for the small-world Epidemic). Retiring the coded port would drop those two
    parameters.
 3. **Introductory Game of Life.** The random start and the three named patterns (placed at the middle
-   with `location2D`, 13 selects) are in. The `wrap` parameter is not: a format lattice's border rule is
-   fixed in the model, and I could not make a neighbour selection leave out the neighbours across an
-   edge by comparing coordinates (see "Found"). The "Edges that kill" exploration is dropped with it;
-   Conway's Life: ConwayLifeSmallWorld has hard edges. So the coded model cannot yet be retired.
+   with `location2D`, 13 selects) are in. The `wrap` parameter was missing at first, since a format
+   lattice's border rule was fixed in the model. Added afterwards (2026-11-18): a space's border rule
+   can be held by one of its own state attributes, so the lattice has an Edges choice (Wrap or
+   Stop) where the coded model has Wrap as true or false. With the edges stopped, a glider crashes
+   cell for cell as in the coded model, and the "Edges that kill" exploration is kept.
    The R-pentomino option is `rPentomino`, as an option ID has no hyphen.
 4. **Diffusion** (all three actions models). The legacy model runs 25 cells chosen by repeated draw
    each period. An act can only cause acts of its own agent type, so a root rule cannot draw 25 cells
@@ -76,11 +77,11 @@ that effect is small at ABC's payoffs.
   variables and left no other way to write it. An evaluate named in an input is now a reference,
   worked out where it is named (`docs/metamodel-review.md`, "Evaluates are references"): a query
   straight from the select names the candidate's column, with no flow into the evaluate. Tests in
-  `packages/spec/src/metamodel/selection-logic.test.ts`. The Wrap parameter is still not carried;
-  see the border rule below.
+  `packages/spec/src/metamodel/selection-logic.test.ts`.
 - **Counting the members of an agent type that have two attributes at once** (curation): a chart of
   the cells playing an action in the upper half. The roadmap's "means over a qualified subset", for counts.
-- **A lattice's border rule as a parameter** (Wrap).
+- **A lattice's border rule as a parameter** (Wrap). Done: a border rule can be held by a state
+  attribute of the space (`docs/metamodel-review.md`, R6).
 - `min` returns a real (`toInteger`): Simple's happiness, Sugarscape's sugar.
 - State-from-state setting and an `other` term did not come up.
 

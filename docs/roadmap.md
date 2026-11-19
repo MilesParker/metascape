@@ -138,9 +138,9 @@ First batch (2026-11-18, `docs/format-pilot/easy-models.md`): Simple, the three 
 models, the introductory Game of Life and the Diffusion models (AB, ABC, ABCDEF, with Big ABCDEF and its
 black-and-white version as catalogue entries of ABCDEF) are format models, pure spec, with their
 port's and the legacy Java's comments in their descriptions, each compared with its port over many
-seeds. Kept apart from full equivalence: the introductory Life has no Wrap parameter, and
-ConwayLifeSmallWorld lacks the port's rewiring parameters (see the gaps below), so those two ports
-cannot yet be retired; the Diffusion charts count the cells of each action over the whole lattice,
+seeds. Kept apart from full equivalence: ConwayLifeSmallWorld lacks the port's rewiring parameters
+(see the gaps below), so that port cannot yet be retired (the introductory Life's Wrap is now its
+lattice's Edges choice); the Diffusion charts count the cells of each action over the whole lattice,
 not by halves. Still to come: Norms, Traffic, Coordination 1/2/4 and Prisoner's Dilemma.
 
 Open for the owner:
@@ -197,8 +197,7 @@ Gaps found, to fill when a model needs them (D4):
   misleading name, since renaming it touches every family's `index.ts`.
 - found by the first batch: an execution setting for how many agents act in a period (Diffusion's
   repeated draw of 25 cells is a chance per cell; Classes found the same); `cause` of an act of
-  another agent type (it reaches only the causing agent's own acts); a border rule as a parameter
-  (the introductory Life's Wrap); counting the agents that have two attributes at once, for a chart
+  another agent type (it reaches only the causing agent's own acts); counting the agents that have two attributes at once, for a chart
   (Diffusion's cells of an action in a half of the lattice); a small-world network generator also
   for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`. The interpreter problem it reported
   (zero counts from evaluates and `any` inside a selection) was a misreading: the evaluates were on
