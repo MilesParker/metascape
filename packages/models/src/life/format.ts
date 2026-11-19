@@ -20,13 +20,14 @@ const curation: Curation = {
 /**
  * Conway's Life written in the model format, beside the coded one. The starting patterns are in
  * the model, and the explorations are the coded model's, with the R-pentomino's option spelled as
- * the format has it. The coded model's Wrap parameter is not: the lattice is always a torus.
+ * the format has it. The lattice is always a torus; with Wrap off, each cell leaves out of its
+ * count the neighbours across an edge.
  */
 export const lifeFormat = fromFormat(source, {
   name: 'Game of Life (format)',
   provenance: {
     ...life.provenance,
-    note: "Written in the model format from the coded model. The coded model's Wrap parameter is not carried, since a format lattice has its edge rule fixed in the model: the lattice is always a torus.",
+    note: 'Written in the model format from the coded model. A format lattice has its edge rule fixed in the model, so the lattice is always a torus, and with Wrap off each cell leaves out of its count the neighbours across an edge.',
   },
   curation,
 });
@@ -35,15 +36,13 @@ export const lifeFormat = fromFormat(source, {
 Object.assign(lifeFormat, {
   ...(life.summary !== undefined && { summary: life.summary }),
   ...(life.tags !== undefined && { tags: life.tags }),
-  explorations: life.explorations
-    ?.filter((exploration) => !('wrap' in (exploration.parameters ?? {})))
-    .map((exploration) => ({
-      ...exploration,
-      parameters: Object.fromEntries(
-        Object.entries(exploration.parameters ?? {}).map(([key, value]) => [
-          key.replace(/^(width|height)$/, 'world.$1'),
-          value === 'r-pentomino' ? 'rPentomino' : value,
-        ]),
-      ),
-    })),
+  explorations: life.explorations?.map((exploration) => ({
+    ...exploration,
+    parameters: Object.fromEntries(
+      Object.entries(exploration.parameters ?? {}).map(([key, value]) => [
+        key.replace(/^(width|height)$/, 'world.$1'),
+        value === 'r-pentomino' ? 'rPentomino' : value,
+      ]),
+    ),
+  })),
 });

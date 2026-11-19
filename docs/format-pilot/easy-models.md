@@ -12,7 +12,7 @@ model (`format-execution.test.ts`).
 | Conway's Life: ConwayLife                      | converted                               |   31 |        349 | 12 seeds, 60 periods                                      |
 | Conway's Life: ConwayLifeSmallWorld            | converted at the legacy defaults, see 2 |   31 |        349 | 12 seeds, 60 periods                                      |
 | Conway's Life: SmallConwayLife                 | converted, with its first-step quirk    |   33 |        378 | 12 seeds, 60 periods (periods 1 to 5 show the quirk)      |
-| Game of Life (introductory)                    | converted without Wrap, see 3           |  104 |      1,233 | 12 seeds, 60 periods                                      |
+| Game of Life (introductory)                    | converted, Wrap added later, see 3      |  104 |      1,233 | 12 seeds, 60 periods                                      |
 | Diffusion: AB                                  | converted                               |   41 |        540 | 16 seeds, 400 periods on 10 by 10                         |
 | Diffusion: ABC                                 | converted, see 4                        |   99 |      1,344 | 16 seeds, 200 periods, overall and by half of the lattice |
 | Diffusion: ABCDEF, Big ABCDEF, Big ABCDEF (BW) | converted, see 4 and 5                  |  195 |      2,622 | 16 seeds, 200 and 100 periods, overall and by half        |
@@ -40,10 +40,11 @@ that effect is small at ABC's payoffs.
    list of gaps (for the small-world Epidemic). Retiring the coded port would drop those two
    parameters.
 3. **Introductory Game of Life.** The random start and the three named patterns (placed at the middle
-   with `location2D`, 13 selects) are in. The `wrap` parameter is not: a format lattice's border rule is
-   fixed in the model, and I could not make a neighbour selection leave out the neighbours across an
-   edge by comparing coordinates (see "Found"). The "Edges that kill" exploration is dropped with it;
-   Conway's Life: ConwayLifeSmallWorld has hard edges. So the coded model cannot yet be retired.
+   with `location2D`, 13 selects) are in. The `wrap` parameter was added after the batch, once
+   evaluates on a selection's candidates worked (see "Found"): a format lattice's border rule is
+   fixed in the model, so the lattice stays a torus and, with Wrap off, a cell leaves out of its
+   count the neighbours more than one column or row away by their coordinates. With Wrap off it
+   matches the coded model cell for cell. The "Edges that kill" exploration is kept.
    The R-pentomino option is `rPentomino`, as an option ID has no hyphen.
 4. **Diffusion** (all three actions models). The legacy model runs 25 cells chosen by repeated draw
    each period. An act can only cause acts of its own agent type, so a root rule cannot draw 25 cells
@@ -68,15 +69,17 @@ that effect is small at ABC's payoffs.
   draw of 25 cells is approximated by a chance.
 - **`cause` reaches only acts of the causing agent's own type**, so a rule of one agent cannot make
   agents of another type perform. Checked by the model checker, which says so.
-- **A selection cannot be narrowed by comparing coordinates, and logic inside a selection is
-  unreliable.** In a select of neighbours, an evaluate on the candidates (`locationX` and the like,
-  differenced from the chooser's) followed by a comparison query, and an `any` act joining queries,
-  both gave a count of zero and a model 50 times slower, with no diagnostic and the same result
-  interpreted and generated. A plain `any` of one query did the same. This made the Wrap parameter
-  impossible; worth a look at the interpreter's selection exits.
+- **A selection could not be narrowed by comparing coordinates** (fixed 2026-11-18). An evaluate
+  on a select's candidates that fed one of its queries ended the select's region, so the flow chose
+  one candidate there, from the whole population and without the spatial terms, and the query only
+  filtered that one: zero counts and a slow search, interpreted and generated alike. Such an
+  evaluate now belongs to the region and is worked out on each candidate, as AMF's generator
+  inlined an evaluate into the condition that used it; values worked out before the select (the
+  chooser's own column) may feed it. Tests in `packages/spec/src/metamodel/selection-logic.test.ts`.
 - **Counting the members of an agent type that have two attributes at once** (curation): a chart of
   the cells playing an action in the upper half. The roadmap's "means over a qualified subset", for counts.
-- **A lattice's border rule as a parameter** (Wrap).
+- **A lattice's border rule as a parameter** (Wrap): worked around by coordinates, as above; still
+  worth having for models where the edge changes what a search finds, not only what it counts.
 - `min` returns a real (`toInteger`): Simple's happiness, Sugarscape's sugar.
 - State-from-state setting and an `other` term did not come up.
 

@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "life",
   "label": "Game of Life",
-  "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The lattice is a torus; the start is a random soup or a known pattern in the middle. Departures from the coded model this was written from: the coded model's Wrap parameter, which makes the edges of the lattice kill, is not carried, since a lattice's edge rule is fixed in the format model, and a selection of neighbours cannot be narrowed by their coordinates (see ConwayLifeSmallWorld in the Conway's Life models, which has hard edges); the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
+  "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The start is a random soup or a known pattern in the middle. The Wrap parameter decides whether neighbours across an edge count: the lattice's edge rule is fixed in a format model, so with Wrap off each cell leaves those neighbours out by their coordinates, which counts the same as the coded model's open edges. Departures from the coded model this was written from: the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
   "language": "typescript",
   "attributes": {
     "density": {
@@ -12,6 +12,12 @@
       "default": 0.3,
       "min": 0,
       "max": 1
+    },
+    "wrap": {
+      "type": "boolean",
+      "label": "Wrap",
+      "description": "Join the edges into a torus; otherwise cells beyond the edge are dead. The lattice itself is always joined at the edges: with Wrap off, a cell leaves out of its count the neighbours it has across an edge, which is the same as the coded model's lattice with its edges left open.",
+      "default": true
     },
     "pattern": {
       "type": "state",
@@ -974,7 +980,7 @@
           "label": "Count",
           "space": "world",
           "description": "First half of a synchronous update: each cell counts its live neighbours and keeps the count, without changing state, so the count does not depend on the order cells run in.",
-          "targets": ["clearCount", "neighbors"]
+          "targets": ["clearCount", "ownX", "ownY", "neighbors"]
         },
         "clearCount": {
           "kind": "set",
@@ -989,20 +995,146 @@
           "selected": "count",
           "agent": "cell",
           "space": "world",
-          "description": "Every neighbouring cell (the eight of a Moore neighbourhood) that is alive: each adds one to the count.",
-          "targets": ["neighbor", "everyNeighbor", "neighborAlive"]
+          "description": "Every neighbouring cell (the eight of a Moore neighbourhood) that counts, with Wrap on or on this side of the edge, and is alive: each adds one to the count.",
+          "targets": ["neighbor", "everyNeighbor", "wrapping", "neighborX", "neighborY"]
         },
         "neighbor": {
           "kind": "query",
           "selected": "neighbors",
           "function": "neighbor",
-          "targets": ["liveNeighbors"]
+          "targets": ["counts"]
         },
         "everyNeighbor": {
           "kind": "query",
           "selected": "neighbors",
           "function": "all",
-          "targets": ["liveNeighbors"]
+          "targets": ["counts"]
+        },
+        "wrapping": {
+          "kind": "query",
+          "description": "With Wrap on, every neighbour counts, those across an edge too.",
+          "selected": "neighbors",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "wrap"
+            }
+          ],
+          "targets": ["counts"]
+        },
+        "neighborX": {
+          "kind": "evaluate",
+          "description": "The neighbour's column.",
+          "selected": "neighbors",
+          "function": "locationX",
+          "targets": ["columnsApart"]
+        },
+        "neighborY": {
+          "kind": "evaluate",
+          "description": "The neighbour's row.",
+          "selected": "neighbors",
+          "function": "locationY",
+          "targets": ["rowsApart"]
+        },
+        "ownX": {
+          "kind": "evaluate",
+          "description": "The cell's own column.",
+          "selected": "count",
+          "function": "locationX",
+          "targets": ["columnsApart"]
+        },
+        "ownY": {
+          "kind": "evaluate",
+          "description": "The cell's own row.",
+          "selected": "count",
+          "function": "locationY",
+          "targets": ["rowsApart"]
+        },
+        "columnsApart": {
+          "kind": "evaluate",
+          "selected": "neighbors",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "neighborX"
+            },
+            {
+              "evaluate": "ownX"
+            }
+          ],
+          "targets": ["columnDistance"]
+        },
+        "rowsApart": {
+          "kind": "evaluate",
+          "selected": "neighbors",
+          "function": "sub",
+          "inputs": [
+            {
+              "evaluate": "neighborY"
+            },
+            {
+              "evaluate": "ownY"
+            }
+          ],
+          "targets": ["rowDistance"]
+        },
+        "columnDistance": {
+          "kind": "evaluate",
+          "selected": "neighbors",
+          "function": "abs",
+          "inputs": [
+            {
+              "evaluate": "columnsApart"
+            }
+          ],
+          "targets": ["apart"]
+        },
+        "rowDistance": {
+          "kind": "evaluate",
+          "selected": "neighbors",
+          "function": "abs",
+          "inputs": [
+            {
+              "evaluate": "rowsApart"
+            }
+          ],
+          "targets": ["apart"]
+        },
+        "apart": {
+          "kind": "evaluate",
+          "description": "How far the neighbour is from the cell without going across an edge, in columns or rows, whichever is more: 1 on this side of the edge, and at least 2 across it, since the lattice is at least 3 cells wide and high.",
+          "selected": "neighbors",
+          "function": "max",
+          "inputs": [
+            {
+              "evaluate": "columnDistance"
+            },
+            {
+              "evaluate": "rowDistance"
+            }
+          ],
+          "targets": ["inside"]
+        },
+        "inside": {
+          "kind": "query",
+          "description": "The neighbour is on this side of the edge.",
+          "selected": "neighbors",
+          "function": "lesserorEqual",
+          "inputs": [
+            {
+              "evaluate": "apart"
+            },
+            {
+              "literal": 1
+            }
+          ],
+          "targets": ["counts"]
+        },
+        "counts": {
+          "kind": "any",
+          "description": "The neighbours that count: all of them with Wrap on, else those on this side of the edge. Every one is chosen, then tested for being alive.",
+          "selected": "neighbors",
+          "targets": ["neighborAlive"]
         },
         "neighborAlive": {
           "kind": "query",
@@ -1013,11 +1145,6 @@
               "attribute": "cell.on"
             }
           ],
-          "targets": ["liveNeighbors"]
-        },
-        "liveNeighbors": {
-          "kind": "all",
-          "selected": "neighbors",
           "targets": ["oneMore"]
         },
         "oneMore": {
@@ -1206,7 +1333,7 @@
     "world": {
       "kind": "grid",
       "label": "Lattice",
-      "description": "A lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus.",
+      "description": "A lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus. The Wrap parameter decides whether the neighbours across an edge count.",
       "borderRule": "periodic",
       "neighborhood": "moore",
       "dimensions": ["width", "height"],
