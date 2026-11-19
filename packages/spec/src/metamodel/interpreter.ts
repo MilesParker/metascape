@@ -71,7 +71,7 @@ import {
   type Holder,
   type SpaceInstance,
 } from './runtime';
-import type { AttributeRef, Constant, Library, Model } from './types';
+import type { AttributeRef, BorderRuleSetting, Constant, Library, Model } from './types';
 
 export interface CompileOptions {
   /** The function library sinks refer to. Default: the core library. */
@@ -580,7 +580,7 @@ class World {
               ? new Array2DVonNeumann<Cell>(options)
               : new Array2DMoore<Cell>(options),
           extent: [width, height],
-          periodic: decl.borderRule === 'periodic',
+          periodic: isPeriodic(decl.borderRule, space, values),
           ...(fill ? { prototypeAgent: () => new InterpCell(fill, scape) } : {}),
           executionOrder: fill?.execution.order === 'agent' ? 'byAgent' : 'byRule',
           initialRulesAtStartOnly: true,
@@ -611,7 +611,7 @@ class World {
             values,
             width,
             height,
-            decl.borderRule === 'periodic',
+            isPeriodic(decl.borderRule, space, values),
           ),
         );
       }
@@ -913,4 +913,15 @@ class World {
       }
     }
   }
+}
+
+/** Whether a space wraps: its border rule, or the value its border-rule attribute has in this run. */
+function isPeriodic(
+  rule: BorderRuleSetting | undefined,
+  space: { readonly attribute: ReadonlyMap<string, { readonly index: number }> },
+  values: readonly unknown[],
+): boolean {
+  if (rule === undefined || typeof rule === 'string') return rule === 'periodic';
+  const attribute = space.attribute.get(rule.attribute);
+  return attribute !== undefined && values[attribute.index] === 'periodic';
 }

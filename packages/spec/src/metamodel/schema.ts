@@ -9,7 +9,7 @@ import {
   type Agent,
   type Attribute,
   type AttributeType,
-  type BorderRule,
+  type BorderRuleSetting,
   type Diagnostic,
   type ExecutionSettings,
   type Extension,
@@ -107,7 +107,10 @@ const attributes = z.record(id, attribute).optional();
 
 // ───────────────────────────── Spaces ─────────────────────────────
 
-const borderRule: z.ZodType<BorderRule> = z.enum(['periodic', 'sticky']);
+const borderRule: z.ZodType<BorderRuleSetting> = z.union([
+  z.enum(['periodic', 'sticky']),
+  z.strictObject({ attribute: id }),
+]);
 const neighborhood: z.ZodType<Neighborhood> = z.enum(['euclidean', 'moore', 'vonNeumann']);
 const dimensional = {
   ...named,

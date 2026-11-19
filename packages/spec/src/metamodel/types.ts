@@ -146,6 +146,14 @@ export type Attribute = ValueAttribute | StateAttribute;
  */
 export type BorderRule = 'periodic' | 'sticky';
 
+/**
+ * A space's border rule: fixed, as MetaABM has it, or held by one of the
+ * space's own state attributes whose options are border rules, so that a
+ * parameter can choose it as one chooses a size (the coded models' Wrap). An
+ * extension of MetaABM, read when the space is built.
+ */
+export type BorderRuleSetting = BorderRule | { attribute: AttributeId };
+
 /** Which cells of a grid are neighbours. */
 export type Neighborhood = 'euclidean' | 'moore' | 'vonNeumann';
 
@@ -164,7 +172,7 @@ interface DimensionalSpace extends SpaceBase {
    */
   dimensions: AttributeId[];
   /** Default `sticky`. */
-  borderRule?: BorderRule | undefined;
+  borderRule?: BorderRuleSetting | undefined;
 }
 
 /** A continuous space. MetaABM's `SContinuousSpace`. */
