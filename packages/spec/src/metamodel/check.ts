@@ -543,26 +543,18 @@ class Checker {
     });
     const rule = space.borderRule;
     if (rule !== undefined && typeof rule !== 'string') {
-      const at = [...path, 'borderRule', 'attribute'];
-      const attribute = attributes[rule.attribute];
+      const at = [...path, 'borderRule', 'periodic'];
+      const attribute = attributes[rule.periodic];
       if (!attribute) {
         this.error(
           at,
-          `\`${rule.attribute}\` is not an attribute of this space. A border rule names one of the space's own attributes${suggestion(rule.attribute, Object.keys(attributes))}.`,
+          `\`${rule.periodic}\` is not an attribute of this space. A border rule names one of the space's own attributes${suggestion(rule.periodic, Object.keys(attributes))}.`,
         );
-      } else if (attribute.type !== 'state') {
+      } else if (attribute.type !== 'boolean') {
         this.error(
           at,
-          `The border rule \`${rule.attribute}\` must be a state attribute whose options are border rules; it is ${describeAttributeType(attribute)}.`,
+          `The border rule's \`${rule.periodic}\` must be a boolean: the space is periodic while it is true and sticky while it is false. It is ${describeAttributeType(attribute)}.`,
         );
-      } else {
-        for (const option of Object.keys(attribute.options)) {
-          if (option === 'periodic' || option === 'sticky') continue;
-          this.error(
-            [...path, 'attributes', rule.attribute, 'options', option],
-            `\`${option}\` is not a border rule. The options of a border rule are \`periodic\` and \`sticky\`.`,
-          );
-        }
       }
     }
   }

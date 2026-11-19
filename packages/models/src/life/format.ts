@@ -20,13 +20,13 @@ const curation: Curation = {
 /**
  * Conway's Life written in the model format, beside the coded one. The starting patterns are in
  * the model, and the explorations are the coded model's, with the R-pentomino's option spelled as
- * the format has it. The coded model's Wrap parameter is the lattice's Edges choice, its border rule.
+ * the format has it. Periodic is an attribute of the lattice, which sets its border rule.
  */
 export const lifeFormat = fromFormat(source, {
   name: 'Game of Life (format)',
   provenance: {
     ...life.provenance,
-    note: "Written in the model format from the coded model. The coded model's Wrap parameter, a true or false, is the lattice's Edges choice (Wrap or Stop), since a border rule is the space's own setting.",
+    note: 'Written in the model format from the coded model. Periodic is an attribute of the lattice, which sets its border rule, as the width and the height are.',
   },
   curation,
 });
@@ -38,14 +38,10 @@ Object.assign(lifeFormat, {
   explorations: life.explorations?.map((exploration) => ({
     ...exploration,
     parameters: Object.fromEntries(
-      Object.entries(exploration.parameters ?? {}).map(([key, value]) =>
-        key === 'wrap'
-          ? ['world.edges', value === false ? 'sticky' : 'periodic']
-          : [
-              key.replace(/^(width|height)$/, 'world.$1'),
-              value === 'r-pentomino' ? 'rPentomino' : value,
-            ],
-      ),
+      Object.entries(exploration.parameters ?? {}).map(([key, value]) => [
+        key.replace(/^(width|height|periodic)$/, 'world.$1'),
+        value === 'r-pentomino' ? 'rPentomino' : value,
+      ]),
     ),
   })),
 });

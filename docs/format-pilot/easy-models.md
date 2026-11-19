@@ -40,11 +40,12 @@ that effect is small at ABC's payoffs.
    list of gaps (for the small-world Epidemic). Retiring the coded port would drop those two
    parameters.
 3. **Introductory Game of Life.** The random start and the three named patterns (placed at the middle
-   with `location2D`, 13 selects) are in. The `wrap` parameter was missing at first, since a format
-   lattice's border rule was fixed in the model. Added afterwards (2026-11-18): a space's border rule
-   can be held by one of its own state attributes, so the lattice has an Edges choice (Wrap or
-   Stop) where the coded model has Wrap as true or false. With the edges stopped, a glider crashes
-   cell for cell as in the coded model, and the "Edges that kill" exploration is kept.
+   with `location2D`, 13 selects) are in. The coded model's parameter for a periodic lattice was
+   missing at first, since a format lattice's border rule was fixed in the model. Added afterwards
+   (2026-11-18): a space's border rule can be set by one of its own boolean attributes, periodic
+   while true and sticky while false, so the lattice has a Periodic parameter, as the coded model
+   now does too (it was called Wrap). With Periodic off, a glider crashes cell for cell as in the
+   coded model, and the "Edges that kill" exploration is kept.
    The R-pentomino option is `rPentomino`, as an option ID has no hyphen.
 4. **Diffusion** (all three actions models). The legacy model runs 25 cells chosen by repeated draw
    each period. An act can only cause acts of its own agent type, so a root rule cannot draw 25 cells
@@ -80,8 +81,8 @@ that effect is small at ABC's payoffs.
   `packages/spec/src/metamodel/selection-logic.test.ts`.
 - **Counting the members of an agent type that have two attributes at once** (curation): a chart of
   the cells playing an action in the upper half. The roadmap's "means over a qualified subset", for counts.
-- **A lattice's border rule as a parameter** (Wrap). Done: a border rule can be held by a state
-  attribute of the space (`docs/metamodel-review.md`, R6).
+- **A lattice's border rule as a parameter** (Periodic). Done: a border rule can be set by a
+  boolean attribute of the space (`docs/metamodel-review.md`, R6).
 - `min` returns a real (`toInteger`): Simple's happiness, Sugarscape's sugar.
 - State-from-state setting and an `other` term did not come up.
 
@@ -93,7 +94,7 @@ ConwayLife 1.4 against 0.23 (6 times); introductory Life 2.2 against 0.30 (7 tim
 draws 25 cells); ABCDEF 0.17 against 0.021 (8 times).
 
 About a day: the Life files and Simple were quick (the first compared well at the first try); the
-Diffusion decision flow, and the fruitless attempt at Wrap (a third of the time), were the cost. As
+Diffusion decision flow, and the fruitless attempt at a periodic parameter (a third of the time), were the cost. As
 before, the JSON was written by throwaway scripts that generate the repeated parts.
 
 ## Not done here

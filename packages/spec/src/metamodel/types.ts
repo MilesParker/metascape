@@ -147,12 +147,12 @@ export type Attribute = ValueAttribute | StateAttribute;
 export type BorderRule = 'periodic' | 'sticky';
 
 /**
- * A space's border rule: fixed, as MetaABM has it, or held by one of the
- * space's own state attributes whose options are border rules, so that a
- * parameter can choose it as one chooses a size (the coded models' Wrap). An
- * extension of MetaABM, read when the space is built.
+ * A space's border rule: fixed, as MetaABM has it, or `periodic` while one of
+ * the space's own boolean attributes is true and `sticky` while it is false,
+ * as Ascape's `periodic` flag is set from a model's parameter (Life's Periodic).
+ * An extension of MetaABM, read when the space is built, as its sizes are.
  */
-export type BorderRuleSetting = BorderRule | { attribute: AttributeId };
+export type BorderRuleSetting = BorderRule | { periodic: AttributeId };
 
 /** Which cells of a grid are neighbours. */
 export type Neighborhood = 'euclidean' | 'moore' | 'vonNeumann';

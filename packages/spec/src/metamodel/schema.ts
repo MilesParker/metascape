@@ -109,7 +109,7 @@ const attributes = z.record(id, attribute).optional();
 
 const borderRule: z.ZodType<BorderRuleSetting> = z.union([
   z.enum(['periodic', 'sticky']),
-  z.strictObject({ attribute: id }),
+  z.strictObject({ periodic: id }),
 ]);
 const neighborhood: z.ZodType<Neighborhood> = z.enum(['euclidean', 'moore', 'vonNeumann']);
 const dimensional = {

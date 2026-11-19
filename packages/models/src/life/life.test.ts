@@ -69,7 +69,7 @@ describe('life', () => {
     expect(liveCells(root)).toEqual(start);
   });
 
-  it('moves a glider by (1,1) every 4 periods on a torus', () => {
+  it('moves a glider by (1,1) every 4 periods on a periodic lattice', () => {
     const root = make({ pattern: 'glider', width: 20, height: 20 });
     const start = liveCells(root);
     expect(start).toHaveLength(5);
@@ -80,7 +80,7 @@ describe('life', () => {
   });
 
   it('applies the rule synchronously on a bounded grid', () => {
-    const root = make({ pattern: 'blinker', wrap: false, width: 5, height: 5 });
+    const root = make({ pattern: 'blinker', periodic: false, width: 5, height: 5 });
     expect(liveCells(root)).toEqual(['1,1', '2,1', '3,1']);
     root.iterate();
     expect(liveCells(root)).toEqual(['2,0', '2,1', '2,2']);

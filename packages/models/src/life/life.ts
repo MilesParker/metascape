@@ -46,7 +46,7 @@ export class LifeCell extends Cell {
 }
 
 /**
- * Conway's Game of Life on a lattice that is a torus or has hard edges.
+ * Conway's Game of Life on a lattice that is periodic or has sticky edges.
  *
  * Updating is synchronous: every cell computes its next state from the current
  * states in `execute`, and all cells switch in `update`.
@@ -66,7 +66,7 @@ export const life = defineModel({
   explorations: [
     {
       title: 'Start from one glider',
-      description: 'Five live cells that crawl diagonally forever on the wrapped lattice.',
+      description: 'Five live cells that crawl diagonally forever on the periodic lattice.',
       parameters: { pattern: 'glider' },
     },
     {
@@ -76,8 +76,8 @@ export const life = defineModel({
     },
     {
       title: 'Edges that kill',
-      description: 'Switch wrapping off: cells beyond the edge stay dead, and gliders crash.',
-      parameters: { wrap: false },
+      description: 'Turn Periodic off: cells beyond the edge stay dead, and gliders crash.',
+      parameters: { periodic: false },
     },
   ],
   parameters: {
@@ -89,9 +89,10 @@ export const life = defineModel({
       label: 'Density',
       description: 'Probability that a cell starts alive (random pattern only).',
     }),
-    wrap: bool(true, {
-      label: 'Wrap',
-      description: 'Join the edges into a torus; otherwise cells beyond the edge are dead.',
+    periodic: bool(true, {
+      label: 'Periodic',
+      description:
+        'Make the lattice periodic, so that neighbourhoods are taken modulo its size; otherwise cells beyond the edge are dead.',
     }),
     pattern: choice(['random', 'glider', 'blinker', 'r-pentomino'], 'random', {
       label: 'Pattern',
@@ -100,7 +101,7 @@ export const life = defineModel({
   },
 
   build(root) {
-    const { width, height, density, wrap, pattern } = root.parameters;
+    const { width, height, density, periodic, pattern } = root.parameters;
     const originX = Math.floor(width / 2) - 1;
     const originY = Math.floor(height / 2) - 1;
     const initiallyAlive = new Set<number>();
@@ -115,7 +116,7 @@ export const life = defineModel({
         name: 'cells',
         space: new Array2DMoore<LifeCell>(),
         extent: [width, height],
-        periodic: wrap,
+        periodic,
         prototypeAgent: () => new LifeCell(),
       }),
     );

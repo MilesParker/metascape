@@ -6,9 +6,9 @@ import { compileModel } from './interpreter';
 import type { Holder, InterpAgent, InterpCell } from './runtime';
 import type { Attribute, Model, Space } from './types';
 
-// A grid whose border rule is held by one of its own attributes, so a parameter chooses it.
+// A grid that is periodic while one of its own boolean attributes is true, so a parameter sets it.
 
-function model(edges: Attribute = edgesAttribute, rule: Model['spaces'] = undefined): Model {
+function model(periodic: Attribute = periodicAttribute, rule: Model['spaces'] = undefined): Model {
   return {
     schemaVersion: 2,
     id: 'test',
@@ -69,24 +69,19 @@ function model(edges: Attribute = edgesAttribute, rule: Model['spaces'] = undefi
         kind: 'grid',
         label: 'Grid',
         neighborhood: 'moore',
-        borderRule: { attribute: 'edges' },
+        borderRule: { periodic: 'periodic' },
         dimensions: ['width', 'height'],
         attributes: {
           width: { type: 'integer', default: 5 },
           height: { type: 'integer', default: 5 },
-          edges: edges,
+          periodic,
         },
       },
     },
   };
 }
 
-const edgesAttribute: Attribute = {
-  type: 'state',
-  label: 'Edges',
-  options: { periodic: { label: 'Wrap' }, sticky: { label: 'Stop' } },
-  defaultOption: 'periodic',
-};
+const periodicAttribute: Attribute = { type: 'boolean', label: 'Periodic', default: true };
 
 function scapeNamed(root: RootScape, name: string): Scape<Agent> {
   return root.scapes.find((scape) => scape.name === name)!;
@@ -106,45 +101,35 @@ function neighbours(execution: 'interpreted' | 'generated', parameters: object =
 }
 
 describe.each(['interpreted', 'generated'] as const)(
-  'a border rule chosen by a parameter, %s',
+  'a border rule set by a parameter, %s',
   (execution) => {
-    it('wraps with the default option, and stops at the edge with the other', () => {
+    it('is periodic while the attribute is true, and sticky while it is false', () => {
       expect(neighbours(execution)).toBe(8);
-      expect(neighbours(execution, { 'grid.edges': 'sticky' })).toBe(3);
-      expect(neighbours(execution, { 'grid.edges': 'periodic' })).toBe(8);
+      expect(neighbours(execution, { 'grid.periodic': false })).toBe(3);
+      expect(neighbours(execution, { 'grid.periodic': true })).toBe(8);
     });
   },
 );
 
-describe('checking a border rule held by an attribute', () => {
+describe('checking a border rule set by an attribute', () => {
   const errors = (m: Model) =>
     checkModel(m)
       .filter((d) => d.severity === 'error')
       .map((d) => `${d.path}: ${d.message}`);
 
-  it('accepts a state attribute of the space whose options are border rules', () => {
+  it('accepts a boolean attribute of the space', () => {
     expect(errors(model())).toEqual([]);
   });
 
-  it('reports an attribute that is not the space’s, not a state, or has other options', () => {
+  it('reports an attribute that is not the space’s, or not a boolean', () => {
     const base = model().spaces!['grid'] as Extract<Space, { kind: 'grid' }>;
     expect(
-      errors(model(undefined, { grid: { ...base, borderRule: { attribute: 'edge' } } })),
+      errors(model(undefined, { grid: { ...base, borderRule: { periodic: 'wraps' } } })),
     ).toEqual([
-      expect.stringMatching(/borderRule\.attribute: `edge` is not an attribute of this space/),
+      expect.stringMatching(/borderRule\.periodic: `wraps` is not an attribute of this space/),
     ]);
-    expect(errors(model({ type: 'boolean', default: true }))).toEqual([
-      expect.stringMatching(
-        /borderRule\.attribute: The border rule `edges` must be a state attribute/,
-      ),
+    expect(errors(model({ type: 'state', options: { yes: {}, no: {} } } as Attribute))).toEqual([
+      expect.stringMatching(/borderRule\.periodic: The border rule's `periodic` must be a boolean/),
     ]);
-    expect(
-      errors(
-        model({
-          ...edgesAttribute,
-          options: { ...edgesAttribute.options, bouncy: {} },
-        } as Attribute),
-      ),
-    ).toEqual([expect.stringMatching(/options\.bouncy: `bouncy` is not a border rule/)]);
   });
 });

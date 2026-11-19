@@ -49,8 +49,8 @@ describe('Game of Life (format)', () => {
     expect(lifeFormat.explorations?.map((e) => e.title)).toEqual(
       life.explorations?.map((e) => e.title),
     );
-    // The coded model's Wrap is the lattice's border rule.
-    expect(lifeFormat.parameters).toHaveProperty('world.edges');
+    // Periodic is an attribute of the lattice, which sets its border rule.
+    expect(lifeFormat.parameters).toHaveProperty('world.periodic');
     // Every exploration names parameters the model has.
     for (const e of lifeFormat.explorations ?? []) {
       for (const key of Object.keys(e.parameters ?? {}))
@@ -105,27 +105,27 @@ describe('Game of Life (format)', () => {
     expect(liveSet(odd)).toEqual(['10,6', '11,6', '9,6']);
   });
 
-  it('moves a glider round the torus and oscillates a blinker', () => {
-    const torus = make(lifeFormat, 1, { 'world.width': 20, 'world.height': 20 });
-    place(torus, GLIDER);
-    torus.run(4);
-    expect(liveSet(torus)).toEqual(shift(GLIDER, 1, 1));
-    torus.run(76);
-    expect(liveSet(torus)).toEqual(shift(GLIDER, 0, 0));
-    place(torus, [
+  it('moves a glider round the periodic lattice and oscillates a blinker', () => {
+    const lattice20 = make(lifeFormat, 1, { 'world.width': 20, 'world.height': 20 });
+    place(lattice20, GLIDER);
+    lattice20.run(4);
+    expect(liveSet(lattice20)).toEqual(shift(GLIDER, 1, 1));
+    lattice20.run(76);
+    expect(liveSet(lattice20)).toEqual(shift(GLIDER, 0, 0));
+    place(lattice20, [
       [5, 5],
       [6, 5],
       [7, 5],
     ]);
-    torus.iterate();
-    expect(liveSet(torus)).toEqual(['6,4', '6,5', '6,6']);
+    lattice20.iterate();
+    expect(liveSet(lattice20)).toEqual(['6,4', '6,5', '6,6']);
   });
 
-  it('lets a glider crash into the edge when the lattice stops there, cell for cell as the coded model', () => {
-    const coded = make(life, 1, { pattern: 'glider', wrap: false, width: 12, height: 12 });
+  it('lets a glider crash into the edge when the lattice is not periodic, cell for cell as the coded model', () => {
+    const coded = make(life, 1, { pattern: 'glider', periodic: false, width: 12, height: 12 });
     const format = make(lifeFormat, 1, {
       pattern: 'glider',
-      'world.edges': 'sticky',
+      'world.periodic': false,
       'world.width': 12,
       'world.height': 12,
     });
@@ -145,7 +145,7 @@ describe('Game of Life (format)', () => {
       coded.iterate();
       format.iterate();
     }
-    // The glider has become a block in the corner, where on the torus it would go on.
+    // The glider has become a block in the corner, where on a periodic lattice it would go on.
     expect(liveSet(format)).toHaveLength(4);
   });
 

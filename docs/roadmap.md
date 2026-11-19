@@ -139,8 +139,8 @@ models, the introductory Game of Life and the Diffusion models (AB, ABC, ABCDEF,
 black-and-white version as catalogue entries of ABCDEF) are format models, pure spec, with their
 port's and the legacy Java's comments in their descriptions, each compared with its port over many
 seeds. Kept apart from full equivalence: ConwayLifeSmallWorld lacks the port's rewiring parameters
-(see the gaps below), so that port cannot yet be retired (the introductory Life's Wrap is now its
-lattice's Edges choice); the Diffusion charts count the cells of each action over the whole lattice,
+(see the gaps below), so that port cannot yet be retired (the introductory Life's Periodic is now an
+attribute of its lattice); the Diffusion charts count the cells of each action over the whole lattice,
 not by halves. Still to come: Norms, Traffic, Coordination 1/2/4 and Prisoner's Dilemma.
 
 Open for the owner:

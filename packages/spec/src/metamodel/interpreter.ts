@@ -915,13 +915,13 @@ class World {
   }
 }
 
-/** Whether a space wraps: its border rule, or the value its border-rule attribute has in this run. */
+/** Whether a space wraps: its border rule, or the value in this run of the attribute that sets it. */
 function isPeriodic(
   rule: BorderRuleSetting | undefined,
   space: { readonly attribute: ReadonlyMap<string, { readonly index: number }> },
   values: readonly unknown[],
 ): boolean {
   if (rule === undefined || typeof rule === 'string') return rule === 'periodic';
-  const attribute = space.attribute.get(rule.attribute);
-  return attribute !== undefined && values[attribute.index] === 'periodic';
+  const attribute = space.attribute.get(rule.periodic);
+  return attribute !== undefined && values[attribute.index] === true;
 }
