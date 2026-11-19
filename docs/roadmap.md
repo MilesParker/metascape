@@ -134,6 +134,15 @@ sit in the catalogue beside the coded models as "… (format)". The format gaine
 `locationX` and `locationY`. Memory as agents nested in the bargainer works, so R3 (no arrays)
 stands.
 
+First batch (2026-11-18, `docs/format-pilot/easy-models.md`): Simple, the three Brookings Life
+models, the introductory Game of Life and the Diffusion models (AB, ABC, ABCDEF, with Big ABCDEF and its
+black-and-white version as catalogue entries of ABCDEF) are format models, pure spec, with their
+port's and the legacy Java's comments in their descriptions, each compared with its port over many
+seeds. Kept apart from full equivalence: the introductory Life has no Wrap parameter, and
+ConwayLifeSmallWorld lacks the port's rewiring parameters (see the gaps below), so those two ports
+cannot yet be retired; the Diffusion charts count the cells of each action over the whole lattice,
+not by halves. Still to come: Norms, Traffic, Coordination 1/2/4 and Prisoner's Dilemma.
+
 Open for the owner:
 
 - **Building one model on another: built** (2026-11-18, `packages/spec/src/metamodel/resolve.ts`,
@@ -158,9 +167,9 @@ Open for the owner:
   original.
   The `.metaabm` translation keeps every `description` (the files have no XML comments); the only
   text dropped is the boilerplate on the grid's dimensions array, which R3 removed. The format
-  models written from coded ports do not yet carry the ports' explanations: of Civil Violence I's
-  131 acts and Sugarscape II-1's 78, none has a description, and Classes Model One documents 5 of 66. Converting a coded model must carry the comments of the port and of the legacy Java into the
-  model, and the three pilot models need it done after the fact.
+  models written from coded ports carry the explanations of the port and of the legacy Java in their
+  descriptions: converting a coded model must carry the comments of both into the model, as the
+  pilot models and the first batch's do.
 - **When a format version replaces the coded one,** as the AMP ports were replaced.
 - **Speed.** Format models run as generated JavaScript by default, with the same
   runs as the interpreter (`docs/codegen.md`). They are now about 2 to 4 times slower per period than
@@ -186,6 +195,14 @@ Gaps found, to fill when a model needs them (D4):
 - `fromMetaabm` (now in `packages/models/src/format-model.ts`, out of `amp/`) compiles any format
   model, and resolves overlays given the files of their bases (`bases`); the function keeps its
   misleading name, since renaming it touches every family's `index.ts`.
+- found by the first batch: an execution setting for how many agents act in a period (Diffusion's
+  repeated draw of 25 cells is a chance per cell; Classes found the same); `cause` of an act of
+  another agent type (it reaches only the causing agent's own acts); a border rule as a parameter
+  (the introductory Life's Wrap); counting the agents that have two attributes at once, for a chart
+  (Diffusion's cells of an action in a half of the lattice); a small-world network generator also
+  for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`; and an interpreter problem to look at,
+  where an evaluate on the candidates of a select, or an `any` act inside a selection, gives
+  wrong results (zero counts) and a 50-times slowdown with no diagnostic.
 
 Writing the JSON by hand is slow and error-prone: both Civil Violence and Sugarscape were written
 by throwaway scripts that generated the files. This is a cost of the whole effort until a model

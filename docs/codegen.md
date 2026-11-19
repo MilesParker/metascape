@@ -143,7 +143,7 @@ The oracle is identity: generated and interpreted runs of the same model and see
 statistics and the same state of every agent (values, place, whether it lives, links), period by
 period (`traceRun` in `metamodel/trace.ts`). Because every format model is then a test, the tests
 run every format model of the catalogue in both modes (`packages/models/src/format-execution.test.ts`:
-the eleven AMP models with acts, Civil Violence I, Sugarscape II-1 to II-3, Classes Model One; two
+the eleven AMP models with acts, Civil Violence I, Sugarscape II-1 to II-3, Classes Model One, and the first batch of the coded models (Simple, Life, Diffusion); two
 seeds, 25 periods each), and the examples Life, Schelling, Foragers and StupidModel 1
 (`codegen.test.ts`). Each also checks that no act was left to the interpreter.
 

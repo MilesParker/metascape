@@ -8,6 +8,7 @@
       "tags": [],
       "models": [
         "game-of-life",
+        "game-of-life-format",
         "schelling-segregation",
         "sugarscape",
         "heatbugs",
@@ -208,10 +209,15 @@
       ],
       "models": [
         "diffusion-ab-diffusion-model",
+        "diffusion-ab-diffusion-model-format",
         "diffusion-abc-diffusion-model",
+        "diffusion-abc-diffusion-model-format",
         "diffusion-abcdef-diffusion-model",
+        "diffusion-abcdef-diffusion-model-format",
         "diffusion-big-abcdef-diffusion-model",
-        "diffusion-big-abcdef-diffusion-model-black-and-white"
+        "diffusion-big-abcdef-diffusion-model-format",
+        "diffusion-big-abcdef-diffusion-model-black-and-white",
+        "diffusion-big-abcdef-diffusion-model-black-and-white-format"
       ]
     },
     {
@@ -224,8 +230,11 @@
       ],
       "models": [
         "conway-s-life-smallconwaylife",
+        "conway-s-life-smallconwaylife-format",
         "conway-s-life-conwaylife",
-        "conway-s-life-conwaylifesmallworld"
+        "conway-s-life-conwaylife-format",
+        "conway-s-life-conwaylifesmallworld",
+        "conway-s-life-conwaylifesmallworld-format"
       ]
     },
     {
@@ -267,7 +276,8 @@
         "tutorial"
       ],
       "models": [
-        "simple"
+        "simple",
+        "simple-format"
       ]
     },
     {
@@ -456,6 +466,28 @@
       "ruleCount": 1,
       "thumb": {
         "file": "thumbs/game-of-life.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "game-of-life-format",
+      "name": "Game of Life (format)",
+      "familyId": "metascape-examples",
+      "summary": "Cells live or die by counting their neighbours; gliders and oscillators emerge from three simple rules.",
+      "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The lattice is a torus; the start is a random soup or a known pattern in the middle. Departures from the coded model this was written from: the coded model's Wrap parameter, which makes the edges of the lattice kill, is not carried, since a lattice's edge rule is fixed in the format model, and a selection of neighbours cannot be narrowed by their coordinates (see ConwayLifeSmallWorld in the Conway's Life models, which has hard edges); the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
+      "tags": [
+        "cellular automata",
+        "emergence"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 2,
+      "thumb": {
+        "file": "thumbs/game-of-life-format.png",
         "width": 60,
         "height": 60,
         "pixelated": true
@@ -2383,6 +2415,30 @@
       }
     },
     {
+      "id": "diffusion-ab-diffusion-model-format",
+      "name": "Diffusion: AB Diffusion Model (format)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local…",
+      "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The AB model (Ascape edu.brook.diffusion.ABModel and ABCell): every cell plays one of two actions, A (yellow) or B (black), against its four von Neumann neighbours in a coordination game: two playing A pay each 3, two playing B pay each 2, a mismatch pays 0. A cell chooses its action by noisy best response (a logit rule), so the action that pays more locally spreads, subject to error; the model has no popularity term. Every cell starts playing B. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. Departures from the legacy model: the legacy beta is a static field of the cell class, here a parameter of the model; the legacy float arithmetic is double here; the counts of cells playing A and B in the chart are added (the legacy model had none); the legacy cell size and draw-every-N-updates settings are dropped.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 4,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABModel",
+      "thumb": {
+        "file": "thumbs/diffusion-ab-diffusion-model-format.png",
+        "width": 50,
+        "height": 50,
+        "pixelated": true
+      }
+    },
+    {
       "id": "diffusion-abc-diffusion-model",
       "name": "Diffusion: ABC Diffusion Model",
       "familyId": "brookings-diffusion",
@@ -2401,6 +2457,30 @@
       "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABCModel",
       "thumb": {
         "file": "thumbs/diffusion-abc-diffusion-model.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-abc-diffusion-model-format",
+      "name": "Diffusion: ABC Diffusion Model (format)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local…",
+      "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The ABC model (Ascape edu.brook.diffusion.ABCModel and ABCCell): cells on a Moore lattice choose among three actions, and differ in how much each action pays them, by their characteristic (high, medium or low); an action's weight also grows with the share of the eight neighbours taking it (gamma). Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. Departures from the legacy model: the legacy settings are static fields of the cell class, here parameters of the model; the legacy float arithmetic is double here. The coded port charts the number of cells playing each action in the upper and in the lower half of the lattice, as the legacy collectors do; this model charts the cells playing each action in all, since the format cannot yet count the cells of an action within a half (a count over a qualified subset); the halves can still be seen on the lattice. The legacy cell size and draw-every-N-updates settings are dropped.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 14,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABCModel",
+      "thumb": {
+        "file": "thumbs/diffusion-abc-diffusion-model-format.png",
         "width": 10,
         "height": 10,
         "pixelated": true
@@ -2431,6 +2511,30 @@
       }
     },
     {
+      "id": "diffusion-abcdef-diffusion-model-format",
+      "name": "Diffusion: ABCDEF Diffusion Model (format)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local…",
+      "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The ABCDEF model (Ascape edu.brook.diffusion.ABCDEFModel and ABCDEFCell): the ABC model with six actions. Cells on a 10 by 10 lattice. BigABCDEFModel is the same model on a 20 by 20 lattice, and BigABCDEFModelBW draws that in black and white (the Black and white parameter, the legacy \"Black & White\" draw feature); the catalogue offers both as entries with those settings. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. The legacy statistics name the six actions \".6\", \".5\", \".4\", \".9\", \".8\" and \".7\" (A to F). Departures from the legacy model: the legacy settings are static fields of the cell class, here parameters of the model; the legacy float arithmetic is double here. The coded port charts the number of cells playing each action in the upper and in the lower half of the lattice, as the legacy collectors do; this model charts the cells playing each action in all, since the format cannot yet count the cells of an action within a half (a count over a qualified subset); the halves can still be seen on the lattice. The legacy cell size and draw-every-N-updates settings are dropped.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 24,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.ABCDEFModel",
+      "thumb": {
+        "file": "thumbs/diffusion-abcdef-diffusion-model-format.png",
+        "width": 10,
+        "height": 10,
+        "pixelated": true
+      }
+    },
+    {
       "id": "diffusion-big-abcdef-diffusion-model",
       "name": "Diffusion: Big ABCDEF Diffusion Model",
       "familyId": "brookings-diffusion",
@@ -2449,6 +2553,30 @@
       "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.BigABCDEFModel",
       "thumb": {
         "file": "thumbs/diffusion-big-abcdef-diffusion-model.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "diffusion-big-abcdef-diffusion-model-format",
+      "name": "Diffusion: Big ABCDEF Diffusion Model (format)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local…",
+      "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The ABCDEF model (Ascape edu.brook.diffusion.ABCDEFModel and ABCDEFCell): the ABC model with six actions. Cells on a 10 by 10 lattice. BigABCDEFModel is the same model on a 20 by 20 lattice, and BigABCDEFModelBW draws that in black and white (the Black and white parameter, the legacy \"Black & White\" draw feature); the catalogue offers both as entries with those settings. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. The legacy statistics name the six actions \".6\", \".5\", \".4\", \".9\", \".8\" and \".7\" (A to F). Departures from the legacy model: the legacy settings are static fields of the cell class, here parameters of the model; the legacy float arithmetic is double here. The coded port charts the number of cells playing each action in the upper and in the lower half of the lattice, as the legacy collectors do; this model charts the cells playing each action in all, since the format cannot yet count the cells of an action within a half (a count over a qualified subset); the halves can still be seen on the lattice. The legacy cell size and draw-every-N-updates settings are dropped.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 24,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.BigABCDEFModel",
+      "thumb": {
+        "file": "thumbs/diffusion-big-abcdef-diffusion-model-format.png",
         "width": 20,
         "height": 20,
         "pixelated": true
@@ -2479,6 +2607,30 @@
       }
     },
     {
+      "id": "diffusion-big-abcdef-diffusion-model-black-and-white-format",
+      "name": "Diffusion: Big ABCDEF Diffusion Model (black and white) (format)",
+      "familyId": "brookings-diffusion",
+      "summary": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local…",
+      "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The ABCDEF model (Ascape edu.brook.diffusion.ABCDEFModel and ABCDEFCell): the ABC model with six actions. Cells on a 10 by 10 lattice. BigABCDEFModel is the same model on a 20 by 20 lattice, and BigABCDEFModelBW draws that in black and white (the Black and white parameter, the legacy \"Black & White\" draw feature); the catalogue offers both as entries with those settings. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. The legacy statistics name the six actions \".6\", \".5\", \".4\", \".9\", \".8\" and \".7\" (A to F). Departures from the legacy model: the legacy settings are static fields of the cell class, here parameters of the model; the legacy float arithmetic is double here. The coded port charts the number of cells playing each action in the upper and in the lower half of the lattice, as the legacy collectors do; this model charts the cells playing each action in all, since the format cannot yet count the cells of an action within a half (a count over a qualified subset); the halves can still be seen on the lattice. The legacy cell size and draw-every-N-updates settings are dropped.",
+      "tags": [
+        "diffusion",
+        "social norms"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 24,
+      "ruleCount": 1,
+      "authors": "H. Peyton Young",
+      "portedFrom": "Ascape 5.6.1, edu.brook.diffusion.BigABCDEFModelBW",
+      "thumb": {
+        "file": "thumbs/diffusion-big-abcdef-diffusion-model-black-and-white-format.png",
+        "width": 20,
+        "height": 20,
+        "pixelated": true
+      }
+    },
+    {
       "id": "conway-s-life-smallconwaylife",
       "name": "Conway's Life: SmallConwayLife",
       "familyId": "brookings-life",
@@ -2496,6 +2648,29 @@
       "portedFrom": "Ascape 5.6.1, edu.brook.life.SmallConwayLife",
       "thumb": {
         "file": "thumbs/conway-s-life-smallconwaylife.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "conway-s-life-smallconwaylife-format",
+      "name": "Conway's Life: SmallConwayLife (format)",
+      "familyId": "brookings-life",
+      "summary": "A condensed version of Conway's Life, to show how small a working model can be (Ascape 5.6.1 edu.brook.life.SmallConwayLife, a 60 by 60 lattice with a Moore…",
+      "description": "A condensed version of Conway's Life, to show how small a working model can be (Ascape 5.6.1 edu.brook.life.SmallConwayLife, a 60 by 60 lattice with a Moore neighbourhood). A live cell with two or three live neighbours survives and a dead cell with exactly three comes alive, but the legacy iterate method writes the cell's next state only when it changes, and the next state starts false, so in the first step every initially live cell dies whatever its neighbours. This quirk of the legacy code is kept, and is explained at the Iterate rule. The Count rule is the legacy countNeighbors, which the legacy iterate method does inline. Cells update synchronously (the legacy ExecuteThenUpdate rule).",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 3,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.SmallConwayLife",
+      "thumb": {
+        "file": "thumbs/conway-s-life-smallconwaylife-format.png",
         "width": 60,
         "height": 60,
         "pixelated": true
@@ -2525,6 +2700,29 @@
       }
     },
     {
+      "id": "conway-s-life-conwaylife-format",
+      "name": "Conway's Life: ConwayLife (format)",
+      "familyId": "brookings-life",
+      "summary": "An implementation of John Conway's Life (Gardner, M.",
+      "description": "An implementation of John Conway's Life (Gardner, M. (1970). Mathematical Games: The fantastic combinations of John Conway's new solitaire game \"life\". Scientific American, 223(4), 120-123), from Ascape 5.6.1 edu.brook.life.ConwayLife. In this classic cellular automaton, very simple life and death rules create interesting and dynamic patterns that seem quite life-like. The legacy class was written to show a few aspects of Ascape: how a simple cellular automaton can be built with little specification and programming; how rules keep an agent's behaviours apart from its class, and make them selectable and dispatchable across collections at run time; and how synchronous updating is achieved with Ascape's \"execute, then update\" rule. The difference between synchronous and asynchronous updating should not be overlooked: the legacy class also defines an asynchronous rule, unused, as an example of what not to do, since cells would then read neighbours that have already changed. Here the synchronous update is two rules, Count and Update, in that order. Departures from the legacy model: the legacy initial density and the lattice size are properties of the class, here parameters; the live count in the chart is added.",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 2,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.ConwayLife",
+      "thumb": {
+        "file": "thumbs/conway-s-life-conwaylife-format.png",
+        "width": 51,
+        "height": 51,
+        "pixelated": true
+      }
+    },
+    {
       "id": "conway-s-life-conwaylifesmallworld",
       "name": "Conway's Life: ConwayLifeSmallWorld",
       "familyId": "brookings-life",
@@ -2542,6 +2740,29 @@
       "portedFrom": "Ascape 5.6.1, edu.brook.life.ConwayLifeSmallWorld",
       "thumb": {
         "file": "thumbs/conway-s-life-conwaylifesmallworld.png",
+        "width": 60,
+        "height": 60,
+        "pixelated": true
+      }
+    },
+    {
+      "id": "conway-s-life-conwaylifesmallworld-format",
+      "name": "Conway's Life: ConwayLifeSmallWorld (format)",
+      "familyId": "brookings-life",
+      "summary": "Conway's Life on a lattice with Ascape's small-world neighbourhood (Ascape 5.6.1 edu.brook.life.ConwayLifeSmallWorld, a copy of ConwayLife that builds…",
+      "description": "Conway's Life on a lattice with Ascape's small-world neighbourhood (Ascape 5.6.1 edu.brook.life.ConwayLifeSmallWorld, a copy of ConwayLife that builds Array2DSmallWorld on a 60 by 60 extent). Array2DSmallWorld takes each cell's Moore neighbours within a radius (default 1) and replaces each, with probability randomEdgeRatio (default 0), by a random cell. The legacy model builds the space with the no-argument constructor, which sets no geometry, so the lattice is not periodic, and it never sets the radius or the ratio: with the defaults this is plain Moore Life on a 60 by 60 lattice with hard edges, which is what is written here, and cells at the edge have fewer neighbours. The coded port exposed the radius and the random edge ratio as parameters, which the legacy model does not; they are left out of this model, since rewiring the neighbourhoods needs a small-world network generator that the format does not have yet (docs/roadmap.md). Cells update synchronously, as in ConwayLife.",
+      "tags": [
+        "cellular automata"
+      ],
+      "spaces": [
+        "lattice"
+      ],
+      "parameterCount": 3,
+      "ruleCount": 2,
+      "authors": "John H. Conway",
+      "portedFrom": "Ascape 5.6.1, edu.brook.life.ConwayLifeSmallWorld",
+      "thumb": {
+        "file": "thumbs/conway-s-life-conwaylifesmallworld-format.png",
         "width": 60,
         "height": 60,
         "pixelated": true
@@ -2705,6 +2926,28 @@
         "width": 30,
         "height": 30,
         "pixelated": true
+      }
+    },
+    {
+      "id": "simple-format",
+      "name": "Simple (format)",
+      "familyId": "brookings-simple",
+      "summary": "The smallest of the Ascape example models (Ascape 5.6.1, edu.brook.Simple.Simple and SimpleAgent; the sources name no author and cite no publication).",
+      "description": "The smallest of the Ascape example models (Ascape 5.6.1, edu.brook.Simple.Simple and SimpleAgent; the sources name no author and cite no publication). One agent, the subject, doubles its happiness every period up to a ceiling of 1000. Every other agent is the environment: each period it has a one in ten chance of resetting the subject's happiness to 3. The legacy model numbers its agents in creation order and makes agent 0 the subject; here the subject and the environment are two agent types, which is the same model with the number of agents the total of both. Rules run by rule, in creation order, so the subject acts before the environment each period. Departures from the legacy model: the legacy model also builds a 30 by 30 von Neumann lattice and shows it, but never places an agent on it (the call that would is commented out in CellOccupant), so the lattice is always empty and is left out here; the legacy printing to System.out is dropped; and the legacy bug that makes a second run in one JVM have no agent 0, because a static counter is never reset, does not arise.",
+      "tags": [
+        "tutorial"
+      ],
+      "spaces": [
+        "charts"
+      ],
+      "parameterCount": 1,
+      "ruleCount": 2,
+      "portedFrom": "Ascape 5.6.1, edu.brook.Simple.Simple",
+      "thumb": {
+        "file": "thumbs/simple-format.png",
+        "width": 192,
+        "height": 119,
+        "pixelated": false
       }
     },
     {

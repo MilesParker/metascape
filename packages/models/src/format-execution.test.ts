@@ -18,11 +18,23 @@ const formatModels = catalog
 describe('format models, generated and interpreted', () => {
   it('include the AMP models and the pilot models', () => {
     const names = formatModels.map(([name]) => name);
-    expect(names.length).toBeGreaterThanOrEqual(17);
+    expect(names.length).toBeGreaterThanOrEqual(25);
     expect(names).toContain('Heatbugs (AMP)');
     expect(names).toContain('Civil Violence: Model I (format)');
     expect(names).toContain('Sugarscape II-1: Immediate growback (format)');
     expect(names).toContain('Emergence of Classes: Model One (format)');
+    for (const name of [
+      'Simple (format)',
+      "Conway's Life: ConwayLife (format)",
+      "Conway's Life: ConwayLifeSmallWorld (format)",
+      "Conway's Life: SmallConwayLife (format)",
+      'Game of Life (format)',
+      'Diffusion: AB Diffusion Model (format)',
+      'Diffusion: ABC Diffusion Model (format)',
+      'Diffusion: ABCDEF Diffusion Model (format)',
+    ]) {
+      expect(names).toContain(name);
+    }
   });
 
   it.each(formatModels)('%s runs the same in both', (_, { model, options }) => {
