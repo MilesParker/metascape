@@ -846,22 +846,65 @@ export class Behaviour {
       const members = new Set<Node>([select]);
       const region: Region = { select, members, exits: [] };
       select.region = region;
+      const downstream = new Set<Node>();
+      const reach = (at: Node) => {
+        for (const target of at.targets) {
+          if (downstream.has(target)) continue;
+          downstream.add(target);
+          reach(target);
+        }
+      };
+      reach(select);
+      /** Evaluates of the candidate, worked out on each candidate for the queries they feed. */
+      const values = new Set<Node>();
       for (const node of ordered) {
-        if (node.topo <= select.topo || node.role !== 'control') continue;
+        if (node.topo <= select.topo) continue;
         const act = node.act as Extract<FlowAct, { selected: ActId }>;
         if (act.selected !== select.id) continue;
+        if (act.kind === 'evaluate') {
+          // Fed by the select, by other such evaluates, or by values worked out before the select.
+          const fed = node.sources.every(
+            (source) => source === select || values.has(source) || !downstream.has(source),
+          );
+          if (fed && node.sources.some((source) => source === select || values.has(source))) {
+            values.add(node);
+          }
+          continue;
+        }
+        if (node.role !== 'control') continue;
         const fed = node.sources.every(
-          (source) => source === select || (members.has(source) && source.act.kind === 'query'),
+          (source) =>
+            source === select ||
+            values.has(source) ||
+            (members.has(source) && source.act.kind === 'query'),
         );
         if (!fed) continue;
         if (act.kind === 'query') {
-          const direct = node.sources.every((source) => source === select);
+          const direct = node.sources.every((source) => source === select || values.has(source));
           if (!direct && !this.isSpatial(node)) continue;
         }
         members.add(node);
         node.region = region;
       }
+      // Only the evaluates that lead to a query of the region belong to it; the others
+      // are worked out on what was chosen, as before.
+      const leads = (value: Node, seen = new Set<Node>()): boolean =>
+        value.targets.some(
+          (target) =>
+            (members.has(target) && target !== select) ||
+            (values.has(target) && !seen.has(target) && leads(target, seen.add(target))),
+        );
+      for (const value of values) {
+        if (!leads(value)) continue;
+        members.add(value);
+        value.region = region;
+      }
     }
+  }
+
+  /** Whether a node is an evaluate worked out on the candidates of a select's region. */
+  isRegionValue(node: Node): boolean {
+    return node.region !== undefined && node.region.select !== node && node.role === 'statement';
   }
 
   // ─────────────────────────────── Values ───────────────────────────────
@@ -1152,6 +1195,7 @@ export class Behaviour {
               : (candidate, env) => sources.every((source) => source(candidate, env));
           break;
         case 'any':
+        case 'evaluate':
           predicate = reached;
           break;
         default:
@@ -1610,7 +1654,8 @@ export class Behaviour {
       if (node.role === 'select' && !exitOf.has(node)) continue;
       const units = unitsOf(node);
       for (const target of outside)
-        if (target.role !== 'control') units.push(statementUnit(target));
+        if (target.role !== 'control' && !this.isRegionValue(target))
+          units.push(statementUnit(target));
     }
 
     // Each gate: a query fires for every arrival, as a plain act does; a logic act, and
