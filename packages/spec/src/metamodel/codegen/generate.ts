@@ -621,7 +621,6 @@ ${gridTest}${search}${choose}}
       case 'all':
         return sources.length === 0 ? undefined : code`(${join(sources, code` && `)})`;
       case 'any':
-      case 'evaluate':
         return reached;
       default:
         return reached ? code`!${reached}` : undefined;
