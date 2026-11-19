@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { type Array2D, type Model, RootScape } from '@metascape/engine';
+import { type Model, RootScape } from '@metascape/engine';
 import { describe, expect, it } from 'vitest';
 import {
   conwayLife,
@@ -23,7 +23,7 @@ const make = (model: Model, seed: number, parameters: object = {}) =>
 const lattice = (root: RootScape) =>
   root.findScape('Lattice') as unknown as {
     readonly members: readonly FormatCell[];
-    readonly space: Array2D<FormatCell>;
+    readonly space: { at(x: number, y: number): FormatCell | undefined };
   };
 const slot = (cell: FormatCell, id: string) => cell.info.attributes.findIndex((a) => a.id === id);
 const liveSet = (root: RootScape) =>

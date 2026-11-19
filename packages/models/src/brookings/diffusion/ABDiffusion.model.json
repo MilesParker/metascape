@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 2,
+  "id": "abDiffusion",
+  "label": "Diffusion: AB Diffusion Model",
+  "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The AB model (Ascape edu.brook.diffusion.ABModel and ABCell): every cell plays one of two actions, A (yellow) or B (black), against its four von Neumann neighbours in a coordination game: two playing A pay each 3, two playing B pay each 2, a mismatch pays 0. A cell chooses its action by noisy best response (a logit rule), so the action that pays more locally spreads, subject to error; the model has no popularity term. Every cell starts playing B. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. Departures from the legacy model: the legacy beta is a static field of the cell class, here a parameter of the model; the legacy float arithmetic is double here; the counts of cells playing A and B in the chart are added (the legacy model had none); the legacy cell size and draw-every-N-updates settings are dropped.",
+  "language": "typescript",
+  "attributes": {
+    "beta": {
+      "type": "real",
+      "label": "Beta",
+      "description": "Rationality: how strongly the choice follows the payoff. Zero is a coin toss (the legacy static beta, default 0.1).",
+      "default": 0.1,
+      "min": 0,
+      "max": 5
+    },
+    "decisionsPerPeriod": {
+      "type": "integer",
+      "label": "Decisions per period",
+      "description": "How many cells decide in a period, on average: the legacy agents per iteration, which the legacy model fixes at 25 in its code. See the Decide rule.",
+      "default": 25,
+      "min": 1,
+      "max": 1000
+    }
+  },
+  "acts": {
+    "build": {
+      "kind": "build",
+      "label": "Build",
+      "description": "Builds the lattice, one cell in every site.",
+      "targets": ["fillLattice"]
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "label": "Fill lattice",
+      "selected": "build",
+      "agents": [],
+      "space": "world",
+      "fillAgent": "cell"
+    }
+  },
+  "agents": {
+    "cell": {
+      "kind": "agent",
+      "label": "Cell",
+      "pluralLabel": "Cells",
+      "description": "A site of the lattice (the legacy ABCell), playing A or B. It is drawn yellow when it plays A and black when it plays B.",
+      "attributes": {
+        "action": {
+          "type": "state",
+          "label": "Action",
+          "description": "The action the cell plays: A or B (the legacy state, 1 or 2). Every cell starts playing B.",
+          "options": {
+            "a": {
+              "label": "A"
+            },
+            "b": {
+              "label": "B"
+            }
+          },
+          "defaultOption": "b",
+          "gatherData": true
+        },
+        "countA": {
+          "type": "integer",
+          "label": "Neighbours playing A",
+          "description": "Scratch state of a decision: how many neighbours play A, counted afresh each time the cell decides."
+        },
+        "countB": {
+          "type": "integer",
+          "label": "Neighbours playing B",
+          "description": "Scratch state of a decision: how many neighbours play B, counted afresh each time the cell decides."
+        }
+      },
+      "acts": {
+        "decide": {
+          "kind": "rule",
+          "label": "Decide",
+          "space": "world",
+          "description": "A cell that is chosen this period (see the model) does the legacy ABCell.decideState: total the payoff that A, and that B, would have earned against the four neighbours' current actions, then choose A with the logit probability exp(beta a) / (exp(beta a) + exp(beta b)); otherwise B. Two playing A pay each 3, two playing B pay each 2, a mismatch pays 0, so against a neighbours playing A and b playing B (a + b = 4), A earns 3a and B earns 2b. The change takes effect at once.",
+          "targets": ["sites"]
+        },
+        "sites": {
+          "kind": "evaluate",
+          "description": "The number of cells.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "world.width"
+            },
+            {
+              "attribute": "world.height"
+            }
+          ],
+          "targets": ["perCell"]
+        },
+        "perCell": {
+          "kind": "evaluate",
+          "description": "One over the number of cells, as a real: the whole-number division of two integers would give 0.",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "literal": 1,
+              "type": "real"
+            },
+            {
+              "evaluate": "sites"
+            }
+          ],
+          "targets": ["decidingShare"]
+        },
+        "decidingShare": {
+          "kind": "evaluate",
+          "description": "The chance that a cell is among those that decide this period: the decisions per period over the number of cells.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "decisionsPerPeriod"
+            },
+            {
+              "evaluate": "perCell"
+            }
+          ],
+          "targets": ["lot"]
+        },
+        "lot": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "randomUnit",
+          "targets": ["isChosen"]
+        },
+        "isChosen": {
+          "kind": "query",
+          "label": "Is chosen",
+          "description": "Passes the cells that decide this period.",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "lot"
+            },
+            {
+              "evaluate": "decidingShare"
+            }
+          ],
+          "targets": ["clearA", "clearB", "neighbors", "aPayoff"]
+        },
+        "clearA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countA",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countB",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "neighbors": {
+          "kind": "select",
+          "selected": "decide",
+          "agent": "cell",
+          "space": "world",
+          "description": "Every neighbouring cell (the four of a von Neumann neighbourhood); each adds one to the count of the action it plays.",
+          "targets": ["neighbor", "everyNeighbor", "isA", "isB"]
+        },
+        "neighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "neighbor",
+          "targets": ["fromA", "fromB"]
+        },
+        "everyNeighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "all",
+          "targets": ["fromA", "fromB"]
+        },
+        "isA": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.a"
+            }
+          ],
+          "targets": ["fromA"]
+        },
+        "fromA": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreA"]
+        },
+        "moreA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countA"
+            }
+          ],
+          "targets": ["setCountA"]
+        },
+        "setCountA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countA",
+          "parameter": {
+            "evaluate": "moreA"
+          }
+        },
+        "isB": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.b"
+            }
+          ],
+          "targets": ["fromB"]
+        },
+        "fromB": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreB"]
+        },
+        "moreB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countB"
+            }
+          ],
+          "targets": ["setCountB"]
+        },
+        "setCountB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countB",
+          "parameter": {
+            "evaluate": "moreB"
+          }
+        },
+        "aPayoff": {
+          "kind": "evaluate",
+          "label": "Payoff of A",
+          "description": "A pays 3 against each neighbour playing A (the legacy calculatePayoff: states sum to 2) and 0 against each playing B.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.countA"
+            },
+            {
+              "literal": 3
+            }
+          ],
+          "targets": ["bPayoff"]
+        },
+        "bPayoff": {
+          "kind": "evaluate",
+          "label": "Payoff of B",
+          "description": "B pays 2 against each neighbour playing B (states sum to 4) and 0 against each playing A.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.countB"
+            },
+            {
+              "literal": 2
+            }
+          ],
+          "targets": ["aScaled"]
+        },
+        "aScaled": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "aPayoff"
+            }
+          ],
+          "targets": ["aTerm"]
+        },
+        "aTerm": {
+          "kind": "evaluate",
+          "description": "The weight of A: e to the power of beta times its payoff. Beta is the rationality of the choice: zero is a coin toss.",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "aScaled"
+            }
+          ],
+          "targets": ["bScaled"]
+        },
+        "bScaled": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "bPayoff"
+            }
+          ],
+          "targets": ["bTerm"]
+        },
+        "bTerm": {
+          "kind": "evaluate",
+          "description": "The weight of B.",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "bScaled"
+            }
+          ],
+          "targets": ["termSum"]
+        },
+        "termSum": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "aTerm"
+            },
+            {
+              "evaluate": "bTerm"
+            }
+          ],
+          "targets": ["probA"]
+        },
+        "probA": {
+          "kind": "evaluate",
+          "label": "Probability of A",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "evaluate": "aTerm"
+            },
+            {
+              "evaluate": "termSum"
+            }
+          ],
+          "targets": ["draw"]
+        },
+        "draw": {
+          "kind": "evaluate",
+          "description": "A float between 0 and 1, as the legacy nextFloat.",
+          "selected": "decide",
+          "function": "randomUnit",
+          "targets": ["choosesA"]
+        },
+        "choosesA": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "draw"
+            },
+            {
+              "evaluate": "probA"
+            }
+          ],
+          "targets": ["setA", "choosesB"]
+        },
+        "setA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.a"
+          }
+        },
+        "choosesB": {
+          "kind": "none",
+          "selected": "decide",
+          "targets": ["setB"]
+        },
+        "setB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.b"
+          }
+        }
+      },
+      "styles": {
+        "cellStyle": {
+          "kind": "2d",
+          "label": "Cell Style",
+          "description": "How a cell is drawn: filled with the colour of the action it plays.",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "world",
+              "targets": ["isA", "isB"]
+            },
+            "isA": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.a"
+                }
+              ],
+              "targets": ["colorA"]
+            },
+            "colorA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillA"]
+            },
+            "fillA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isB": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.b"
+                }
+              ],
+              "targets": ["colorB"]
+            },
+            "colorB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillB"]
+            },
+            "fillB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "world": {
+      "kind": "grid",
+      "label": "Lattice",
+      "description": "A square lattice with a von Neumann (four neighbours) neighbourhood, joined at the edges into a torus. The legacy model has one property, span, for both sides; here the width and the height are two parameters.",
+      "borderRule": "periodic",
+      "neighborhood": "vonNeumann",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "description": "Number of columns (the legacy span).",
+          "default": 50,
+          "min": 3,
+          "max": 200
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "description": "Number of rows (the legacy span).",
+          "default": 50,
+          "min": 3,
+          "max": 200
+        }
+      }
+    }
+  }
+}

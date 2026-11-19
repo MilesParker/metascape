@@ -5,14 +5,17 @@ import type { ActionCell } from './action-cell';
 import type { ABCell } from './ab-model';
 import { family } from './index';
 
+/** The coded models; each is followed in the family by its format version. */
+const coded = family.models.filter((m) => !m.name.endsWith(' (format)'));
+
 const cellsOf = <C>(root: RootScape) => root.findScape<never>('cells').members as unknown as C[];
 
 describe('diffusion family', () => {
   it('has five uniquely named models', () => {
-    expect(new Set(family.models.map((m) => m.name)).size).toBe(5);
+    expect(new Set(coded.map((m) => m.name)).size).toBe(5);
   });
 
-  for (const model of family.models as Model[]) {
+  for (const model of coded as Model[]) {
     it(`${model.name} runs 40 periods and is deterministic`, () => {
       const csv = (seed: number) => {
         const root = new RootScape(model, { seed, parameters: { span: 8 } });
@@ -32,16 +35,16 @@ describe('diffusion family', () => {
   }
 
   it('uses the legacy spans and defaults', () => {
-    const sizes = family.models.map((m) => (m.parameters.span as { default: number }).default);
+    const sizes = coded.map((m) => (m.parameters.span as { default: number }).default);
     expect(sizes).toEqual([50, 10, 10, 20, 20]);
-    expect((family.models[2]!.parameters.gamma as { default: number }).default).toBe(40);
+    expect((coded[2]!.parameters.gamma as { default: number }).default).toBe(40);
   });
 
   it('keeps AB all-B when beta is high, and random when beta is zero', () => {
-    const high = new RootScape(family.models[0]!, { seed: 1, parameters: { span: 20, beta: 5 } });
+    const high = new RootScape(coded[0]!, { seed: 1, parameters: { span: 20, beta: 5 } });
     high.run(200);
     expect(high.data.latest('A')).toBe(0);
-    const zero = new RootScape(family.models[0]!, { seed: 1, parameters: { span: 20, beta: 0 } });
+    const zero = new RootScape(coded[0]!, { seed: 1, parameters: { span: 20, beta: 0 } });
     zero.run(400);
     const a = zero.data.latest('A');
     expect(a + zero.data.latest('B')).toBe(400);
@@ -51,7 +54,7 @@ describe('diffusion family', () => {
   });
 
   it('assigns characteristics by checkerboard and half', () => {
-    const root = new RootScape(family.models[1]!, { seed: 1 });
+    const root = new RootScape(coded[1]!, { seed: 1 });
     for (const c of cellsOf<ActionCell>(root)) {
       if ((c.x + c.y) % 2 === 0) expect(c.characteristic).toBe('M');
       else expect(c.characteristic).toBe(c.y < 5 ? 'H' : 'L');
@@ -60,7 +63,7 @@ describe('diffusion family', () => {
   });
 
   it('makes low cells choose A in ABC, since B and C pay nothing', () => {
-    const root = new RootScape(family.models[1]!, { seed: 2 });
+    const root = new RootScape(coded[1]!, { seed: 2 });
     root.run(400);
     for (const c of cellsOf<ActionCell>(root)) {
       if (c.characteristic === 'L') expect(c.action).toBe(0);
@@ -69,7 +72,7 @@ describe('diffusion family', () => {
   });
 
   it('conserves cell counts across actions', () => {
-    const root = new RootScape(family.models[2]!, { seed: 3 });
+    const root = new RootScape(coded[2]!, { seed: 3 });
     root.run(50);
     let total = 0;
     for (const id of ['.6', '.5', '.4', '.9', '.8', '.7']) {

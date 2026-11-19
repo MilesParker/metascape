@@ -1,0 +1,2622 @@
+{
+  "schemaVersion": 2,
+  "id": "abcdefDiffusion",
+  "label": "Diffusion: ABCDEF Diffusion Model",
+  "description": "Norms of behaviour spread through a social or geographic network when agents adopt behaviours by a combination of their inherent payoff and their local popularity (the number of neighbours who have adopted them), subject to some random error (H. Peyton Young, \"Diffusion in Social Networks\", CSED Working Paper #2, The Brookings Institution; the About text gives no year). This implementation is a Java version, in Ascape 5.6.1 (edu.brook.diffusion), of a model first developed in Macintosh-specific Pascal code by Robert Axtell, implemented by Miles Parker. The ABCDEF model (Ascape edu.brook.diffusion.ABCDEFModel and ABCDEFCell): the ABC model with six actions. Cells on a 10 by 10 lattice. BigABCDEFModel is the same model on a 20 by 20 lattice, and BigABCDEFModelBW draws that in black and white (the Black and white parameter, the legacy \"Black & White\" draw feature); the catalogue offers both as entries with those settings. Each period 25 cells are chosen by repeated random draw, with replacement (the legacy REPEATED_DRAW execution style with 25 agents per iteration), and each decides at once, seeing the actions its neighbours have taken so far (asynchronous updating). The format has no setting for how many agents act in a period (and an act can only cause acts of its own agent type), so here every cell, in a fresh random order each period, decides with probability 25 divided by the number of cells: the number deciding in a period is binomial with the legacy mean of 25, and no cell decides twice in a period, where a cell drawn twice would in the legacy model. The 25 is a parameter, Decisions per period. The legacy statistics name the six actions \".6\", \".5\", \".4\", \".9\", \".8\" and \".7\" (A to F). Departures from the legacy model: the legacy settings are static fields of the cell class, here parameters of the model; the legacy float arithmetic is double here. The coded port charts the number of cells playing each action in the upper and in the lower half of the lattice, as the legacy collectors do; this model charts the cells playing each action in all, since the format cannot yet count the cells of an action within a half (a count over a qualified subset); the halves can still be seen on the lattice. The legacy cell size and draw-every-N-updates settings are dropped.",
+  "language": "typescript",
+  "attributes": {
+    "beta": {
+      "type": "real",
+      "label": "Beta",
+      "description": "Rationality: how strongly the choice follows the weighted payoff (the legacy static beta, default 0.1).",
+      "default": 0.1,
+      "min": 0,
+      "max": 5
+    },
+    "gamma": {
+      "type": "real",
+      "label": "Gamma",
+      "description": "Weight of local popularity: the share of the eight neighbours taking an action (the legacy static gamma, default 40).",
+      "default": 40,
+      "min": 0,
+      "max": 100
+    },
+    "decisionsPerPeriod": {
+      "type": "integer",
+      "label": "Decisions per period",
+      "description": "How many cells decide in a period, on average: the legacy agents per iteration, which the legacy model fixes at 25 in its code. See the Decide rule.",
+      "default": 25,
+      "min": 1,
+      "max": 1000
+    },
+    "matrixHA": {
+      "type": "real",
+      "label": "Matrix H/A",
+      "default": 34,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action A for cells of high characteristic (the legacy static matrixHA)."
+    },
+    "matrixHB": {
+      "type": "real",
+      "label": "Matrix H/B",
+      "default": 42.5,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action B for cells of high characteristic (the legacy static matrixHB)."
+    },
+    "matrixHC": {
+      "type": "real",
+      "label": "Matrix H/C",
+      "default": 51,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action C for cells of high characteristic (the legacy static matrixHC)."
+    },
+    "matrixHD": {
+      "type": "real",
+      "label": "Matrix H/D",
+      "default": 8.5,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action D for cells of high characteristic (the legacy static matrixHD)."
+    },
+    "matrixHE": {
+      "type": "real",
+      "label": "Matrix H/E",
+      "default": 17,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action E for cells of high characteristic (the legacy static matrixHE)."
+    },
+    "matrixHF": {
+      "type": "real",
+      "label": "Matrix H/F",
+      "default": 25.5,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action F for cells of high characteristic (the legacy static matrixHF)."
+    },
+    "matrixMA": {
+      "type": "real",
+      "label": "Matrix M/A",
+      "default": 28,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action A for cells of medium characteristic (the legacy static matrixMA)."
+    },
+    "matrixMB": {
+      "type": "real",
+      "label": "Matrix M/B",
+      "default": 35,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action B for cells of medium characteristic (the legacy static matrixMB)."
+    },
+    "matrixMC": {
+      "type": "real",
+      "label": "Matrix M/C",
+      "default": 0,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action C for cells of medium characteristic (the legacy static matrixMC)."
+    },
+    "matrixMD": {
+      "type": "real",
+      "label": "Matrix M/D",
+      "default": 7,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action D for cells of medium characteristic (the legacy static matrixMD)."
+    },
+    "matrixME": {
+      "type": "real",
+      "label": "Matrix M/E",
+      "default": 14,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action E for cells of medium characteristic (the legacy static matrixME)."
+    },
+    "matrixMF": {
+      "type": "real",
+      "label": "Matrix M/F",
+      "default": 21,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action F for cells of medium characteristic (the legacy static matrixMF)."
+    },
+    "matrixLA": {
+      "type": "real",
+      "label": "Matrix L/A",
+      "default": 24,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action A for cells of low characteristic (the legacy static matrixLA)."
+    },
+    "matrixLB": {
+      "type": "real",
+      "label": "Matrix L/B",
+      "default": 0,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action B for cells of low characteristic (the legacy static matrixLB)."
+    },
+    "matrixLC": {
+      "type": "real",
+      "label": "Matrix L/C",
+      "default": 0,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action C for cells of low characteristic (the legacy static matrixLC)."
+    },
+    "matrixLD": {
+      "type": "real",
+      "label": "Matrix L/D",
+      "default": 6,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action D for cells of low characteristic (the legacy static matrixLD)."
+    },
+    "matrixLE": {
+      "type": "real",
+      "label": "Matrix L/E",
+      "default": 12,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action E for cells of low characteristic (the legacy static matrixLE)."
+    },
+    "matrixLF": {
+      "type": "real",
+      "label": "Matrix L/F",
+      "default": 18,
+      "min": -200,
+      "max": 200,
+      "description": "Inherent payoff of action F for cells of low characteristic (the legacy static matrixLF)."
+    },
+    "blackAndWhite": {
+      "type": "boolean",
+      "label": "Black and white",
+      "description": "Draws the cells in greys instead of colours: the legacy \"Black & White\" draw feature of ABCDEFCell (A white, B grey, C black; the hatched fills of D, E and F are approximated by distinct greys). BigABCDEFModelBW is Big ABCDEF with this on. Only the drawing changes.",
+      "default": false
+    }
+  },
+  "acts": {
+    "build": {
+      "kind": "build",
+      "label": "Build",
+      "description": "Builds the lattice, one cell in every site.",
+      "targets": ["fillLattice"]
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "label": "Fill lattice",
+      "selected": "build",
+      "agents": [],
+      "space": "world",
+      "fillAgent": "cell"
+    }
+  },
+  "agents": {
+    "cell": {
+      "kind": "agent",
+      "label": "Cell",
+      "pluralLabel": "Cells",
+      "description": "A site of the lattice (the legacy ABCDEFCell). It has a fixed characteristic and a current action.",
+      "attributes": {
+        "characteristic": {
+          "type": "state",
+          "label": "Characteristic",
+          "description": "Whether the cell is of low, medium or high type: the legacy L, M or H. It decides what each action pays the cell. Medium cells are on the even squares of the checkerboard; of the others, the upper half of the lattice is high and the lower half low.",
+          "options": {
+            "low": {
+              "label": "Low"
+            },
+            "medium": {
+              "label": "Medium"
+            },
+            "high": {
+              "label": "High"
+            }
+          },
+          "defaultOption": "medium"
+        },
+        "action": {
+          "type": "state",
+          "label": "Action",
+          "description": "The action the cell plays, A to F (the legacy action, 1 to 6). Every cell starts playing B. Drawn red, green, blue, magenta, cyan or orange, or in greys when the model is drawn in black and white.",
+          "options": {
+            "a": {
+              "label": "A"
+            },
+            "b": {
+              "label": "B"
+            },
+            "c": {
+              "label": "C"
+            },
+            "d": {
+              "label": "D"
+            },
+            "e": {
+              "label": "E"
+            },
+            "f": {
+              "label": "F"
+            }
+          },
+          "defaultOption": "b",
+          "gatherData": true
+        },
+        "payoffA": {
+          "type": "real",
+          "label": "Payoff of A",
+          "description": "The inherent payoff of action A to this cell, from the matrix row of its characteristic."
+        },
+        "payoffB": {
+          "type": "real",
+          "label": "Payoff of B",
+          "description": "The inherent payoff of action B to this cell, from the matrix row of its characteristic."
+        },
+        "payoffC": {
+          "type": "real",
+          "label": "Payoff of C",
+          "description": "The inherent payoff of action C to this cell, from the matrix row of its characteristic."
+        },
+        "payoffD": {
+          "type": "real",
+          "label": "Payoff of D",
+          "description": "The inherent payoff of action D to this cell, from the matrix row of its characteristic."
+        },
+        "payoffE": {
+          "type": "real",
+          "label": "Payoff of E",
+          "description": "The inherent payoff of action E to this cell, from the matrix row of its characteristic."
+        },
+        "payoffF": {
+          "type": "real",
+          "label": "Payoff of F",
+          "description": "The inherent payoff of action F to this cell, from the matrix row of its characteristic."
+        },
+        "weightA": {
+          "type": "real",
+          "label": "Weight of A",
+          "description": "1 if the payoff of A counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "weightB": {
+          "type": "real",
+          "label": "Weight of B",
+          "description": "1 if the payoff of B counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "weightC": {
+          "type": "real",
+          "label": "Weight of C",
+          "description": "1 if the payoff of C counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "weightD": {
+          "type": "real",
+          "label": "Weight of D",
+          "description": "1 if the payoff of D counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "weightE": {
+          "type": "real",
+          "label": "Weight of E",
+          "description": "1 if the payoff of E counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "weightF": {
+          "type": "real",
+          "label": "Weight of F",
+          "description": "1 if the payoff of F counts for anything (its absolute value is at least 1), else 0: an action that does not is never weighed, whatever the neighbours do (the legacy (int) payoff == 0 test)."
+        },
+        "countA": {
+          "type": "integer",
+          "label": "Neighbours playing A",
+          "description": "Scratch state of a decision: how many neighbours play A, counted afresh each time the cell decides."
+        },
+        "countB": {
+          "type": "integer",
+          "label": "Neighbours playing B",
+          "description": "Scratch state of a decision: how many neighbours play B, counted afresh each time the cell decides."
+        },
+        "countC": {
+          "type": "integer",
+          "label": "Neighbours playing C",
+          "description": "Scratch state of a decision: how many neighbours play C, counted afresh each time the cell decides."
+        },
+        "countD": {
+          "type": "integer",
+          "label": "Neighbours playing D",
+          "description": "Scratch state of a decision: how many neighbours play D, counted afresh each time the cell decides."
+        },
+        "countE": {
+          "type": "integer",
+          "label": "Neighbours playing E",
+          "description": "Scratch state of a decision: how many neighbours play E, counted afresh each time the cell decides."
+        },
+        "countF": {
+          "type": "integer",
+          "label": "Neighbours playing F",
+          "description": "Scratch state of a decision: how many neighbours play F, counted afresh each time the cell decides."
+        }
+      },
+      "acts": {
+        "place": {
+          "kind": "initialize",
+          "label": "Characteristic",
+          "space": "world",
+          "description": "The legacy initialize: cells on the even squares of the checkerboard (x + y even) are medium; of the others, those in the upper half of the lattice (y below half the height, integer division) are high and those in the lower half low. Every cell starts with action B (the default).",
+          "targets": ["column"]
+        },
+        "column": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "locationX",
+          "targets": ["row"]
+        },
+        "row": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "locationY",
+          "targets": ["diagonal"]
+        },
+        "diagonal": {
+          "kind": "evaluate",
+          "description": "x + y.",
+          "selected": "place",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "column"
+            },
+            {
+              "evaluate": "row"
+            }
+          ],
+          "targets": ["parity"]
+        },
+        "parity": {
+          "kind": "evaluate",
+          "selected": "place",
+          "function": "mod",
+          "inputs": [
+            {
+              "evaluate": "diagonal"
+            },
+            {
+              "literal": 2
+            }
+          ],
+          "targets": ["half"]
+        },
+        "half": {
+          "kind": "evaluate",
+          "description": "Half the height, rounded down (the legacy integer division).",
+          "selected": "place",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "world.height"
+            },
+            {
+              "literal": 2
+            }
+          ],
+          "targets": ["isOdd"]
+        },
+        "isOdd": {
+          "kind": "query",
+          "description": "A cell off the even squares: its characteristic depends on the half it is in. The other cells keep the default, medium.",
+          "selected": "place",
+          "function": "equal",
+          "inputs": [
+            {
+              "evaluate": "parity"
+            },
+            {
+              "literal": 1
+            }
+          ],
+          "targets": ["isUpper", "isLower"]
+        },
+        "isUpper": {
+          "kind": "query",
+          "selected": "place",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "row"
+            },
+            {
+              "evaluate": "half"
+            }
+          ],
+          "targets": ["setHigh"]
+        },
+        "setHigh": {
+          "kind": "set",
+          "selected": "place",
+          "attribute": "cell.characteristic",
+          "parameter": {
+            "option": "cell.characteristic.high"
+          }
+        },
+        "isLower": {
+          "kind": "query",
+          "selected": "place",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "row"
+            },
+            {
+              "evaluate": "half"
+            }
+          ],
+          "targets": ["setLow"]
+        },
+        "setLow": {
+          "kind": "set",
+          "selected": "place",
+          "attribute": "cell.characteristic",
+          "parameter": {
+            "option": "cell.characteristic.low"
+          }
+        },
+        "payoffs": {
+          "kind": "initialize",
+          "label": "Payoffs",
+          "space": "world",
+          "description": "Takes the cell's inherent payoff of each action from the matrix, by its characteristic (the legacy charAction), and notes which actions carry any weight. In the legacy model a payoff whose integer part is 0 (an absolute value under 1) gives its action no weight at all, whatever the neighbours do: (int) charAction == 0 sets the term to zero. So in ABC, low cells always take A, and medium cells choose only between A and B. Kept here: the payoff of such an action is marked as carrying no weight. The matrix is read once, when the cell is created, where the legacy model reads it at each decision; the parameters are not live.",
+          "targets": ["isHigh", "isMedium", "isLow"]
+        },
+        "isHigh": {
+          "kind": "query",
+          "selected": "payoffs",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.characteristic"
+            },
+            {
+              "option": "cell.characteristic.high"
+            }
+          ],
+          "targets": ["takeHA", "takeHB", "takeHC", "takeHD", "takeHE", "takeHF"]
+        },
+        "takeHA": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffA",
+          "parameter": {
+            "attribute": "matrixHA"
+          }
+        },
+        "takeHB": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffB",
+          "parameter": {
+            "attribute": "matrixHB"
+          }
+        },
+        "takeHC": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffC",
+          "parameter": {
+            "attribute": "matrixHC"
+          }
+        },
+        "takeHD": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffD",
+          "parameter": {
+            "attribute": "matrixHD"
+          }
+        },
+        "takeHE": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffE",
+          "parameter": {
+            "attribute": "matrixHE"
+          }
+        },
+        "takeHF": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffF",
+          "parameter": {
+            "attribute": "matrixHF"
+          }
+        },
+        "isMedium": {
+          "kind": "query",
+          "selected": "payoffs",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.characteristic"
+            },
+            {
+              "option": "cell.characteristic.medium"
+            }
+          ],
+          "targets": ["takeMA", "takeMB", "takeMC", "takeMD", "takeME", "takeMF"]
+        },
+        "takeMA": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffA",
+          "parameter": {
+            "attribute": "matrixMA"
+          }
+        },
+        "takeMB": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffB",
+          "parameter": {
+            "attribute": "matrixMB"
+          }
+        },
+        "takeMC": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffC",
+          "parameter": {
+            "attribute": "matrixMC"
+          }
+        },
+        "takeMD": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffD",
+          "parameter": {
+            "attribute": "matrixMD"
+          }
+        },
+        "takeME": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffE",
+          "parameter": {
+            "attribute": "matrixME"
+          }
+        },
+        "takeMF": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffF",
+          "parameter": {
+            "attribute": "matrixMF"
+          }
+        },
+        "isLow": {
+          "kind": "query",
+          "selected": "payoffs",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.characteristic"
+            },
+            {
+              "option": "cell.characteristic.low"
+            }
+          ],
+          "targets": ["takeLA", "takeLB", "takeLC", "takeLD", "takeLE", "takeLF"]
+        },
+        "takeLA": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffA",
+          "parameter": {
+            "attribute": "matrixLA"
+          }
+        },
+        "takeLB": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffB",
+          "parameter": {
+            "attribute": "matrixLB"
+          }
+        },
+        "takeLC": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffC",
+          "parameter": {
+            "attribute": "matrixLC"
+          }
+        },
+        "takeLD": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffD",
+          "parameter": {
+            "attribute": "matrixLD"
+          }
+        },
+        "takeLE": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffE",
+          "parameter": {
+            "attribute": "matrixLE"
+          }
+        },
+        "takeLF": {
+          "kind": "set",
+          "selected": "payoffs",
+          "attribute": "cell.payoffF",
+          "parameter": {
+            "attribute": "matrixLF"
+          }
+        },
+        "weights": {
+          "kind": "initialize",
+          "label": "Weighted actions",
+          "space": "world",
+          "description": "Marks each action whose payoff counts for something (the absolute value of the payoff is at least 1, as the legacy integer part is not 0).",
+          "targets": ["sizeA", "sizeB", "sizeC", "sizeD", "sizeE", "sizeF"]
+        },
+        "sizeA": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffA"
+            }
+          ],
+          "targets": ["countsA"]
+        },
+        "countsA": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeA"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighA"]
+        },
+        "weighA": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightA",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "sizeB": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffB"
+            }
+          ],
+          "targets": ["countsB"]
+        },
+        "countsB": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeB"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighB"]
+        },
+        "weighB": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightB",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "sizeC": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffC"
+            }
+          ],
+          "targets": ["countsC"]
+        },
+        "countsC": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeC"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighC"]
+        },
+        "weighC": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightC",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "sizeD": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffD"
+            }
+          ],
+          "targets": ["countsD"]
+        },
+        "countsD": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeD"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighD"]
+        },
+        "weighD": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightD",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "sizeE": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffE"
+            }
+          ],
+          "targets": ["countsE"]
+        },
+        "countsE": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeE"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighE"]
+        },
+        "weighE": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightE",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "sizeF": {
+          "kind": "evaluate",
+          "selected": "weights",
+          "function": "abs",
+          "inputs": [
+            {
+              "attribute": "cell.payoffF"
+            }
+          ],
+          "targets": ["countsF"]
+        },
+        "countsF": {
+          "kind": "query",
+          "selected": "weights",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "sizeF"
+            },
+            {
+              "literal": 1,
+              "type": "real"
+            }
+          ],
+          "targets": ["weighF"]
+        },
+        "weighF": {
+          "kind": "set",
+          "selected": "weights",
+          "attribute": "cell.weightF",
+          "parameter": {
+            "literal": 1,
+            "type": "real"
+          }
+        },
+        "decide": {
+          "kind": "rule",
+          "label": "Decide",
+          "space": "world",
+          "description": "A cell that is chosen this period (see the model) does the legacy decideAction. Count the neighbours' actions; give each action the weight exp(beta (payoff + gamma count / 8)), which is zero for an action that carries no weight; then draw the action in proportion to the weights. The popularity term always divides by 8, the number of Moore neighbours. The draw is a float times the total weight, compared with the running totals in order A to F; if all weights are zero it falls to the last action, as in the legacy final else. The change takes effect at once.",
+          "targets": ["sites"]
+        },
+        "sites": {
+          "kind": "evaluate",
+          "description": "The number of cells.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "world.width"
+            },
+            {
+              "attribute": "world.height"
+            }
+          ],
+          "targets": ["perCell"]
+        },
+        "perCell": {
+          "kind": "evaluate",
+          "description": "One over the number of cells, as a real: the whole-number division of two integers would give 0.",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "literal": 1,
+              "type": "real"
+            },
+            {
+              "evaluate": "sites"
+            }
+          ],
+          "targets": ["decidingShare"]
+        },
+        "decidingShare": {
+          "kind": "evaluate",
+          "description": "The chance that a cell is among those that decide this period: the decisions per period over the number of cells.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "decisionsPerPeriod"
+            },
+            {
+              "evaluate": "perCell"
+            }
+          ],
+          "targets": ["lot"]
+        },
+        "lot": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "randomUnit",
+          "targets": ["isChosen"]
+        },
+        "isChosen": {
+          "kind": "query",
+          "label": "Is chosen",
+          "description": "Passes the cells that decide this period.",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "lot"
+            },
+            {
+              "evaluate": "decidingShare"
+            }
+          ],
+          "targets": [
+            "clearA",
+            "clearB",
+            "clearC",
+            "clearD",
+            "clearE",
+            "clearF",
+            "neighbors",
+            "shareA"
+          ]
+        },
+        "clearA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countA",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countB",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearC": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countC",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearD": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countD",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearE": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countE",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "clearF": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countF",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "neighbors": {
+          "kind": "select",
+          "selected": "decide",
+          "agent": "cell",
+          "space": "world",
+          "description": "Every neighbouring cell (the eight of a Moore neighbourhood); each adds one to the count of the action it plays.",
+          "targets": ["neighbor", "everyNeighbor", "isA", "isB", "isC", "isD", "isE", "isF"]
+        },
+        "neighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "neighbor",
+          "targets": ["fromA", "fromB", "fromC", "fromD", "fromE", "fromF"]
+        },
+        "everyNeighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "all",
+          "targets": ["fromA", "fromB", "fromC", "fromD", "fromE", "fromF"]
+        },
+        "isA": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.a"
+            }
+          ],
+          "targets": ["fromA"]
+        },
+        "fromA": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreA"]
+        },
+        "moreA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countA"
+            }
+          ],
+          "targets": ["setCountA"]
+        },
+        "setCountA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countA",
+          "parameter": {
+            "evaluate": "moreA"
+          }
+        },
+        "isB": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.b"
+            }
+          ],
+          "targets": ["fromB"]
+        },
+        "fromB": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreB"]
+        },
+        "moreB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countB"
+            }
+          ],
+          "targets": ["setCountB"]
+        },
+        "setCountB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countB",
+          "parameter": {
+            "evaluate": "moreB"
+          }
+        },
+        "isC": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.c"
+            }
+          ],
+          "targets": ["fromC"]
+        },
+        "fromC": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreC"]
+        },
+        "moreC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countC"
+            }
+          ],
+          "targets": ["setCountC"]
+        },
+        "setCountC": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countC",
+          "parameter": {
+            "evaluate": "moreC"
+          }
+        },
+        "isD": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.d"
+            }
+          ],
+          "targets": ["fromD"]
+        },
+        "fromD": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreD"]
+        },
+        "moreD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countD"
+            }
+          ],
+          "targets": ["setCountD"]
+        },
+        "setCountD": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countD",
+          "parameter": {
+            "evaluate": "moreD"
+          }
+        },
+        "isE": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.e"
+            }
+          ],
+          "targets": ["fromE"]
+        },
+        "fromE": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreE"]
+        },
+        "moreE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countE"
+            }
+          ],
+          "targets": ["setCountE"]
+        },
+        "setCountE": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countE",
+          "parameter": {
+            "evaluate": "moreE"
+          }
+        },
+        "isF": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.action"
+            },
+            {
+              "option": "cell.action.f"
+            }
+          ],
+          "targets": ["fromF"]
+        },
+        "fromF": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["moreF"]
+        },
+        "moreF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.countF"
+            }
+          ],
+          "targets": ["setCountF"]
+        },
+        "setCountF": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.countF",
+          "parameter": {
+            "evaluate": "moreF"
+          }
+        },
+        "shareA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countA"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullA"],
+          "description": "The share of the eight neighbours playing A. The terms of the other actions are worked out in the same way, each as the legacy aTerm: e to the power of beta times (its payoff plus gamma times that share), or zero if the action carries no weight."
+        },
+        "pullA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareA"
+            }
+          ],
+          "targets": ["totalA"]
+        },
+        "totalA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffA"
+            },
+            {
+              "evaluate": "pullA"
+            }
+          ],
+          "targets": ["scaledA"]
+        },
+        "scaledA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalA"
+            }
+          ],
+          "targets": ["rawA"]
+        },
+        "rawA": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledA"
+            }
+          ],
+          "targets": ["termA"]
+        },
+        "termA": {
+          "kind": "evaluate",
+          "label": "Weight of A",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightA"
+            },
+            {
+              "evaluate": "rawA"
+            }
+          ],
+          "targets": ["shareB"]
+        },
+        "shareB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countB"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullB"]
+        },
+        "pullB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareB"
+            }
+          ],
+          "targets": ["totalB"]
+        },
+        "totalB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffB"
+            },
+            {
+              "evaluate": "pullB"
+            }
+          ],
+          "targets": ["scaledB"]
+        },
+        "scaledB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalB"
+            }
+          ],
+          "targets": ["rawB"]
+        },
+        "rawB": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledB"
+            }
+          ],
+          "targets": ["termB"]
+        },
+        "termB": {
+          "kind": "evaluate",
+          "label": "Weight of B",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightB"
+            },
+            {
+              "evaluate": "rawB"
+            }
+          ],
+          "targets": ["runningB"]
+        },
+        "runningB": {
+          "kind": "evaluate",
+          "description": "The total weight of the actions A to B.",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "termA"
+            },
+            {
+              "evaluate": "termB"
+            }
+          ],
+          "targets": ["shareC"]
+        },
+        "shareC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countC"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullC"]
+        },
+        "pullC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareC"
+            }
+          ],
+          "targets": ["totalC"]
+        },
+        "totalC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffC"
+            },
+            {
+              "evaluate": "pullC"
+            }
+          ],
+          "targets": ["scaledC"]
+        },
+        "scaledC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalC"
+            }
+          ],
+          "targets": ["rawC"]
+        },
+        "rawC": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledC"
+            }
+          ],
+          "targets": ["termC"]
+        },
+        "termC": {
+          "kind": "evaluate",
+          "label": "Weight of C",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightC"
+            },
+            {
+              "evaluate": "rawC"
+            }
+          ],
+          "targets": ["runningC"]
+        },
+        "runningC": {
+          "kind": "evaluate",
+          "description": "The total weight of the actions A to C.",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "runningB"
+            },
+            {
+              "evaluate": "termC"
+            }
+          ],
+          "targets": ["shareD"]
+        },
+        "shareD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countD"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullD"]
+        },
+        "pullD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareD"
+            }
+          ],
+          "targets": ["totalD"]
+        },
+        "totalD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffD"
+            },
+            {
+              "evaluate": "pullD"
+            }
+          ],
+          "targets": ["scaledD"]
+        },
+        "scaledD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalD"
+            }
+          ],
+          "targets": ["rawD"]
+        },
+        "rawD": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledD"
+            }
+          ],
+          "targets": ["termD"]
+        },
+        "termD": {
+          "kind": "evaluate",
+          "label": "Weight of D",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightD"
+            },
+            {
+              "evaluate": "rawD"
+            }
+          ],
+          "targets": ["runningD"]
+        },
+        "runningD": {
+          "kind": "evaluate",
+          "description": "The total weight of the actions A to D.",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "runningC"
+            },
+            {
+              "evaluate": "termD"
+            }
+          ],
+          "targets": ["shareE"]
+        },
+        "shareE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countE"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullE"]
+        },
+        "pullE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareE"
+            }
+          ],
+          "targets": ["totalE"]
+        },
+        "totalE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffE"
+            },
+            {
+              "evaluate": "pullE"
+            }
+          ],
+          "targets": ["scaledE"]
+        },
+        "scaledE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalE"
+            }
+          ],
+          "targets": ["rawE"]
+        },
+        "rawE": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledE"
+            }
+          ],
+          "targets": ["termE"]
+        },
+        "termE": {
+          "kind": "evaluate",
+          "label": "Weight of E",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightE"
+            },
+            {
+              "evaluate": "rawE"
+            }
+          ],
+          "targets": ["runningE"]
+        },
+        "runningE": {
+          "kind": "evaluate",
+          "description": "The total weight of the actions A to E.",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "runningD"
+            },
+            {
+              "evaluate": "termE"
+            }
+          ],
+          "targets": ["shareF"]
+        },
+        "shareF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "div",
+          "inputs": [
+            {
+              "attribute": "cell.countF"
+            },
+            {
+              "literal": 8,
+              "type": "real"
+            }
+          ],
+          "targets": ["pullF"]
+        },
+        "pullF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "gamma"
+            },
+            {
+              "evaluate": "shareF"
+            }
+          ],
+          "targets": ["totalF"]
+        },
+        "totalF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "attribute": "cell.payoffF"
+            },
+            {
+              "evaluate": "pullF"
+            }
+          ],
+          "targets": ["scaledF"]
+        },
+        "scaledF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "beta"
+            },
+            {
+              "evaluate": "totalF"
+            }
+          ],
+          "targets": ["rawF"]
+        },
+        "rawF": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "exp",
+          "inputs": [
+            {
+              "evaluate": "scaledF"
+            }
+          ],
+          "targets": ["termF"]
+        },
+        "termF": {
+          "kind": "evaluate",
+          "label": "Weight of F",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "attribute": "cell.weightF"
+            },
+            {
+              "evaluate": "rawF"
+            }
+          ],
+          "targets": ["runningF"]
+        },
+        "runningF": {
+          "kind": "evaluate",
+          "description": "The total weight of the actions A to F.",
+          "selected": "decide",
+          "function": "add",
+          "inputs": [
+            {
+              "evaluate": "runningE"
+            },
+            {
+              "evaluate": "termF"
+            }
+          ],
+          "targets": ["draw"]
+        },
+        "draw": {
+          "kind": "evaluate",
+          "selected": "decide",
+          "function": "randomUnit",
+          "targets": ["point"]
+        },
+        "point": {
+          "kind": "evaluate",
+          "description": "A float between 0 and 1 times the total weight (the legacy probOverTerm): the point in the running totals that decides the action.",
+          "selected": "decide",
+          "function": "mul",
+          "inputs": [
+            {
+              "evaluate": "draw"
+            },
+            {
+              "evaluate": "runningF"
+            }
+          ],
+          "targets": ["pickA", "aboveB", "aboveC", "aboveD", "aboveE", "pickF"]
+        },
+        "setA": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.a"
+          }
+        },
+        "pickA": {
+          "kind": "query",
+          "description": "The draw falls within the weight of A.",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "termA"
+            }
+          ],
+          "targets": ["setA"]
+        },
+        "setB": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.b"
+          }
+        },
+        "aboveB": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "termA"
+            }
+          ],
+          "targets": ["withinB"],
+          "description": "The draw falls in the weight of B: at or above the running total of the actions before it, and below its own running total."
+        },
+        "withinB": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningB"
+            }
+          ],
+          "targets": ["setB"]
+        },
+        "setC": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.c"
+          }
+        },
+        "aboveC": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningB"
+            }
+          ],
+          "targets": ["withinC"],
+          "description": "The draw falls in the weight of C: at or above the running total of the actions before it, and below its own running total."
+        },
+        "withinC": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningC"
+            }
+          ],
+          "targets": ["setC"]
+        },
+        "setD": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.d"
+          }
+        },
+        "aboveD": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningC"
+            }
+          ],
+          "targets": ["withinD"],
+          "description": "The draw falls in the weight of D: at or above the running total of the actions before it, and below its own running total."
+        },
+        "withinD": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningD"
+            }
+          ],
+          "targets": ["setD"]
+        },
+        "setE": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.e"
+          }
+        },
+        "aboveE": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningD"
+            }
+          ],
+          "targets": ["withinE"],
+          "description": "The draw falls in the weight of E: at or above the running total of the actions before it, and below its own running total."
+        },
+        "withinE": {
+          "kind": "query",
+          "selected": "decide",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningE"
+            }
+          ],
+          "targets": ["setE"]
+        },
+        "setF": {
+          "kind": "set",
+          "selected": "decide",
+          "attribute": "cell.action",
+          "parameter": {
+            "option": "cell.action.f"
+          }
+        },
+        "pickF": {
+          "kind": "query",
+          "description": "The draw is beyond the running total of every action before F: the last action, which is also taken when every weight is zero.",
+          "selected": "decide",
+          "function": "greaterorEqual",
+          "inputs": [
+            {
+              "evaluate": "point"
+            },
+            {
+              "evaluate": "runningE"
+            }
+          ],
+          "targets": ["setF"]
+        }
+      },
+      "styles": {
+        "cellStyle": {
+          "kind": "2d",
+          "label": "Cell Style",
+          "description": "How a cell is drawn: filled with the colour of the action it plays, or with a grey when the model is drawn in black and white.",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "world",
+              "targets": ["isA", "isB", "isC", "isD", "isE", "isF"]
+            },
+            "isA": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.a"
+                }
+              ],
+              "targets": ["colourA", "greyA"]
+            },
+            "colourA": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorA"]
+            },
+            "greyA": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeA"]
+            },
+            "shadeA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeA"]
+            },
+            "fillShadeA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillA"]
+            },
+            "fillA": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isB": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.b"
+                }
+              ],
+              "targets": ["colourB", "greyB"]
+            },
+            "colourB": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorB"]
+            },
+            "greyB": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeB"]
+            },
+            "shadeB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.5019607843137255,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.5019607843137255,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.5019607843137255,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeB"]
+            },
+            "fillShadeB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillB"]
+            },
+            "fillB": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isC": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.c"
+                }
+              ],
+              "targets": ["colourC", "greyC"]
+            },
+            "colourC": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorC"]
+            },
+            "greyC": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeC"]
+            },
+            "shadeC": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeC"]
+            },
+            "fillShadeC": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorC": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillC"]
+            },
+            "fillC": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isD": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.d"
+                }
+              ],
+              "targets": ["colourD", "greyD"]
+            },
+            "colourD": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorD"]
+            },
+            "greyD": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeD"]
+            },
+            "shadeD": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.7529411764705882,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.7529411764705882,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.7529411764705882,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeD"]
+            },
+            "fillShadeD": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorD": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillD"]
+            },
+            "fillD": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isE": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.e"
+                }
+              ],
+              "targets": ["colourE", "greyE"]
+            },
+            "colourE": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorE"]
+            },
+            "greyE": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeE"]
+            },
+            "shadeE": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.25098039215686274,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.25098039215686274,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.25098039215686274,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeE"]
+            },
+            "fillShadeE": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorE": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 1,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillE"]
+            },
+            "fillE": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "isF": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "cell.action"
+                },
+                {
+                  "option": "cell.action.f"
+                }
+              ],
+              "targets": ["colourF", "greyF"]
+            },
+            "colourF": {
+              "kind": "query",
+              "selected": "look",
+              "function": "equal",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                },
+                {
+                  "constant": "false"
+                }
+              ],
+              "targets": ["colorF"]
+            },
+            "greyF": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "blackAndWhite"
+                }
+              ],
+              "targets": ["shadeF"]
+            },
+            "shadeF": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.8784313725490196,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.8784313725490196,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.8784313725490196,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillShadeF"]
+            },
+            "fillShadeF": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "colorF": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 1,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.7843137254901961,
+                  "type": "real"
+                },
+                {
+                  "literal": 0,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillF"]
+            },
+            "fillF": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "world": {
+      "kind": "grid",
+      "label": "Lattice",
+      "description": "A square lattice with a Moore (eight neighbours) neighbourhood, joined at the edges into a torus. The legacy model has one property, span, for both sides; here the width and the height are two parameters.",
+      "borderRule": "periodic",
+      "neighborhood": "moore",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "description": "Number of columns (the legacy span).",
+          "default": 10,
+          "min": 3,
+          "max": 200
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "description": "Number of rows (the legacy span).",
+          "default": 10,
+          "min": 3,
+          "max": 200
+        }
+      }
+    }
+  }
+}
