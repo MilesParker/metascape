@@ -85,7 +85,7 @@ export class Territory extends Continuous2D<FreeBion> {
     let originY = bion.y;
     let targetX = target.x;
     let targetY = target.y;
-    if (this.wrap) {
+    if (this.periodic) {
       if (originX < targetX) {
         if (targetX - originX > originX + (this.width - targetX)) originX += this.width;
       } else if (originX - targetX > targetX + (this.width - originX)) {

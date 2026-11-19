@@ -156,9 +156,10 @@ export const schelling = defineModel({
       description:
         'A resident is unhappy when the share of like neighbors is below this threshold.',
     }),
-    wrap: bool(false, {
-      label: 'Wrap',
-      description: 'Join the edges into a torus instead of having hard edges.',
+    periodic: bool(false, {
+      label: 'Periodic',
+      description:
+        'Make the town periodic (its edges join up, like a torus) instead of having hard edges.',
     }),
   },
 
@@ -170,7 +171,7 @@ export const schelling = defineModel({
         name: 'town',
         space: new Array2DMoore<SchellingCell>(),
         extent: [p.width, p.height],
-        periodic: p.wrap,
+        periodic: p.periodic,
         prototypeAgent: () => {
           const cell = new SchellingCell();
           free.register(cell);

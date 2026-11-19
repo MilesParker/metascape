@@ -7,7 +7,7 @@ import { Continuous2D } from './index';
 interface Options {
   readonly width: number;
   readonly height: number;
-  readonly wrap?: boolean;
+  readonly periodic?: boolean;
   readonly cellSize?: number;
   readonly size?: number;
   readonly create?: (index: number) => LocatedAgent;
@@ -18,12 +18,12 @@ function continuous<A extends LocatedAgent>(
   name: string,
   options: Omit<Options, 'create'> & { readonly create?: (index: number) => A },
 ): Scape<A> {
-  const { width, height, wrap, cellSize, size, create } = options;
+  const { width, height, periodic, cellSize, size, create } = options;
   return new Scape<A>({
     name,
     space: new Continuous2D<A>(cellSize === undefined ? {} : { cellSize }),
     extent: [width, height],
-    ...(wrap !== undefined && { periodic: wrap }),
+    ...(periodic !== undefined && { periodic }),
     ...(size !== undefined && { size }),
     ...(create && { prototypeAgent: create }),
   });
@@ -43,7 +43,8 @@ function build(options: Options, seed = 1) {
   return { root, scape: model.scape };
 }
 
-const empty = (width = 10, height = 10, wrap = true) => build({ width, height, wrap }).scape;
+const empty = (width = 10, height = 10, periodic = true) =>
+  build({ width, height, periodic }).scape;
 
 describe('construction and placement', () => {
   it('rejects bad dimensions', () => {
@@ -121,7 +122,7 @@ describe('normalize, moveTo and moveBy', () => {
     const { scape } = build({
       width: 10,
       height: 10,
-      wrap: false,
+      periodic: false,
       create: () => new LocatedAgent(9, 1),
     });
     const a = scape.scape.newAgent();
@@ -169,7 +170,7 @@ describe('geometry', () => {
 });
 
 describe('queries', () => {
-  const setup = (wrap = true) => {
+  const setup = (periodic = true) => {
     const spots: [number, number][] = [
       [5, 5],
       [6, 5],
@@ -180,7 +181,7 @@ describe('queries', () => {
     return build({
       width: 10,
       height: 10,
-      wrap,
+      periodic,
       cellSize: 2,
       size: spots.length,
       create: (i) => new LocatedAgent(...(spots[i] as [number, number])),
@@ -229,8 +230,8 @@ describe('queries', () => {
 });
 
 describe('moveToward and moveAway', () => {
-  const one = (x: number, y: number, wrap = true) =>
-    build({ width: 10, height: 10, wrap, size: 1, create: () => new LocatedAgent(x, y) }).scape;
+  const one = (x: number, y: number, periodic = true) =>
+    build({ width: 10, height: 10, periodic, size: 1, create: () => new LocatedAgent(x, y) }).scape;
 
   it('moves the requested distance without overshooting', () => {
     const scape = one(1, 1);
@@ -262,20 +263,20 @@ describe('moveToward and moveAway', () => {
 });
 
 describe('spatial index against brute force', () => {
-  for (const wrap of [true, false]) {
-    it(`agrees with a brute-force scan over many iterations (${wrap ? 'wrapped' : 'bounded'})`, () => {
+  for (const periodic of [true, false]) {
+    it(`agrees with a brute-force scan over many iterations (${periodic ? 'periodic' : 'aperiodic'})`, () => {
       const width = 40;
       const height = 25;
       const { root, scape } = build(
         {
           width,
           height,
-          wrap,
+          periodic,
           cellSize: 3,
           size: 300,
           create: () => new LocatedAgent(),
         },
-        wrap ? 11 : 12,
+        periodic ? 11 : 12,
       );
       const rng = root.random.fork();
       const radii = [0.5, 2, 3, 7, 14, 21, 30, 80];

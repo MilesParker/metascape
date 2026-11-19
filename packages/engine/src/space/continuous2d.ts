@@ -84,11 +84,6 @@ export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A
     return this.#height;
   }
 
-  /** Whether the edges join up; the same as `periodic`. */
-  get wrap(): boolean {
-    return this.periodic;
-  }
-
   override get extent(): readonly number[] {
     return [this.#width, this.#height];
   }
@@ -122,7 +117,7 @@ export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A
   displacement(from: Point, to: Point): Displacement {
     let dx = to.x - from.x;
     let dy = to.y - from.y;
-    if (this.wrap) {
+    if (this.periodic) {
       dx -= this.width * Math.round(dx / this.width);
       dy -= this.height * Math.round(dy / this.height);
     }
@@ -179,7 +174,7 @@ export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A
   ): A | undefined {
     const limit = Math.min(
       maxRadius ?? Infinity,
-      this.wrap ? Math.hypot(this.width, this.height) / 2 : Math.hypot(this.width, this.height),
+      this.periodic ? Math.hypot(this.width, this.height) / 2 : Math.hypot(this.width, this.height),
     );
     if (!(limit >= 0)) return undefined;
     let radius = Math.min(limit, Math.min(this.width / this.#cols, this.height / this.#rows));
@@ -245,9 +240,9 @@ export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A
   }
 
   #normalizeAxis(value: number, extent: number): number {
-    if (this.wrap) {
-      const wrapped = ((value % extent) + extent) % extent;
-      return wrapped >= extent ? 0 : wrapped;
+    if (this.periodic) {
+      const reduced = ((value % extent) + extent) % extent;
+      return reduced >= extent ? 0 : reduced;
     }
     return Math.min(Math.max(value, 0), justBelow(extent));
   }
@@ -268,10 +263,10 @@ export class Continuous2D<A extends LocatedAgent = LocatedAgent> extends Space<A
     const size = extent / count;
     const pad = radius + size * 1e-9;
     const all = (): number[] => Array.from({ length: count }, (_, i) => i);
-    if (!Number.isFinite(pad)) return this.wrap || origin >= 0 ? all() : [];
+    if (!Number.isFinite(pad)) return this.periodic || origin >= 0 ? all() : [];
     let lo = Math.floor((origin - pad) / size);
     let hi = Math.floor((origin + pad) / size);
-    if (this.wrap) {
+    if (this.periodic) {
       if (hi - lo + 1 >= count) return all();
       const cells: number[] = [];
       for (let i = lo; i <= hi; i++) cells.push(((i % count) + count) % count);

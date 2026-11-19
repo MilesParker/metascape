@@ -53,7 +53,7 @@ describe('parameters', () => {
     parameters: {
       width: int(10, { min: 1, max: 100 }),
       density: real(0.5, { min: 0, max: 1 }),
-      wrap: bool(true),
+      periodic: bool(true),
       neighbourhood: choice(['moore', 'vonNeumann'], 'moore'),
     },
     build() {},
@@ -63,7 +63,7 @@ describe('parameters', () => {
     const root = new RootScape(model, { parameters: { width: 20, neighbourhood: 'vonNeumann' } });
     const width: number = root.parameters.width;
     const neighbourhood: 'moore' | 'vonNeumann' = root.parameters.neighbourhood;
-    expect([width, root.parameters.density, root.parameters.wrap, neighbourhood]).toEqual([
+    expect([width, root.parameters.density, root.parameters.periodic, neighbourhood]).toEqual([
       20,
       0.5,
       true,
@@ -76,7 +76,7 @@ describe('parameters', () => {
     expect(run({ width: 0 })).toThrow(ParameterError);
     expect(run({ width: 2.5 })).toThrow(ParameterError);
     expect(run({ density: 2 })).toThrow(ParameterError);
-    expect(run({ wrap: 'yes' })).toThrow(ParameterError);
+    expect(run({ periodic: 'yes' })).toThrow(ParameterError);
     expect(run({ neighbourhood: 'hex' })).toThrow(ParameterError);
     expect(run({ height: 3 })).toThrow(ParameterError);
   });

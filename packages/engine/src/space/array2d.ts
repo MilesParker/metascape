@@ -117,11 +117,6 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
     return this.#height;
   }
 
-  /** Whether the edges join up; the same as `periodic`. */
-  get wrap(): boolean {
-    return this.periodic;
-  }
-
   override get extent(): readonly number[] {
     return [this.#width, this.#height];
   }
@@ -158,7 +153,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
   }
 
   /**
-   * The cell at (x, y). With `wrap`, coordinates wrap around the edges; without,
+   * The cell at (x, y). With `periodic`, coordinates wrap around the edges; without,
    * out-of-range coordinates (and non-integers) give `undefined`.
    */
   at(x: number, y: number): C | undefined {
@@ -205,7 +200,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
   distance(a: Point, b: Point, metric: Metric = this.defaultMetric): number {
     let dx = Math.abs(a.x - b.x);
     let dy = Math.abs(a.y - b.y);
-    if (this.wrap) {
+    if (this.periodic) {
       dx = Math.min(dx, this.width - dx);
       dy = Math.min(dy, this.height - dy);
     }
@@ -276,7 +271,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
     const manhattan = this.defaultMetric === 'manhattan';
     const limit = Math.min(
       Math.floor(maxRadius),
-      this.wrap
+      this.periodic
         ? manhattan
           ? Math.floor(this.width / 2) + Math.floor(this.height / 2)
           : Math.floor(Math.max(this.width, this.height) / 2)
@@ -286,7 +281,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
     );
     for (let radius = 1; radius <= limit; radius++) {
       const ring = this.#ringTemplate(radius);
-      const found = this.#collect(cell, ring, false, this.wrap).filter(condition);
+      const found = this.#collect(cell, ring, false, this.periodic).filter(condition);
       if (found.length > 0) return this.random.pick(found);
     }
     return undefined;
@@ -306,7 +301,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
   }
 
   #resolve(x: number, y: number): C | undefined {
-    if (this.wrap) {
+    if (this.periodic) {
       x = ((x % this.width) + this.width) % this.width;
       y = ((y % this.height) + this.height) % this.height;
     } else if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
@@ -318,7 +313,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
   /** The largest useful offset along each axis. */
   #reach(radius: number): { rx: number; ry: number } {
     const r = Math.floor(radius);
-    return this.wrap
+    return this.periodic
       ? {
           rx: Math.min(r, Math.floor(this.width / 2)),
           ry: Math.min(r, Math.floor(this.height / 2)),
@@ -328,7 +323,7 @@ export abstract class Array2D<C extends Cell = Cell> extends Space<C> {
 
   /** Whether distinct offsets can land on the same cell. */
   #needsDedupe(radius: number): boolean {
-    if (!this.wrap) return false;
+    if (!this.periodic) return false;
     const { rx, ry } = this.#reach(radius);
     return 2 * rx + 1 > this.width || 2 * ry + 1 > this.height;
   }

@@ -25,7 +25,7 @@ class Walker extends CellOccupant {
 interface LatticeOptions<C> {
   readonly width: number;
   readonly height: number;
-  readonly wrap?: boolean;
+  readonly periodic?: boolean;
   readonly neighborhood?: Neighborhood;
   readonly multiOccupancy?: boolean;
   readonly create?: (x: number, y: number) => C;
@@ -33,7 +33,7 @@ interface LatticeOptions<C> {
 
 /** A scape of cells with a Moore or von Neumann lattice space. */
 function lattice<C extends HostCell>(name: string, options: LatticeOptions<C>): Scape<C> {
-  const { width, height, wrap, neighborhood, multiOccupancy, create } = options;
+  const { width, height, periodic, neighborhood, multiOccupancy, create } = options;
   const space =
     neighborhood === 'vonNeumann'
       ? new Array2DVonNeumann<C>({ multiOccupancy: multiOccupancy ?? false })
@@ -42,7 +42,7 @@ function lattice<C extends HostCell>(name: string, options: LatticeOptions<C>): 
     name,
     space,
     extent: [width, height],
-    ...(wrap !== undefined && { periodic: wrap }),
+    ...(periodic !== undefined && { periodic }),
     ...(create && { prototypeAgent: (i: number) => create(i % width, Math.floor(i / width)) }),
   });
 }
@@ -136,7 +136,7 @@ describe('at', () => {
   });
 
   it('returns undefined out of range when bounded', () => {
-    const { grid } = model({ width: 5, height: 4, wrap: false });
+    const { grid } = model({ width: 5, height: 4, periodic: false });
     expect(grid.at(-1, 0)).toBeUndefined();
     expect(grid.at(5, 0)).toBeUndefined();
     expect(grid.at(0, 4)).toBeUndefined();
@@ -166,11 +166,11 @@ describe('neighbors', () => {
   });
 
   it('has fewer neighbors at bounded edges', () => {
-    const moore = model({ width: 5, height: 5, wrap: false }).grid;
+    const moore = model({ width: 5, height: 5, periodic: false }).grid;
     expect(coords(moore.neighbors(moore.at(0, 0)!))).toEqual(['1,0', '0,1', '1,1']);
     expect(moore.neighbors(moore.at(0, 2)!)).toHaveLength(5);
     expect(moore.neighbors(moore.at(2, 2)!)).toHaveLength(8);
-    const vn = model({ width: 5, height: 5, wrap: false, neighborhood: 'vonNeumann' }).grid;
+    const vn = model({ width: 5, height: 5, periodic: false, neighborhood: 'vonNeumann' }).grid;
     expect(coords(vn.neighbors(vn.at(4, 4)!))).toEqual(['4,3', '3,4']);
   });
 
@@ -206,7 +206,7 @@ describe('neighbors', () => {
 
 describe('distance', () => {
   it('measures all three metrics on a bounded grid', () => {
-    const { grid } = model({ width: 10, height: 10, wrap: false });
+    const { grid } = model({ width: 10, height: 10, periodic: false });
     const a = grid.at(1, 1)!;
     const b = grid.at(4, 5)!;
     expect(grid.distance(a, b, 'chebyshev')).toBe(4);
@@ -255,7 +255,7 @@ describe('within', () => {
   });
 
   it('handles manhattan and euclidean shapes', () => {
-    const { grid } = model({ width: 7, height: 7, wrap: false });
+    const { grid } = model({ width: 7, height: 7, periodic: false });
     const o = grid.at(3, 3)!;
     expect(sorted(grid.findWithin(o, 2, { metric: 'manhattan' }))).toEqual(
       ['3,1', '2,2', '3,2', '4,2', '1,3', '2,3', '4,3', '5,3', '2,4', '3,4', '4,4', '3,5'].sort(),
@@ -268,7 +268,7 @@ describe('within', () => {
   });
 
   it('is clipped at bounded corners', () => {
-    const { grid } = model({ width: 5, height: 5, wrap: false });
+    const { grid } = model({ width: 5, height: 5, periodic: false });
     expect(coords(grid.findWithin(grid.at(0, 0)!, 2))).toEqual([
       '1,0',
       '2,0',
@@ -303,8 +303,8 @@ describe('within', () => {
   });
 
   it('agrees with distance() for every metric', () => {
-    for (const wrap of [true, false]) {
-      const { grid } = model({ width: 6, height: 5, wrap });
+    for (const periodic of [true, false]) {
+      const { grid } = model({ width: 6, height: 5, periodic });
       for (const metric of ['chebyshev', 'manhattan', 'euclidean'] as const) {
         for (const origin of [grid.at(0, 0)!, grid.at(3, 2)!, grid.at(5, 4)!]) {
           for (const radius of [1, 2, 3]) {
@@ -328,7 +328,7 @@ describe('within', () => {
 
 describe('rays', () => {
   it('goes outward in each direction, nearest first', () => {
-    const { grid } = model({ width: 5, height: 5, wrap: false });
+    const { grid } = model({ width: 5, height: 5, periodic: false });
     expect(coords(grid.rays(grid.at(2, 2)!, 2))).toEqual([
       '1,1',
       '0,0', // (-1,-1)
@@ -356,7 +356,7 @@ describe('rays', () => {
   });
 
   it('stops at bounded edges', () => {
-    const { grid } = model({ width: 5, height: 5, wrap: false });
+    const { grid } = model({ width: 5, height: 5, periodic: false });
     expect(coords(grid.rays(grid.at(0, 0)!, 10))).toEqual([
       '1,0',
       '2,0',
@@ -409,7 +409,12 @@ describe('rays', () => {
 
 describe('nearest', () => {
   it('finds the closest match, excluding the origin', () => {
-    const { grid } = model<Patch>({ width: 9, height: 9, wrap: false, create: () => new Patch() });
+    const { grid } = model<Patch>({
+      width: 9,
+      height: 9,
+      periodic: false,
+      create: () => new Patch(),
+    });
     grid.at(7, 7)!.amount = 1;
     grid.at(2, 1)!.amount = 1;
     const origin = grid.at(0, 0)!;
@@ -421,7 +426,7 @@ describe('nearest', () => {
   });
 
   it('uses the default metric to order candidates', () => {
-    const vn = model({ width: 9, height: 9, neighborhood: 'vonNeumann', wrap: false }).grid;
+    const vn = model({ width: 9, height: 9, neighborhood: 'vonNeumann', periodic: false }).grid;
     const origin = vn.at(4, 4)!;
     // (6,6) is chebyshev 2 but manhattan 4; (4,0) is manhattan 4 too; (6,5) manhattan 3 wins.
     const targets = new Set([vn.at(6, 6)!, vn.at(4, 0)!, vn.at(6, 5)!]);
@@ -436,7 +441,7 @@ describe('nearest', () => {
 
   it('breaks ties reproducibly per seed and reaches every tied cell', () => {
     const pick = (seed: number): string => {
-      const { grid } = model({ width: 5, height: 5, wrap: false }, 0, seed);
+      const { grid } = model({ width: 5, height: 5, periodic: false }, 0, seed);
       const found = grid.findNearest(grid.at(2, 2)!, () => true)!;
       return `${found.x},${found.y}`;
     };
@@ -482,7 +487,7 @@ describe('random cells', () => {
 
 describe('toward and away', () => {
   it('toward picks the neighbor that most reduces distance', () => {
-    const { grid } = model({ width: 9, height: 9, wrap: false, neighborhood: 'vonNeumann' });
+    const { grid } = model({ width: 9, height: 9, periodic: false, neighborhood: 'vonNeumann' });
     expect(coords([grid.toward(grid.at(0, 4)!, grid.at(8, 4)!)])).toEqual(['1,4']);
     expect(coords([grid.away(grid.at(4, 4)!, grid.at(8, 4)!)])).toEqual(['3,4']);
   });
@@ -491,7 +496,7 @@ describe('toward and away', () => {
     const seen = new Set<string>();
     for (let seed = 0; seed < 100; seed++) {
       const { grid } = model(
-        { width: 9, height: 9, wrap: false, neighborhood: 'vonNeumann' },
+        { width: 9, height: 9, periodic: false, neighborhood: 'vonNeumann' },
         0,
         seed,
       );
@@ -501,10 +506,10 @@ describe('toward and away', () => {
   });
 
   it('returns undefined when nothing improves', () => {
-    const { grid } = model({ width: 5, height: 5, wrap: false });
+    const { grid } = model({ width: 5, height: 5, periodic: false });
     expect(grid.toward(grid.at(2, 2)!, grid.at(2, 2)!)).toBeUndefined();
     expect(grid.away(grid.at(0, 0)!, grid.at(4, 4)!)).toBeUndefined();
-    const vn = model({ width: 5, height: 5, wrap: false, neighborhood: 'vonNeumann' }).grid;
+    const vn = model({ width: 5, height: 5, periodic: false, neighborhood: 'vonNeumann' }).grid;
     expect(coords([vn.away(vn.at(0, 0)!, vn.at(1, 0)!)])).toEqual(['0,1']);
   });
 
@@ -685,7 +690,7 @@ describe('diffusion', () => {
 
   it('conserves the total on a bounded von Neumann grid too', () => {
     const { root, grid } = diffuser(
-      { width: 6, height: 4, wrap: false, neighborhood: 'vonNeumann' },
+      { width: 6, height: 4, periodic: false, neighborhood: 'vonNeumann' },
       0.7,
     );
     grid.at(0, 0)!.amount = 50;

@@ -7,7 +7,7 @@ import { Array2D, Array2DMoore } from './array2d';
 import { Singleton } from './list';
 import { wireSmallWorld, type SmallWorldOptions } from './small-world';
 
-function lattice(wrap: boolean, options: SmallWorldOptions, seed = 2): Array2D<HostCell> {
+function lattice(periodic: boolean, options: SmallWorldOptions, seed = 2): Array2D<HostCell> {
   const root = new RootScape(
     {
       name: 'small world',
@@ -18,7 +18,7 @@ function lattice(wrap: boolean, options: SmallWorldOptions, seed = 2): Array2D<H
             name: 'g',
             space: new Array2DMoore<HostCell>(),
             extent: [8, 8],
-            periodic: wrap,
+            periodic: periodic,
           }),
         );
         s.add(new Scape({ name: 'wiring', space: new Singleton() })).addInitialRule('wire', () =>
