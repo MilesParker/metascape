@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Curation } from '@metascape/spec';
-import { fromMetaabm as fromFormat } from '../amp/metaabm';
+import { fromMetaabm as fromFormat } from '../format-model';
 import { life } from './life';
 import source from './Life.model.json';
 

@@ -2,7 +2,7 @@
 import type { Model } from '@metascape/engine';
 import type { Curation } from '@metascape/spec';
 import { defineFamily } from '../../catalog';
-import { fromMetaabm as fromFormat } from '../../amp/metaabm';
+import { fromMetaabm as fromFormat } from '../../format-model';
 import abSource from './ABDiffusion.model.json';
 import abcSource from './ABCDiffusion.model.json';
 import abcdefSource from './ABCDEFDiffusion.model.json';
