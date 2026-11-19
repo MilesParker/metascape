@@ -53,7 +53,7 @@ function gridModel(
         kind: 'grid',
         label: 'Grid',
         neighborhood,
-        borderRule: periodic ? 'periodic' : 'sticky',
+        borderRule: periodic ? 'periodic' : 'aperiodic',
         dimensions: ['width', 'height'],
         attributes: {
           width: { type: 'integer', default: 9 },

@@ -990,14 +990,14 @@ class Translator {
     const borderText = reader.attr('borderRule');
     let borderRule: BorderRule | undefined;
     if (borderText === 'PERIODIC') borderRule = 'periodic';
-    else if (borderText === 'STICKY') borderRule = 'sticky';
+    else if (borderText === 'STICKY') borderRule = 'aperiodic';
     else if (borderText === 'STRICT' || borderText === 'BOUNCY') {
-      borderRule = 'sticky';
+      borderRule = 'aperiodic';
       this.report(
         node,
         'note',
         'dropped',
-        `The border rule ${borderText} is only in Repast. The space is sticky.`,
+        `The border rule ${borderText} is only in Repast, and obsolete in AMF. The space is aperiodic.`,
         'borderRule',
       );
     } else if (borderText !== undefined) {

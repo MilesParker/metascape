@@ -1232,7 +1232,7 @@
         "periodic": {
           "type": "boolean",
           "label": "Periodic",
-          "description": "Make the lattice periodic, so that neighbourhoods are taken modulo its size; otherwise cells beyond the edge are dead. It sets the lattice's border rule: periodic while true, sticky while false.",
+          "description": "Make the lattice periodic, so that neighbourhoods are taken modulo its size; otherwise cells beyond the edge are dead. It sets the lattice's border rule: periodic while true, aperiodic while false.",
           "default": true
         }
       }

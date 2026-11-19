@@ -323,7 +323,7 @@
       "kind": "grid",
       "label": "Lattice",
       "description": "A 60 by 60 lattice with a Moore neighbourhood and hard edges (not periodic, since the legacy Array2DSmallWorld is built without a geometry).",
-      "borderRule": "sticky",
+      "borderRule": "aperiodic",
       "neighborhood": "moore",
       "dimensions": ["width", "height"],
       "attributes": {

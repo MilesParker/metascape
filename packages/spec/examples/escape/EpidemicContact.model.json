@@ -1194,7 +1194,7 @@
       "kind": "grid",
       "label": "City",
       "pluralLabel": "Citys",
-      "borderRule": "sticky",
+      "borderRule": "aperiodic",
       "neighborhood": "euclidean",
       "dimensions": [
         "width",

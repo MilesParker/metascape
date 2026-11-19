@@ -211,11 +211,11 @@ export class GridInstance extends SpaceInstance {
    */
   get ranks(): LatticeRanks | undefined {
     if (this.#ranks === undefined) {
-      const { width, height, wrap } = this.grid;
-      const span = (n: number) => (wrap ? n : 2 * n - 1);
+      const { width, height, periodic } = this.grid;
+      const span = (n: number) => (periodic ? n : 2 * n - 1);
       this.#ranks =
         span(width) * span(height) <= MAX_RANK_OFFSETS
-          ? LatticeRanks.covering(width, height, wrap, this.metric)
+          ? LatticeRanks.covering(width, height, periodic, this.metric)
           : null;
     }
     return this.#ranks ?? undefined;

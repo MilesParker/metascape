@@ -46,7 +46,7 @@ export class LifeCell extends Cell {
 }
 
 /**
- * Conway's Game of Life on a lattice that is periodic or has sticky edges.
+ * Conway's Game of Life on a lattice that is periodic or aperiodic.
  *
  * Updating is synchronous: every cell computes its next state from the current
  * states in `execute`, and all cells switch in `update`.

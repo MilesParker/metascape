@@ -141,14 +141,17 @@ export type Attribute = ValueAttribute | StateAttribute;
 // ───────────────────────────── Spaces ─────────────────────────────
 
 /**
- * What happens at the edge of a space: `periodic` wraps around, `sticky` stops
- * at the edge. MetaABM's strict and bouncy rules are Repast-only and dropped.
+ * Whether a space is periodic (its edges are connected, so positions and
+ * neighbourhoods are taken modulo its size) or aperiodic (it has an edge, where
+ * positions stop), as Ascape's `periodic` flag has it. MetaABM's `PERIODIC` and
+ * `STICKY`, which AMF's editor labels APERIODIC; its strict and bouncy rules are
+ * Repast's, marked obsolete in AMF, and dropped.
  */
-export type BorderRule = 'periodic' | 'sticky';
+export type BorderRule = 'periodic' | 'aperiodic';
 
 /**
  * A space's border rule: fixed, as MetaABM has it, or `periodic` while one of
- * the space's own boolean attributes is true and `sticky` while it is false,
+ * the space's own boolean attributes is true and `aperiodic` while it is false,
  * as Ascape's `periodic` flag is set from a model's parameter (Life's Periodic).
  * An extension of MetaABM, read when the space is built, as its sizes are.
  */
@@ -171,7 +174,7 @@ interface DimensionalSpace extends SpaceBase {
    * of this list.
    */
   dimensions: AttributeId[];
-  /** Default `sticky`. */
+  /** Default `aperiodic`. */
   borderRule?: BorderRuleSetting | undefined;
 }
 

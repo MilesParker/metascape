@@ -147,7 +147,7 @@ const everything: Model = {
     plane: {
       kind: 'continuous',
       dimensions: ['w'],
-      borderRule: 'sticky',
+      borderRule: 'aperiodic',
       attributes: { w: { type: 'real' } },
     },
     links: { kind: 'network', directed: true },

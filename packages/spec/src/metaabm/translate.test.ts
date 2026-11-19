@@ -206,7 +206,7 @@ describe('translateMetaabm', () => {
     const strict = grid('borderRule="STRICT"');
     expect(strict.model?.spaces?.['grid']).toMatchObject({
       kind: 'grid',
-      borderRule: 'sticky',
+      borderRule: 'aperiodic',
       neighborhood: 'euclidean',
       dimensions: ['width', 'height'],
     });

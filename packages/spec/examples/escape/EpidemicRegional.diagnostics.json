@@ -141,7 +141,7 @@
     "path": "//@agents[ID='city']/@projections[ID='map']/@borderRule",
     "severity": "note",
     "kind": "dropped",
-    "message": "The border rule STRICT is only in Repast. The space is sticky."
+    "message": "The border rule STRICT is only in Repast, and obsolete in AMF. The space is aperiodic."
   },
   {
     "path": "//@agents[ID='regionalLocation']/@implementation",

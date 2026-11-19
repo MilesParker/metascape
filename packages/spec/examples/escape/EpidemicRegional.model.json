@@ -1501,7 +1501,7 @@
           "kind": "grid",
           "label": "Map",
           "pluralLabel": "Maps",
-          "borderRule": "sticky",
+          "borderRule": "aperiodic",
           "neighborhood": "moore",
           "dimensions": [
             "width",

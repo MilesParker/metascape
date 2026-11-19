@@ -43,7 +43,7 @@ that effect is small at ABC's payoffs.
    with `location2D`, 13 selects) are in. The coded model's parameter for a periodic lattice was
    missing at first, since a format lattice's border rule was fixed in the model. Added afterwards
    (2026-11-18): a space's border rule can be set by one of its own boolean attributes, periodic
-   while true and sticky while false, so the lattice has a Periodic parameter, as the coded model
+   while true and aperiodic while false, so the lattice has a Periodic parameter, as the coded model
    now does too (it was called Wrap). With Periodic off, a glider crashes cell for cell as in the
    coded model, and the "Edges that kill" exploration is kept.
    The R-pentomino option is `rPentomino`, as an option ID has no hyphen.

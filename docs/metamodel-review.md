@@ -74,7 +74,7 @@ decided for each, under [Review items](#review-items); the owner decided the las
 | `SContext` (`agents`, `projections`, `valueLayers`, `library`) | context: everything an agent has, plus `agents` (which may include contexts), `projections`, `library` | The root of a model is a context, as in Ascape where the model is the root scape. Nesting fixes the "agents that own their own scapes" gap (EpidemicRegional).                                |
 | `SProjection`                                                  | projection, with `attributes`                                                                          | Projections have attributes, which hold their sizes (`width`, `height`).                                                                                                                      |
 | `SNDimensional` (`dimensionality`, `borderRule`)               | `dimensions` (ordered size attributes), `borderRule`                                                   | Dimensionality is the number of size attributes (**R3**).                                                                                                                                     |
-| `SBorderRule`                                                  | `periodic`, `sticky`                                                                                   | Strict and bouncy are Repast-only and dropped (**R6**).                                                                                                                                       |
+| `SBorderRule`                                                  | `periodic`, `aperiodic`                                                                                | Strict and bouncy are Repast-only and dropped (**R6**).                                                                                                                                       |
 | `SContinuousSpace`                                             | continuous space                                                                                       |                                                                                                                                                                                               |
 | `SGrid` (`multiOccupant`, `neighborhood`)                      | grid                                                                                                   | `neighborhood`: `euclidean`, `moore`, `vonNeumann`. Euclidean is new compared with the earlier format.                                                                                        |
 | `SNetwork` (`directed`)                                        | network                                                                                                |                                                                                                                                                                                               |
@@ -230,14 +230,18 @@ have been composability (a group of behaviour reused elsewhere); neither the gui
 generators define that, so it is left for later and the structure keeps the door open.
 
 **R6. Border rules.** _Decided:_ strict and bouncy are Repast distinctions and are dropped. A
-border rule is `periodic` or `sticky`; the translation maps `STRICT` and `BOUNCY` to `sticky` with a
+border rule is `periodic` or `aperiodic`: the translation maps `STICKY`, which AMF's editor labels
+APERIODIC, to `aperiodic`, and `STRICT` and `BOUNCY`, which it marks obsolete, to `aperiodic` with a
 note. Extension (2026-11-18): MetaABM fixes a space's border rule, but Ascape's coded models make it
 a parameter (Life's Periodic sets the lattice's `periodic`). So `borderRule` may instead be
 `{ periodic }`, naming one of the space's own boolean attributes: the space is periodic while it is
-true and sticky while it is false, read when the space is built, as its sizes are. The border stays
-the space's own setting rather than something the acts work around. A lattice whose movement and
-neighbourhoods are modulo its size is called periodic throughout (owner, 2026-11-18), never
-wrapped or a torus.
+true and aperiodic while it is false, read when the space is built, as its sizes are. The border stays
+the space's own setting rather than something the acts work around. In names (parameters, options,
+format values, identifiers) a space whose movement and neighbourhoods are modulo its size is
+periodic, and otherwise aperiodic (owner, 2026-11-18); descriptions and documentation may also say
+torus or ring where that helps a reader. What happens at an aperiodic edge is a separate question:
+Ascape clamps a position to the edge, and no Ascape model bounces. If a model needs bouncing, it is
+arguably something its agents do rather than a property of the space (owner, 2026-11-18; open).
 
 **R7. Unused metaclasses.** _Decided:_ geography, value layers, shaped and loaded agents, and
 build geography stay in the format so the translation is complete; the checker says "not supported

@@ -553,7 +553,7 @@ class Checker {
       } else if (attribute.type !== 'boolean') {
         this.error(
           at,
-          `The border rule's \`${rule.periodic}\` must be a boolean: the space is periodic while it is true and sticky while it is false. It is ${describeAttributeType(attribute)}.`,
+          `The border rule's \`${rule.periodic}\` must be a boolean: the space is periodic while it is true and aperiodic while it is false. It is ${describeAttributeType(attribute)}.`,
         );
       }
     }

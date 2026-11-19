@@ -105,7 +105,7 @@ function gridModel(bugActs: Record<string, Act>, options: GridOptions = {}): Mod
         kind: 'grid',
         label: 'Grid',
         neighborhood: options.neighborhood ?? 'moore',
-        borderRule: options.periodic === false ? 'sticky' : 'periodic',
+        borderRule: options.periodic === false ? 'aperiodic' : 'periodic',
         dimensions: ['width', 'height'],
         attributes: {
           width: { type: 'integer', default: options.width ?? 5 },

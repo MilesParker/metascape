@@ -103,7 +103,7 @@ function neighbours(execution: 'interpreted' | 'generated', parameters: object =
 describe.each(['interpreted', 'generated'] as const)(
   'a border rule set by a parameter, %s',
   (execution) => {
-    it('is periodic while the attribute is true, and sticky while it is false', () => {
+    it('is periodic while the attribute is true, and aperiodic while it is false', () => {
       expect(neighbours(execution)).toBe(8);
       expect(neighbours(execution, { 'grid.periodic': false })).toBe(3);
       expect(neighbours(execution, { 'grid.periodic': true })).toBe(8);
