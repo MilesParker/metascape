@@ -138,9 +138,9 @@ First batch (2026-11-18, `docs/format-pilot/easy-models.md`): Simple, the three 
 models, the introductory Game of Life and the Diffusion models (AB, ABC, ABCDEF, with Big ABCDEF and its
 black-and-white version as catalogue entries of ABCDEF) are format models, pure spec, with their
 port's and the legacy Java's comments in their descriptions, each compared with its port over many
-seeds. The introductory Life gained its Wrap parameter afterwards. Kept apart from full
-equivalence: ConwayLifeSmallWorld lacks the port's rewiring parameters (see the gaps below), so that
-port cannot yet be retired; the Diffusion charts count the cells of each action over the whole lattice,
+seeds. Kept apart from full equivalence: the introductory Life has no Wrap parameter, and
+ConwayLifeSmallWorld lacks the port's rewiring parameters (see the gaps below), so those two ports
+cannot yet be retired; the Diffusion charts count the cells of each action over the whole lattice,
 not by halves. Still to come: Norms, Traffic, Coordination 1/2/4 and Prisoner's Dilemma.
 
 Open for the owner:
@@ -198,11 +198,11 @@ Gaps found, to fill when a model needs them (D4):
 - found by the first batch: an execution setting for how many agents act in a period (Diffusion's
   repeated draw of 25 cells is a chance per cell; Classes found the same); `cause` of an act of
   another agent type (it reaches only the causing agent's own acts); a border rule as a parameter
-  (the introductory Life's Wrap, now done by coordinates); counting the agents that have two attributes at once, for a chart
+  (the introductory Life's Wrap); counting the agents that have two attributes at once, for a chart
   (Diffusion's cells of an action in a half of the lattice); a small-world network generator also
-  for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`. Fixed since: an evaluate on a
-  select's candidates that fed its queries made the select choose one candidate there, giving zero
-  counts and a slow search; it is now worked out on each candidate.
+  for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`; and an interpreter problem to look at,
+  where an evaluate on the candidates of a select, or an `any` act inside a selection, gives
+  wrong results (zero counts) and a 50-times slowdown with no diagnostic.
 
 Writing the JSON by hand is slow and error-prone: both Civil Violence and Sugarscape were written
 by throwaway scripts that generated the files. This is a cost of the whole effort until a model
