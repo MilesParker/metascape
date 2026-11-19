@@ -1,0 +1,1233 @@
+{
+  "schemaVersion": 2,
+  "id": "life",
+  "label": "Game of Life",
+  "description": "John Conway's Game of Life (Martin Gardner, Scientific American, October 1970): a two-dimensional cellular automaton in which a live cell survives with two or three live neighbors and a dead cell comes alive with exactly three. Simple local rules produce oscillators, gliders that travel across the lattice and long-lived chaotic growth, and it is the standard demonstration of emergence in agent-based systems. Updating is synchronous: every cell counts its live neighbours (the Count rule) before any cell changes (the Update rule). The lattice is a torus; the start is a random soup or a known pattern in the middle. Departures from the coded model this was written from: the coded model's Wrap parameter, which makes the edges of the lattice kill, is not carried, since a lattice's edge rule is fixed in the format model, and a selection of neighbours cannot be narrowed by their coordinates (see ConwayLifeSmallWorld in the Conway's Life models, which has hard edges); the pattern parameter's option is rPentomino, not r-pentomino, since option IDs have no hyphen; and the width and the height are parameters of the lattice.",
+  "language": "typescript",
+  "attributes": {
+    "density": {
+      "type": "real",
+      "label": "Density",
+      "description": "Probability that a cell starts alive (random pattern only).",
+      "default": 0.3,
+      "min": 0,
+      "max": 1
+    },
+    "pattern": {
+      "type": "state",
+      "label": "Pattern",
+      "description": "Starting configuration: random soup, or a known pattern in the middle.",
+      "options": {
+        "random": {
+          "label": "Random"
+        },
+        "glider": {
+          "label": "Glider"
+        },
+        "blinker": {
+          "label": "Blinker"
+        },
+        "rPentomino": {
+          "label": "R-pentomino"
+        }
+      },
+      "defaultOption": "random"
+    }
+  },
+  "acts": {
+    "setUp": {
+      "kind": "build",
+      "label": "Set up",
+      "description": "Builds the lattice with a dead cell in every site, then, for a named starting pattern, brings its cells to life in the middle of the lattice.",
+      "targets": ["fillLattice", "originX"]
+    },
+    "fillLattice": {
+      "kind": "buildGrid",
+      "label": "Fill lattice",
+      "selected": "setUp",
+      "agents": [],
+      "space": "world",
+      "fillAgent": "cell"
+    },
+    "originX": {
+      "kind": "evaluate",
+      "label": "Pattern column",
+      "description": "The column of the pattern's top left corner: half the width, rounded down, less one (so a pattern of three cells across is centred). The pattern's cells are placed relative to it.",
+      "selected": "setUp",
+      "function": "div",
+      "inputs": [
+        {
+          "attribute": "world.width"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["originXLess"]
+    },
+    "originXLess": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "decrement",
+      "inputs": [
+        {
+          "evaluate": "originX"
+        }
+      ],
+      "targets": ["originY"]
+    },
+    "originY": {
+      "kind": "evaluate",
+      "label": "Pattern row",
+      "description": "The row of the pattern's top left corner: half the height, rounded down, less one.",
+      "selected": "setUp",
+      "function": "div",
+      "inputs": [
+        {
+          "attribute": "world.height"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["originYLess"]
+    },
+    "originYLess": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "decrement",
+      "inputs": [
+        {
+          "evaluate": "originY"
+        }
+      ],
+      "targets": ["is_glider", "is_blinker", "is_rPentomino"]
+    },
+    "is_glider": {
+      "kind": "query",
+      "selected": "setUp",
+      "function": "equal",
+      "inputs": [
+        {
+          "attribute": "pattern"
+        },
+        {
+          "option": "pattern.glider"
+        }
+      ],
+      "description": "Whether the starting pattern is the glider. Its cells, as offsets (column, row) from the pattern's corner: (1, 0), (2, 1), (0, 2), (1, 2), (2, 2).",
+      "targets": ["glider_x0"]
+    },
+    "glider_x0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["glider_y0"]
+    },
+    "glider_y0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["glider_cell0"]
+    },
+    "glider_cell0": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["glider_at0"]
+    },
+    "glider_at0": {
+      "kind": "query",
+      "selected": "glider_cell0",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "glider_x0"
+        },
+        {
+          "evaluate": "glider_y0"
+        }
+      ],
+      "targets": ["glider_live0"]
+    },
+    "glider_live0": {
+      "kind": "set",
+      "selected": "glider_cell0",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["glider_x1"]
+    },
+    "glider_x1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["glider_y1"]
+    },
+    "glider_y1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["glider_cell1"]
+    },
+    "glider_cell1": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["glider_at1"]
+    },
+    "glider_at1": {
+      "kind": "query",
+      "selected": "glider_cell1",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "glider_x1"
+        },
+        {
+          "evaluate": "glider_y1"
+        }
+      ],
+      "targets": ["glider_live1"]
+    },
+    "glider_live1": {
+      "kind": "set",
+      "selected": "glider_cell1",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["glider_x2"]
+    },
+    "glider_x2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["glider_y2"]
+    },
+    "glider_y2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["glider_cell2"]
+    },
+    "glider_cell2": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["glider_at2"]
+    },
+    "glider_at2": {
+      "kind": "query",
+      "selected": "glider_cell2",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "glider_x2"
+        },
+        {
+          "evaluate": "glider_y2"
+        }
+      ],
+      "targets": ["glider_live2"]
+    },
+    "glider_live2": {
+      "kind": "set",
+      "selected": "glider_cell2",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["glider_x3"]
+    },
+    "glider_x3": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["glider_y3"]
+    },
+    "glider_y3": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["glider_cell3"]
+    },
+    "glider_cell3": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["glider_at3"]
+    },
+    "glider_at3": {
+      "kind": "query",
+      "selected": "glider_cell3",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "glider_x3"
+        },
+        {
+          "evaluate": "glider_y3"
+        }
+      ],
+      "targets": ["glider_live3"]
+    },
+    "glider_live3": {
+      "kind": "set",
+      "selected": "glider_cell3",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["glider_x4"]
+    },
+    "glider_x4": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["glider_y4"]
+    },
+    "glider_y4": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["glider_cell4"]
+    },
+    "glider_cell4": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["glider_at4"]
+    },
+    "glider_at4": {
+      "kind": "query",
+      "selected": "glider_cell4",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "glider_x4"
+        },
+        {
+          "evaluate": "glider_y4"
+        }
+      ],
+      "targets": ["glider_live4"]
+    },
+    "glider_live4": {
+      "kind": "set",
+      "selected": "glider_cell4",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      }
+    },
+    "is_blinker": {
+      "kind": "query",
+      "selected": "setUp",
+      "function": "equal",
+      "inputs": [
+        {
+          "attribute": "pattern"
+        },
+        {
+          "option": "pattern.blinker"
+        }
+      ],
+      "description": "Whether the starting pattern is the blinker. Its cells, as offsets (column, row) from the pattern's corner: (0, 0), (1, 0), (2, 0).",
+      "targets": ["blinker_x0"]
+    },
+    "blinker_x0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["blinker_y0"]
+    },
+    "blinker_y0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["blinker_cell0"]
+    },
+    "blinker_cell0": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["blinker_at0"]
+    },
+    "blinker_at0": {
+      "kind": "query",
+      "selected": "blinker_cell0",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "blinker_x0"
+        },
+        {
+          "evaluate": "blinker_y0"
+        }
+      ],
+      "targets": ["blinker_live0"]
+    },
+    "blinker_live0": {
+      "kind": "set",
+      "selected": "blinker_cell0",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["blinker_x1"]
+    },
+    "blinker_x1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["blinker_y1"]
+    },
+    "blinker_y1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["blinker_cell1"]
+    },
+    "blinker_cell1": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["blinker_at1"]
+    },
+    "blinker_at1": {
+      "kind": "query",
+      "selected": "blinker_cell1",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "blinker_x1"
+        },
+        {
+          "evaluate": "blinker_y1"
+        }
+      ],
+      "targets": ["blinker_live1"]
+    },
+    "blinker_live1": {
+      "kind": "set",
+      "selected": "blinker_cell1",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["blinker_x2"]
+    },
+    "blinker_x2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["blinker_y2"]
+    },
+    "blinker_y2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["blinker_cell2"]
+    },
+    "blinker_cell2": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["blinker_at2"]
+    },
+    "blinker_at2": {
+      "kind": "query",
+      "selected": "blinker_cell2",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "blinker_x2"
+        },
+        {
+          "evaluate": "blinker_y2"
+        }
+      ],
+      "targets": ["blinker_live2"]
+    },
+    "blinker_live2": {
+      "kind": "set",
+      "selected": "blinker_cell2",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      }
+    },
+    "is_rPentomino": {
+      "kind": "query",
+      "selected": "setUp",
+      "function": "equal",
+      "inputs": [
+        {
+          "attribute": "pattern"
+        },
+        {
+          "option": "pattern.rPentomino"
+        }
+      ],
+      "description": "Whether the starting pattern is the r-pentomino. Its cells, as offsets (column, row) from the pattern's corner: (1, 0), (2, 0), (0, 1), (1, 1), (1, 2).",
+      "targets": ["rPentomino_x0"]
+    },
+    "rPentomino_x0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["rPentomino_y0"]
+    },
+    "rPentomino_y0": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["rPentomino_cell0"]
+    },
+    "rPentomino_cell0": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["rPentomino_at0"]
+    },
+    "rPentomino_at0": {
+      "kind": "query",
+      "selected": "rPentomino_cell0",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "rPentomino_x0"
+        },
+        {
+          "evaluate": "rPentomino_y0"
+        }
+      ],
+      "targets": ["rPentomino_live0"]
+    },
+    "rPentomino_live0": {
+      "kind": "set",
+      "selected": "rPentomino_cell0",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["rPentomino_x1"]
+    },
+    "rPentomino_x1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["rPentomino_y1"]
+    },
+    "rPentomino_y1": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["rPentomino_cell1"]
+    },
+    "rPentomino_cell1": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["rPentomino_at1"]
+    },
+    "rPentomino_at1": {
+      "kind": "query",
+      "selected": "rPentomino_cell1",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "rPentomino_x1"
+        },
+        {
+          "evaluate": "rPentomino_y1"
+        }
+      ],
+      "targets": ["rPentomino_live1"]
+    },
+    "rPentomino_live1": {
+      "kind": "set",
+      "selected": "rPentomino_cell1",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["rPentomino_x2"]
+    },
+    "rPentomino_x2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 0
+        }
+      ],
+      "targets": ["rPentomino_y2"]
+    },
+    "rPentomino_y2": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["rPentomino_cell2"]
+    },
+    "rPentomino_cell2": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["rPentomino_at2"]
+    },
+    "rPentomino_at2": {
+      "kind": "query",
+      "selected": "rPentomino_cell2",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "rPentomino_x2"
+        },
+        {
+          "evaluate": "rPentomino_y2"
+        }
+      ],
+      "targets": ["rPentomino_live2"]
+    },
+    "rPentomino_live2": {
+      "kind": "set",
+      "selected": "rPentomino_cell2",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["rPentomino_x3"]
+    },
+    "rPentomino_x3": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["rPentomino_y3"]
+    },
+    "rPentomino_y3": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["rPentomino_cell3"]
+    },
+    "rPentomino_cell3": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["rPentomino_at3"]
+    },
+    "rPentomino_at3": {
+      "kind": "query",
+      "selected": "rPentomino_cell3",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "rPentomino_x3"
+        },
+        {
+          "evaluate": "rPentomino_y3"
+        }
+      ],
+      "targets": ["rPentomino_live3"]
+    },
+    "rPentomino_live3": {
+      "kind": "set",
+      "selected": "rPentomino_cell3",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      },
+      "targets": ["rPentomino_x4"]
+    },
+    "rPentomino_x4": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originXLess"
+        },
+        {
+          "literal": 1
+        }
+      ],
+      "targets": ["rPentomino_y4"]
+    },
+    "rPentomino_y4": {
+      "kind": "evaluate",
+      "selected": "setUp",
+      "function": "add",
+      "inputs": [
+        {
+          "evaluate": "originYLess"
+        },
+        {
+          "literal": 2
+        }
+      ],
+      "targets": ["rPentomino_cell4"]
+    },
+    "rPentomino_cell4": {
+      "kind": "select",
+      "selected": "setUp",
+      "agent": "cell",
+      "space": "world",
+      "targets": ["rPentomino_at4"]
+    },
+    "rPentomino_at4": {
+      "kind": "query",
+      "selected": "rPentomino_cell4",
+      "function": "location2D",
+      "inputs": [
+        {
+          "evaluate": "rPentomino_x4"
+        },
+        {
+          "evaluate": "rPentomino_y4"
+        }
+      ],
+      "targets": ["rPentomino_live4"]
+    },
+    "rPentomino_live4": {
+      "kind": "set",
+      "selected": "rPentomino_cell4",
+      "attribute": "cell.on",
+      "parameter": {
+        "constant": "true"
+      }
+    }
+  },
+  "agents": {
+    "cell": {
+      "kind": "agent",
+      "label": "Cell",
+      "pluralLabel": "Cells",
+      "description": "A site of the lattice: alive or dead.",
+      "attributes": {
+        "on": {
+          "type": "boolean",
+          "label": "Alive",
+          "description": "Whether the cell is alive.",
+          "gatherData": true
+        },
+        "live": {
+          "type": "integer",
+          "label": "Live neighbours",
+          "description": "The live neighbours the cell counted in the latest Count rule."
+        }
+      },
+      "acts": {
+        "seed": {
+          "kind": "initialize",
+          "label": "Seed",
+          "space": "world",
+          "description": "In the random start, the cell is alive with the probability of the density; with a named pattern, every cell starts dead and the pattern was placed when the model was built.",
+          "targets": ["isRandom"]
+        },
+        "isRandom": {
+          "kind": "query",
+          "selected": "seed",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "pattern"
+            },
+            {
+              "option": "pattern.random"
+            }
+          ],
+          "targets": ["draw"]
+        },
+        "draw": {
+          "kind": "evaluate",
+          "selected": "seed",
+          "function": "randomUnit",
+          "targets": ["drawnAlive"]
+        },
+        "drawnAlive": {
+          "kind": "query",
+          "selected": "seed",
+          "function": "lesser",
+          "inputs": [
+            {
+              "evaluate": "draw"
+            },
+            {
+              "attribute": "density"
+            }
+          ],
+          "targets": ["setAlive"]
+        },
+        "setAlive": {
+          "kind": "set",
+          "selected": "seed",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "true"
+          }
+        },
+        "count": {
+          "kind": "rule",
+          "label": "Count",
+          "space": "world",
+          "description": "First half of a synchronous update: each cell counts its live neighbours and keeps the count, without changing state, so the count does not depend on the order cells run in.",
+          "targets": ["clearCount", "neighbors"]
+        },
+        "clearCount": {
+          "kind": "set",
+          "selected": "count",
+          "attribute": "cell.live",
+          "parameter": {
+            "constant": "zero"
+          }
+        },
+        "neighbors": {
+          "kind": "select",
+          "selected": "count",
+          "agent": "cell",
+          "space": "world",
+          "description": "Every neighbouring cell (the eight of a Moore neighbourhood) that is alive: each adds one to the count.",
+          "targets": ["neighbor", "everyNeighbor", "neighborAlive"]
+        },
+        "neighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "neighbor",
+          "targets": ["liveNeighbors"]
+        },
+        "everyNeighbor": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "all",
+          "targets": ["liveNeighbors"]
+        },
+        "neighborAlive": {
+          "kind": "query",
+          "selected": "neighbors",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "cell.on"
+            }
+          ],
+          "targets": ["liveNeighbors"]
+        },
+        "liveNeighbors": {
+          "kind": "all",
+          "selected": "neighbors",
+          "targets": ["oneMore"]
+        },
+        "oneMore": {
+          "kind": "evaluate",
+          "selected": "count",
+          "function": "increment",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            }
+          ],
+          "targets": ["setCount"]
+        },
+        "setCount": {
+          "kind": "set",
+          "selected": "count",
+          "attribute": "cell.live",
+          "parameter": {
+            "evaluate": "oneMore"
+          }
+        },
+        "update": {
+          "kind": "rule",
+          "label": "Update",
+          "space": "world",
+          "description": "Second half of the update: every cell takes its next state at once, after all have counted. The three rules of Life: a live cell with two or three live neighbours survives, a dead cell with exactly three comes alive, and every other cell is dead. Written as: alive with three, or alive with two if it was alive already.",
+          "targets": ["three", "alive", "two"]
+        },
+        "three": {
+          "kind": "query",
+          "selected": "update",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            },
+            {
+              "literal": 3
+            }
+          ],
+          "targets": ["lives", "dies"]
+        },
+        "alive": {
+          "kind": "query",
+          "selected": "update",
+          "function": "identity",
+          "inputs": [
+            {
+              "attribute": "cell.on"
+            }
+          ],
+          "targets": ["survives"]
+        },
+        "two": {
+          "kind": "query",
+          "selected": "update",
+          "function": "equal",
+          "inputs": [
+            {
+              "attribute": "cell.live"
+            },
+            {
+              "literal": 2
+            }
+          ],
+          "targets": ["survives"]
+        },
+        "survives": {
+          "kind": "all",
+          "selected": "update",
+          "targets": ["lives", "dies"]
+        },
+        "lives": {
+          "kind": "any",
+          "selected": "update",
+          "targets": ["setOn"]
+        },
+        "dies": {
+          "kind": "none",
+          "selected": "update",
+          "targets": ["setOff"]
+        },
+        "setOn": {
+          "kind": "set",
+          "selected": "update",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "true"
+          }
+        },
+        "setOff": {
+          "kind": "set",
+          "selected": "update",
+          "attribute": "cell.on",
+          "parameter": {
+            "constant": "false"
+          }
+        }
+      },
+      "execution": {
+        "randomOrder": false
+      },
+      "styles": {
+        "cellStyle": {
+          "kind": "2d",
+          "label": "Cell Style",
+          "description": "Alive cells are green, dead cells dark.",
+          "acts": {
+            "look": {
+              "kind": "rule",
+              "space": "world",
+              "targets": ["isAlive"]
+            },
+            "isAlive": {
+              "kind": "query",
+              "selected": "look",
+              "function": "identity",
+              "inputs": [
+                {
+                  "attribute": "cell.on"
+                }
+              ],
+              "targets": ["green", "isDead"]
+            },
+            "isDead": {
+              "kind": "none",
+              "selected": "look",
+              "targets": ["dark"]
+            },
+            "green": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.247,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.643,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.357,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillGreen"]
+            },
+            "fillGreen": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            },
+            "dark": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "colorRGB",
+              "inputs": [
+                {
+                  "literal": 0.094,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.11,
+                  "type": "real"
+                },
+                {
+                  "literal": 0.133,
+                  "type": "real"
+                }
+              ],
+              "targets": ["fillDark"]
+            },
+            "fillDark": {
+              "kind": "evaluate",
+              "selected": "look",
+              "function": "graphicFill"
+            }
+          }
+        }
+      }
+    }
+  },
+  "spaces": {
+    "world": {
+      "kind": "grid",
+      "label": "Lattice",
+      "description": "A lattice with a Moore neighbourhood (the eight surrounding cells), joined at the edges into a torus.",
+      "borderRule": "periodic",
+      "neighborhood": "moore",
+      "dimensions": ["width", "height"],
+      "attributes": {
+        "width": {
+          "type": "integer",
+          "label": "Width",
+          "description": "Number of columns.",
+          "default": 60,
+          "min": 3,
+          "max": 400
+        },
+        "height": {
+          "type": "integer",
+          "label": "Height",
+          "description": "Number of rows.",
+          "default": 60,
+          "min": 3,
+          "max": 400
+        }
+      }
+    }
+  }
+}
