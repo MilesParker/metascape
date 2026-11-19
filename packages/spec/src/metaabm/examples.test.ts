@@ -228,12 +228,11 @@ describe('the AMF test models', () => {
       diagnostics.filter((d) => d.kind === 'unsupported' && d.severity === 'warning'),
     ).toHaveLength(2);
     // The queries using the arrays name withinBoundaries, which is left out of the library with
-    // arrays; and two sets read an evaluate that is not upstream of them, as the original has them.
+    // arrays. Two sets read an evaluate that is not upstream of them, as the original has them,
+    // which is not an error: an evaluate named in an input is worked out where it is named.
     expect(errors('TestSpatial')).toEqual([
       'agents.complexMovementAgent.acts.testParallelRootWithin2DBoundary_WithinSpace_Query.function',
       'agents.complexMovementAgent.acts.testParallelRootWithin2DBoundary_WithinSpace_QueryCopy.function',
-      'agents.complexMovementAgent.acts.setResultToTestParallelRootResultAddUnitCopy.parameter.evaluate',
-      'agents.complexMovementAgent.acts.setResultToTestParallelRootResultAddUnitCopyCopy.parameter.evaluate',
       'agents.complexLocation.acts.selfAvailableWithinCopy.function',
       'agents.complexLocation.acts.testSelfWithinBoundsWithin2DBoundary_GoodBoundary_Query.function',
     ]);

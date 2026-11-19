@@ -69,11 +69,15 @@ that effect is small at ABC's payoffs.
 - **`cause` reaches only acts of the causing agent's own type**, so a rule of one agent cannot make
   agents of another type perform. Checked by the model checker, which says so.
 - **A selection cannot be narrowed by comparing coordinates, and logic inside a selection is
-  unreliable.** In a select of neighbours, an evaluate on the candidates (`locationX` and the like,
-  differenced from the chooser's) followed by a comparison query, and an `any` act joining queries,
-  both gave a count of zero and a model 50 times slower, with no diagnostic and the same result
-  interpreted and generated. A plain `any` of one query did the same. This made the Wrap parameter
-  impossible; worth a look at the interpreter's selection exits.
+  unreliable** (resolved 2026-11-18: a misreading, not a fault). The evaluates were placed in the
+  flow between the select and the queries, which puts them on the path after the choice: the
+  select chose one candidate there and the queries filtered that one, as in AMF. The checker
+  required an evaluate to be upstream of the act that names it, which treated evaluates as
+  variables and left no other way to write it. An evaluate named in an input is now a reference,
+  worked out where it is named (`docs/metamodel-review.md`, "Evaluates are references"): a query
+  straight from the select names the candidate's column, with no flow into the evaluate. Tests in
+  `packages/spec/src/metamodel/selection-logic.test.ts`. The Wrap parameter is still not carried;
+  see the border rule below.
 - **Counting the members of an agent type that have two attributes at once** (curation): a chart of
   the cells playing an action in the upper half. The roadmap's "means over a qualified subset", for counts.
 - **A lattice's border rule as a parameter** (Wrap).

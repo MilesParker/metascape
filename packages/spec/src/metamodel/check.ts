@@ -658,6 +658,13 @@ class ActChecker {
   private readonly computing = new Set<ActRef>();
   /** The acts some root act's flow reaches. */
   private readonly reached = new Set<ActRef>();
+  /**
+   * The evaluates named in the inputs of acts that run, whether or not a flow
+   * reaches them: each is worked out where it is named (AMF's generator wrote
+   * an evaluate's expression into the act that named it, unless the evaluate
+   * was on the act's path).
+   */
+  private readonly named = new Set<ActRef>();
 
   constructor(
     private readonly checker: Checker,
@@ -1104,11 +1111,21 @@ class ActChecker {
         if (this.acts.has(target)) pending.push(target);
       }
     }
+    const naming = [...reached];
+    while (naming.length > 0) {
+      const act = this.acts.get(naming.pop()!)?.act;
+      for (const value of act ? valuesOf(act) : []) {
+        if (!('evaluate' in value) || this.named.has(value.evaluate)) continue;
+        if (this.acts.get(value.evaluate)?.act.kind !== 'evaluate') continue;
+        this.named.add(value.evaluate);
+        naming.push(value.evaluate);
+      }
+    }
     for (const info of this.acts.values()) {
-      if (reached.has(info.id)) continue;
+      if (reached.has(info.id) || this.named.has(info.id)) continue;
       this.checker.error(
         info.path,
-        'No root act is upstream of this act, so it never runs. Make it a target of an act in a flow that starts at a rule, initialize or other root act.',
+        'No root act is upstream of this act, so it never runs. Make it a target of an act in a flow that starts at a rule, initialize or other root act, or name it in an input of one that does.',
       );
     }
   }
@@ -1135,6 +1152,41 @@ class ActChecker {
     this.checker.error(path, `\`${ref}\` is not upstream of this act. ${what}`);
   }
 
+  /**
+   * Reports an evaluate named at `path` in an input of the act `id` that cannot
+   * be worked out there. An evaluate is a reference to a value of a
+   * relationship, not a variable: on the act's path it is the value worked out
+   * there, and elsewhere it is worked out where it is named, on what its
+   * selection is bound to there. So its selection, and those of the evaluates
+   * and attributes it reads, must be the act's own or upstream of it.
+   */
+  private requireBound(id: ActId, ref: ActId, path: Path, seen = new Set<ActId>()): void {
+    if (seen.has(ref)) return;
+    seen.add(ref);
+    const info = this.acts.get(ref);
+    if (!info || ref === id || this.upstream(id).has(ref)) return;
+    if (info.act.kind !== 'evaluate') return;
+    const bound = (selection: ActId | undefined) =>
+      selection === undefined || selection === id || this.upstream(id).has(selection);
+    const evaluate = info.act;
+    if (!bound(evaluate.selected)) {
+      this.checker.error(
+        path,
+        `\`${ref}\` works on \`${evaluate.selected}\`, which is not bound at this act. An evaluate named in an input is worked out where it is named, on what its selection is bound to there: its selection must be this act's or one upstream of it.`,
+      );
+      return;
+    }
+    for (const value of valuesOf(evaluate)) {
+      if ('evaluate' in value) this.requireBound(id, value.evaluate, path, seen);
+      else if ('attribute' in value && !bound(value.selected)) {
+        this.checker.error(
+          path,
+          `\`${ref}\` reads \`${value.attribute}\` of \`${value.selected}\`, which is not bound at this act.`,
+        );
+      }
+    }
+  }
+
   /** Selections and values must come from upstream: they are bound only on the flows that pass through them. */
   private checkFlow({ id, act, path }: ActInfo): void {
     // An act no flow reaches is already reported; what is upstream of it says nothing more.
@@ -1143,25 +1195,8 @@ class ActChecker {
     if ('selected' in act && act.selected !== undefined) {
       this.requireUpstream(id, act.selected, [...path, 'selected'], SELECTION);
     }
-    const values: [Value, Path][] = [];
-    if (act.kind === 'set') values.push([act.parameter, [...path, 'parameter']]);
-    if ((act.kind === 'create' || act.kind === 'load') && act.agentCount) {
-      values.push([act.agentCount, [...path, 'agentCount']]);
-    }
-    if (act.kind === 'query' || act.kind === 'evaluate') {
-      act.inputs?.forEach((input, index) => {
-        if (!('multiValue' in input)) values.push([input, [...path, 'inputs', index]]);
-      });
-    }
-    for (const [value, at] of values) {
-      if ('evaluate' in value) {
-        this.requireUpstream(
-          id,
-          value.evaluate,
-          [...at, 'evaluate'],
-          "An evaluate's value flows only to the acts downstream of it.",
-        );
-      }
+    for (const [value, at] of valuesWithPaths(act, path)) {
+      if ('evaluate' in value) this.requireBound(id, value.evaluate, [...at, 'evaluate']);
       if (
         'attribute' in value &&
         value.selected !== undefined &&
@@ -1364,4 +1399,23 @@ function editDistance(a: string, b: string): number {
     }
   }
   return row[b.length]!;
+}
+
+/** The values an act reads, with their paths: a set's parameter, a count, the inputs of a query or evaluate. */
+function valuesWithPaths(act: Act, path: Path): [Value, Path][] {
+  const values: [Value, Path][] = [];
+  if (act.kind === 'set') values.push([act.parameter, [...path, 'parameter']]);
+  if ((act.kind === 'create' || act.kind === 'load') && act.agentCount) {
+    values.push([act.agentCount, [...path, 'agentCount']]);
+  }
+  if (act.kind === 'query' || act.kind === 'evaluate') {
+    act.inputs?.forEach((input, index) => {
+      if (!('multiValue' in input)) values.push([input, [...path, 'inputs', index]]);
+    });
+  }
+  return values;
+}
+
+function valuesOf(act: Act): Value[] {
+  return valuesWithPaths(act, []).map(([value]) => value);
 }

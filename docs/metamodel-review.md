@@ -183,6 +183,16 @@ compute them however it likes, as long as the result is the same.
   two branches can fire twice for the same agent; joining them through `any` makes it fire once.
 - **Evaluates are pure.** They compute a value from their inputs and change nothing. Only commands
   change state: set, move, leave, die, connect, disconnect, replace, create, cause.
+- **Evaluates are references, not variables** (owner, 2026-11-18). A binding names a relationship
+  ("the neighbours of this cell"), not an agent held in a variable, and an evaluate bound to a
+  selection is a value of that relationship ("a neighbour's column"). An input that names an
+  evaluate refers to it: on the act's path it is the value worked out there, and elsewhere it is
+  worked out where it is named, on what its selection is bound to there. So a query straight from
+  a select can test each candidate on a value of the candidate, with no flow into the evaluate,
+  as AMF's generator wrote an evaluate's expression into the act that named it unless the
+  evaluate was on the path (`bind` and `expressionIn` in `infer.ext`). An evaluate placed in the
+  flow between a select and a query is on the path, so the query after it filters what was
+  chosen, as in AMF. Remembering a worked-out value is a cache, never part of the meaning.
 - **Flows are acyclic.** Iteration comes from selections being sets and from rules applying to every
   agent. Recursion is possible only through cause.
 - **Order is not part of a flow's meaning**, but state changes make it observable: two sets on
@@ -746,9 +756,12 @@ Checking:
   selection is a root act's own agent, a select's agent (or the cells of its grid), or the agent
   a create makes; a selection whose agent cannot be told is not checked. Attributes of scapes
   and spaces are not checked: they are read from the one around the agent.
-- **Upstream.** An act's selection, a move's or connect's destination, an input's `selected`
-  and an evaluate used as a value must be upstream of the act, since they are bound only on
-  the flows that pass through them. All twelve Escape examples satisfy this.
+- **Upstream.** An act's selection, a move's or connect's destination and an input's `selected`
+  must be upstream of the act, since they are bound only on the flows that pass through them.
+  An evaluate named as a value need not be: its selection, and those of what it reads, must be
+  the act's own or upstream of it (see "Evaluates are references" above). An evaluate that no
+  flow reaches is not reported if an act that runs names it. All twelve Escape examples
+  satisfy this.
 - **Selections.** Spatial query terms are the functions in the library's `spatial`
   sub-library (`isSpatialControl` in `infer.ext`). They cannot be evaluates, and all but `all`,
   `minimize` and `maximize` need their selection to name a space. A selection picks by at most

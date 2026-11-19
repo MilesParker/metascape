@@ -481,7 +481,7 @@ describe('flows', () => {
     );
   });
 
-  it('requires evaluates to be upstream of the acts that use their values', () => {
+  it('takes an evaluate named off the path as a reference, worked out where it is named', () => {
     const diagnostics = checkModel(
       variant((m) => {
         bug(m).attributes = { age: { type: 'integer' } };
@@ -502,11 +502,8 @@ describe('flows', () => {
         Object.assign(bugAct(m, 'bugRule'), { targets: ['nearbySpace', 'older', 'setAge'] });
       }),
     );
-    expectFound(
-      diagnostics,
-      `${BUG}.setAge.parameter.evaluate`,
-      "`older` is not upstream of this act. An evaluate's value flows only to the acts downstream of it.",
-    );
+    // `older` works on the bug's rule, which is bound at `setAge`, so `setAge` works it out itself.
+    expect(diagnostics.filter((d) => d.path.startsWith(`${BUG}.setAge`))).toEqual([]);
   });
 
   it('requires logic acts to combine queries and logic acts', () => {

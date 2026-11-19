@@ -200,9 +200,11 @@ Gaps found, to fill when a model needs them (D4):
   another agent type (it reaches only the causing agent's own acts); a border rule as a parameter
   (the introductory Life's Wrap); counting the agents that have two attributes at once, for a chart
   (Diffusion's cells of an action in a half of the lattice); a small-world network generator also
-  for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`; and an interpreter problem to look at,
-  where an evaluate on the candidates of a select, or an `any` act inside a selection, gives
-  wrong results (zero counts) and a 50-times slowdown with no diagnostic.
+  for ConwayLifeSmallWorld's `radius` and `randomEdgeRatio`. The interpreter problem it reported
+  (zero counts from evaluates and `any` inside a selection) was a misreading: the evaluates were on
+  the flow after the choice. The checker now takes an evaluate named in an input as a reference,
+  worked out where it is named, so a query straight from a select can name one
+  (`docs/metamodel-review.md`, "Evaluates are references").
 
 Writing the JSON by hand is slow and error-prone: both Civil Violence and Sugarscape were written
 by throwaway scripts that generated the files. This is a cost of the whole effort until a model
